@@ -1,7 +1,9 @@
-import type { Cat, GameState } from '@/types/game';
+import type { Cat, GameState, StockShare } from '@/types/game';
+import { initStock } from './stocks';
 
 const INITIAL_MONEY = 100;
 const INITIAL_PRICE = 10;
+const PLAYER_INITIAL_CASH = 1000;
 
 export const INITIAL_CATS: Cat[] = [
   {
@@ -92,4 +94,13 @@ export const INITIAL_STATE: GameState = {
     taxRate: 10,
   },
   newsLog: [],
+  stocks: Object.fromEntries(
+    INITIAL_CATS.map((c): [string, StockShare] => [c.id, initStock(c.money)]),
+  ),
+  player: {
+    cash: PLAYER_INITIAL_CASH,
+    holdings: {},
+    costBasis: {},
+    hasEverInvested: false,
+  },
 };

@@ -8,10 +8,16 @@ export const NEWS_SYSTEM_PROMPT =
   '少し大げさに、語尾は「ニャ」で読み上げる。具体的な数字を必ず1つ盛り込むこと。';
 
 /** Build the user prompt fed to the model for a given event + economy snapshot. */
-export function buildNewsPrompt(eventName: string, economy: Economy, cats: Cat[]): string {
+export function buildNewsPrompt(
+  eventName: string,
+  economy: Economy,
+  cats: Cat[],
+  catName?: string,
+): string {
   const richest = [...cats].sort((a, b) => b.money - a.money)[0];
   return [
     `【速報イベント】${eventName}`,
+    catName ? `対象の猫: ${catName}` : '',
     `スープ価格: ${economy.soupPrice} CC`,
     `インフレ率: ${economy.inflationRate}%`,
     `失業率: ${economy.unemploymentRate}%`,
@@ -25,10 +31,13 @@ export function buildNewsPrompt(eventName: string, economy: Economy, cats: Cat[]
 }
 
 /** Local templated headline used when no API key is available or the call fails. */
-export function buildFallbackNews(eventName: string, economy: Economy): string {
+export function buildFallbackNews(eventName: string, economy: Economy, catName?: string): string {
+  const who = catName ?? 'ある猫';
   switch (eventName) {
+    case '大儲け':
+      return `${who}が大儲けしたニャ！${who}の株価が急騰しているニャ！`;
     case '破産':
-      return `悲報ニャ…生活に行き詰まり破産する猫が出てしまったニャ。スープは${economy.soupPrice}CCニャ。`;
+      return `悲報ニャ…${who}が破産してしまったニャ。${who}の株価は暴落ニャ。`;
     case 'ハイパーインフレ':
       return `速報ニャ！スープ価格が高騰、インフレ率${economy.inflationRate}%に達したニャ！`;
     case 'デフレ不況':

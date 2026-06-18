@@ -54,6 +54,45 @@ test('1000-tick stress run: economy stays within sane bounds', async ({ page }) 
   expect(economy.gini).toBeLessThanOrEqual(1);
   expect(economy.unemploymentRate).toBeGreaterThanOrEqual(0);
   expect(economy.unemploymentRate).toBeLessThanOrEqual(100);
+
+  // Stock prices respect the defensive bounds [10, 2000] at all times.
+  for (const id of Object.keys(state.stocks)) {
+    const price = state.stocks[id].price;
+    expect(Number.isFinite(price)).toBe(true);
+    expect(price).toBeGreaterThanOrEqual(10);
+    expect(price).toBeLessThanOrEqual(2000);
+  }
+
+  // Player cash never goes negative.
+  expect(state.player.cash).toBeGreaterThanOrEqual(0);
+});
+
+test('stock buy/sell guards + education popup', async ({ page }) => {
+  await page.goto('/?turbo=300');
+  await page.waitForFunction(() => window.__neko !== undefined, undefined, {
+    timeout: 30_000,
+  });
+
+  const buyButtons = page.getByRole('button', { name: '買う' });
+  const sellButtons = page.getByRole('button', { name: '売る' });
+
+  // Sell is disabled before owning any shares.
+  await expect(sellButtons.first()).toBeDisabled();
+
+  const cashBefore = (await page.evaluate(() => window.__neko?.player.cash ?? 0)) as number;
+
+  // First-ever buy: cash drops, education popup appears, then sell unlocks.
+  await buyButtons.first().click();
+  await expect(page.getByText('はじめての投資ニャ！')).toBeVisible();
+  await page.getByRole('button', { name: 'わかったニャ！' }).click();
+
+  const cashAfter = (await page.evaluate(() => window.__neko?.player.cash ?? 0)) as number;
+  expect(cashAfter).toBeLessThan(cashBefore);
+  await expect(sellButtons.first()).toBeEnabled();
+
+  // Selling the share returns cash and disables sell again.
+  await sellButtons.first().click();
+  await expect(sellButtons.first()).toBeDisabled();
 });
 
 test('issuing currency raises the money supply', async ({ page }) => {

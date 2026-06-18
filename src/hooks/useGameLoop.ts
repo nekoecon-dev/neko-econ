@@ -7,6 +7,14 @@ import { updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
+import {
+  applyStockShock,
+  executeBuy,
+  executeSell,
+  SHOCK_BANKRUPT,
+  SHOCK_RICH,
+  updateStocks,
+} from '@/lib/engine/stocks';
 
 const DEFAULT_TICK_MS = 500;
 
@@ -49,6 +57,10 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return { ...state, policy: { ...state.policy, interestRate: action.value } };
     case 'SET_TAX_RATE':
       return { ...state, policy: { ...state.policy, taxRate: action.value } };
+    case 'BUY_STOCK':
+      return executeBuy(state, action.catId);
+    case 'SELL_STOCK':
+      return executeSell(state, action.catId);
     default:
       return state;
   }
@@ -80,6 +92,7 @@ export function useGameLoop(): {
       setState((prev) => {
         let next = updateAllCats(prev);
         next = updateEconomy(next);
+        next = updateStocks(next);
         next = { ...next, tick: prev.tick + 1, cats: next.cats.map(wander) };
         return next;
       });
@@ -95,6 +108,17 @@ export function useGameLoop(): {
     const event = detectEvent(current);
     if (!event) return;
 
+    // News-linked stock shock: a "大儲け" headline spikes that cat's stock,
+    // a "破産" headline crashes it. Decays back over the following ticks.
+    const shockCatId = event.catId;
+    if (shockCatId) {
+      if (event.name === '大儲け') {
+        setState((s) => applyStockShock(s, shockCatId, SHOCK_RICH));
+      } else if (event.name === '破産') {
+        setState((s) => applyStockShock(s, shockCatId, SHOCK_BANKRUPT));
+      }
+    }
+
     fetchingRef.current = true;
     const snapshot = current;
     void (async () => {
@@ -103,14 +127,15 @@ export function useGameLoop(): {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            eventName: event,
+            eventName: event.name,
             economy: snapshot.economy,
             cats: snapshot.cats,
+            catName: event.catName,
           }),
         });
         const data: { news?: string } = await res.json();
         if (data.news) {
-          const item: NewsItem = { tick: snapshot.tick, event, text: data.news };
+          const item: NewsItem = { tick: snapshot.tick, event: event.name, text: data.news };
           setState((s) => ({ ...s, newsLog: [item, ...s.newsLog].slice(0, 50) }));
         }
       } catch {

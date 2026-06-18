@@ -47,6 +47,31 @@ export interface NewsItem {
   text: string;
 }
 
+/**
+ * Result of event detection. `catId`/`catName` are set for cat-specific events
+ * (破産 / 大儲け) which also drive that cat's stock price.
+ */
+export interface DetectedEvent {
+  name: string;
+  catId?: string;
+  catName?: string;
+}
+
+/** Tradable share for a single cat. */
+export interface StockShare {
+  price: number; // displayed price = base * shock, clamped to [10, 2000]
+  base: number; // fundamental price, smoothly tracks the cat's money level
+  shock: number; // temporary news multiplier, decays back to 1
+}
+
+/** The human player's portfolio (independent of the NPC cats). */
+export interface PlayerWallet {
+  cash: number; // CC
+  holdings: Record<string, number>; // catId -> shares owned
+  costBasis: Record<string, number>; // catId -> total CC spent on current shares
+  hasEverInvested: boolean; // gates the one-time education popup
+}
+
 export interface GameState {
   tick: number;
   cats: Cat[];
@@ -54,9 +79,13 @@ export interface GameState {
   economy: Economy;
   policy: PlayerPolicy;
   newsLog: NewsItem[];
+  stocks: Record<string, StockShare>; // keyed by catId
+  player: PlayerWallet;
 }
 
 export type PolicyAction =
   | { type: 'ISSUE_CURRENCY'; amount: number }
   | { type: 'SET_INTEREST_RATE'; value: number }
-  | { type: 'SET_TAX_RATE'; value: number };
+  | { type: 'SET_TAX_RATE'; value: number }
+  | { type: 'BUY_STOCK'; catId: string }
+  | { type: 'SELL_STOCK'; catId: string };

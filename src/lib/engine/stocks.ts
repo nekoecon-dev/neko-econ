@@ -1,0 +1,106 @@
+import type { GameState, StockShare } from '@/types/game';
+import { clamp, round2 } from './math';
+
+// Defensive price bounds — stock prices can never escape this range.
+export const STOCK_MIN = 10;
+export const STOCK_MAX = 2000;
+export const STOCK_BASE = 100; // 基準値 / initial price
+
+// News-driven temporary shocks (multipliers that decay back toward 1).
+export const SHOCK_RICH = 1.2; // 大儲け: +20%
+export const SHOCK_BANKRUPT = 0.7; // 破産: -30%
+const SHOCK_DECAY = 0.1; // per tick, toward 1
+const BASE_SMOOTH = 0.3; // how fast `base` tracks the cat's money level
+
+/** Build the initial stock for a cat (called from initialState). */
+export function initStock(money: number): StockShare {
+  return { price: STOCK_BASE, base: clamp(money, STOCK_MIN, STOCK_MAX), shock: 1 };
+}
+
+/**
+ * Recompute every cat's stock once per tick:
+ * - the fundamental `base` smoothly tracks the cat's current money level
+ *   (so the price reflects 所持金 without compounding/ratcheting),
+ * - the temporary news `shock` decays toward 1,
+ * - the displayed `price = base * shock`, all clamped to [STOCK_MIN, STOCK_MAX].
+ */
+export function updateStocks(state: GameState): GameState {
+  const stocks: Record<string, StockShare> = {};
+  for (const cat of state.cats) {
+    const prev = state.stocks[cat.id] ?? initStock(cat.money);
+    const base = clamp(prev.base + (cat.money - prev.base) * BASE_SMOOTH, STOCK_MIN, STOCK_MAX);
+    const shock = prev.shock + (1 - prev.shock) * SHOCK_DECAY;
+    const price = clamp(base * shock, STOCK_MIN, STOCK_MAX);
+    stocks[cat.id] = {
+      price: round2(price),
+      base: round2(base),
+      shock: round2(shock),
+    };
+  }
+  return { ...state, stocks };
+}
+
+/** Apply a temporary multiplicative shock to one cat's stock (news-driven). */
+export function applyStockShock(state: GameState, catId: string, multiplier: number): GameState {
+  const prev = state.stocks[catId];
+  if (!prev) return state;
+  const shock = multiplier;
+  const price = clamp(prev.base * shock, STOCK_MIN, STOCK_MAX);
+  return {
+    ...state,
+    stocks: { ...state.stocks, [catId]: { ...prev, shock: round2(shock), price: round2(price) } },
+  };
+}
+
+/** Buy one share. No-op if the cat has no stock or the player can't afford it. */
+export function executeBuy(state: GameState, catId: string): GameState {
+  const stock = state.stocks[catId];
+  if (!stock) return state;
+  const price = stock.price;
+  const { player } = state;
+  if (player.cash < price) return state; // defensive: insufficient funds
+
+  return {
+    ...state,
+    player: {
+      ...player,
+      cash: round2(player.cash - price),
+      holdings: { ...player.holdings, [catId]: (player.holdings[catId] ?? 0) + 1 },
+      costBasis: { ...player.costBasis, [catId]: round2((player.costBasis[catId] ?? 0) + price) },
+      hasEverInvested: true,
+    },
+  };
+}
+
+/** Sell one share. No-op if the player holds none. */
+export function executeSell(state: GameState, catId: string): GameState {
+  const stock = state.stocks[catId];
+  if (!stock) return state;
+  const { player } = state;
+  const shares = player.holdings[catId] ?? 0;
+  if (shares <= 0) return state; // defensive: nothing to sell
+
+  const price = stock.price;
+  const basis = player.costBasis[catId] ?? 0;
+  // Reduce cost basis proportionally (average-cost method).
+  const remainingBasis = shares > 1 ? round2(basis * ((shares - 1) / shares)) : 0;
+
+  return {
+    ...state,
+    player: {
+      ...player,
+      cash: round2(player.cash + price),
+      holdings: { ...player.holdings, [catId]: shares - 1 },
+      costBasis: { ...player.costBasis, [catId]: remainingBasis },
+    },
+  };
+}
+
+/** Unrealized profit/loss for the player's holding in one cat. */
+export function unrealizedPnL(state: GameState, catId: string): number {
+  const shares = state.player.holdings[catId] ?? 0;
+  if (shares <= 0) return 0;
+  const price = state.stocks[catId]?.price ?? 0;
+  const basis = state.player.costBasis[catId] ?? 0;
+  return round2(shares * price - basis);
+}

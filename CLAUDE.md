@@ -154,6 +154,32 @@ Layout (`page.tsx`):
 - **ControlPanel**: "+100CC 全員に配布" button, interest slider 0–20%,
   tax slider 0–50%, wired through `dispatch`.
 
+## Player investment — stock market (`stocks.ts`)
+
+The human player has a wallet (`player`: cash 1,000 CC to start, `holdings`,
+`costBasis`, `hasEverInvested`) kept entirely separate from the NPC cats. Each
+cat has a tradable `StockShare`:
+
+- `base` smoothly tracks the cat's **money level** (`base += (money-base)*0.3`),
+  so the price reflects 所持金 without compounding/ratcheting.
+- `shock` is a temporary news multiplier that **decays toward 1** each tick.
+- `price = clamp(base * shock, 10, 2000)` — the **defensive bounds** [10, 2000]
+  are enforced on both `base` and `price` every tick.
+
+`updateStocks` runs each tick (after `updateEconomy`). News linkage: a `大儲け`
+headline calls `applyStockShock(catId, 1.2)` (+20% spike), a `破産` headline
+`applyStockShock(catId, 0.7)` (−30% crash); both fade as `shock` decays.
+
+`executeBuy` / `executeSell` trade **one share** per call and are **guarded**:
+buy is a no-op if `cash < price`, sell is a no-op if the player holds none.
+The matching UI buttons are `disabled` under the same conditions. The first
+successful buy shows a one-time education popup ("投資とは企業の成長にお金を
+預けること"). Unrealized P/L = `shares*price − costBasis`.
+
+Cat-specific events (`events.ts`): `破産` (a cat at ≤0 CC) and `大儲け` (the
+richest cat, ≥1.6× the village average) carry `catId`/`catName`, driving both
+the news ticker and the stock shock. Cooldowns are keyed per `name:catId`.
+
 ## Conventions
 
 - No `any`. `setInterval` is always cleared on unmount. All Anthropic calls live
