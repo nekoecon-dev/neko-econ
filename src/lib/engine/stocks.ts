@@ -15,7 +15,12 @@ const BASE_SMOOTH = 0.3; // how fast `base` tracks the cat's money level
 
 /** Build the initial stock for a cat (called from initialState). */
 export function initStock(money: number): StockShare {
-  return { price: STOCK_BASE, base: clamp(money, STOCK_MIN, STOCK_MAX), shock: 1 };
+  return {
+    price: STOCK_BASE,
+    prevPrice: STOCK_BASE,
+    base: clamp(money, STOCK_MIN, STOCK_MAX),
+    shock: 1,
+  };
 }
 
 /**
@@ -39,6 +44,7 @@ export function updateStocks(
     const price = clamp(base * shock, STOCK_MIN, STOCK_MAX);
     stocks[cat.id] = {
       price: round2(price),
+      prevPrice: prev.price,
       base: round2(base),
       shock: round2(shock),
     };

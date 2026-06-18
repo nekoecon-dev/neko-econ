@@ -26,6 +26,48 @@ function SignBoard({
   );
 }
 
+// "Neko Wall Street" LED ticker: every cat's price with ▲/▼ + the latest news.
+function WallStreetTicker({
+  entries,
+  news,
+  className,
+}: {
+  entries: { name: string; price: number; up: boolean }[];
+  news: string;
+  className: string;
+}) {
+  const content = (
+    <span className="px-3">
+      {entries.map((e, i) => (
+        <span key={i} className="mr-3">
+          <span className="text-cyan-200">{e.name}</span>{' '}
+          <span className={e.up ? 'text-green-400' : 'text-red-400'}>
+            {Math.round(e.price)}CC {e.up ? '▲' : '▼'}
+          </span>
+        </span>
+      ))}
+      <span className="text-yellow-300">📰 {news}</span>
+      <span className="px-2 text-gray-600">●</span>
+    </span>
+  );
+
+  return (
+    <div
+      className={`pointer-events-none absolute z-20 flex w-64 items-stretch overflow-hidden rounded-lg border-2 border-gray-700 bg-gray-900/95 shadow-lg ${className}`}
+    >
+      <div className="flex items-center border-r border-gray-700 bg-gray-800 px-2 text-[10px] font-bold text-cyan-300">
+        🏢 ウォール街
+      </div>
+      <div className="relative flex-1 overflow-hidden py-1">
+        <div className="news-marquee whitespace-nowrap font-mono text-xs font-bold">
+          {content}
+          {content}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Background gradient per weather state.
 const BG: Record<Weather, string> = {
   normal:
@@ -84,12 +126,14 @@ export default function VillageMap({
   cats,
   economy,
   stocks,
+  latestNews = '村は今日も平和ニャ',
   weather = 'normal',
   strikeActive = false,
 }: {
   cats: Cat[];
   economy: Economy;
   stocks: Record<string, StockShare>;
+  latestNews?: string;
   weather?: Weather;
   strikeActive?: boolean;
 }) {
@@ -97,10 +141,11 @@ export default function VillageMap({
   const hyper = weather === 'hyperinflation';
   const boom = weather === 'boom';
 
-  // Top-valued stock for the "Neko Wall Street" sign.
-  const topStock = cats
-    .map((c) => ({ name: c.name, price: stocks[c.id]?.price ?? 0 }))
-    .sort((a, b) => b.price - a.price)[0];
+  // Ticker entries: each cat's price with up/down direction vs the prev tick.
+  const tickerEntries = cats.map((c) => {
+    const s = stocks[c.id];
+    return { name: c.name, price: s?.price ?? 0, up: (s?.price ?? 0) >= (s?.prevPrice ?? 0) };
+  });
 
   const sunClass = hyper
     ? 'right-1/2 top-2 h-44 w-44 translate-x-1/2 animate-pulse bg-orange-400 shadow-[0_0_90px_40px_rgba(249,115,22,0.85)]'
@@ -164,12 +209,7 @@ export default function VillageMap({
         title="スープ鍋"
         value={`${economy.soupPrice} CC`}
       />
-      <SignBoard
-        className="bottom-3 right-3"
-        icon="🏢"
-        title="ネコウォール街"
-        value={topStock ? `${topStock.name} ${Math.round(topStock.price)}CC` : '—'}
-      />
+      <WallStreetTicker className="bottom-3 right-3" entries={tickerEntries} news={latestNews} />
 
       {/* weather effects */}
       {boom && <Confetti />}

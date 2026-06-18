@@ -49,6 +49,7 @@ export default function Home() {
             cats={state.cats}
             economy={state.economy}
             stocks={state.stocks}
+            latestNews={state.newsLog[0]?.text}
             weather={weather}
             strikeActive={state.strike.active}
           />
