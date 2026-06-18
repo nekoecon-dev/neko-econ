@@ -17,7 +17,16 @@ const BUBBLE: Record<CatAction, string> = {
   sleeping: '😴 Zzz…',
 };
 
-function Eyes({ action }: { action: CatAction }) {
+function Eyes({ action, bankrupt }: { action: CatAction; bankrupt: boolean }) {
+  if (bankrupt) {
+    // squeezed-shut crying eyes >_<
+    return (
+      <g stroke="#3f2d20" strokeWidth={2.4} fill="none" strokeLinecap="round">
+        <path d="M26 36 q5 6 10 0" />
+        <path d="M44 36 q5 6 10 0" />
+      </g>
+    );
+  }
   if (action === 'sleeping') {
     return (
       <g stroke="#3f2d20" strokeWidth={2.2} fill="none" strokeLinecap="round">
@@ -46,7 +55,7 @@ function Eyes({ action }: { action: CatAction }) {
   );
 }
 
-function CatIcon({ cat }: { cat: Cat }) {
+function CatIcon({ cat, bankrupt }: { cat: Cat; bankrupt: boolean }) {
   const fur = FUR[cat.id] ?? DEFAULT_FUR;
   return (
     <svg width={76} height={84} viewBox="0 0 80 88" className="drop-shadow-sm">
@@ -74,7 +83,7 @@ function CatIcon({ cat }: { cat: Cat }) {
       {/* cheeks */}
       <circle cx={26} cy={46} r={4} fill="#fb7185" opacity={0.45} />
       <circle cx={54} cy={46} r={4} fill="#fb7185" opacity={0.45} />
-      <Eyes action={cat.action} />
+      <Eyes action={cat.action} bankrupt={bankrupt} />
       {/* nose */}
       <path d="M40 44 l3 4 h-6 Z" fill="#fb7185" />
       {/* mouth */}
@@ -97,6 +106,10 @@ function CatIcon({ cat }: { cat: Cat }) {
 }
 
 export default function CatSprite({ cat }: { cat: Cat }) {
+  const bankrupt = cat.money <= 0;
+  const bubble = bankrupt ? '😭 もうだめニャ…' : BUBBLE[cat.action];
+  const wrapperAnim = bankrupt ? 'cat-cry' : cat.action === 'sleeping' ? '' : 'cat-float';
+
   return (
     <div
       className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 select-none"
@@ -108,18 +121,47 @@ export default function CatSprite({ cat }: { cat: Cat }) {
     >
       {/* state speech bubble */}
       <div className="relative mb-1">
-        <div className="whitespace-nowrap rounded-2xl border-2 border-amber-200 bg-white/95 px-2.5 py-1 text-[11px] font-bold text-amber-900 shadow-sm">
-          {BUBBLE[cat.action]}
+        <div
+          className={`whitespace-nowrap rounded-2xl border-2 px-2.5 py-1 text-[11px] font-bold shadow-sm ${
+            bankrupt
+              ? 'border-red-300 bg-red-50 text-red-700'
+              : 'border-amber-200 bg-white/95 text-amber-900'
+          }`}
+        >
+          {bubble}
         </div>
-        <div className="absolute left-1/2 -bottom-1 h-2 w-2 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-amber-200 bg-white/95" />
+        <div
+          className={`absolute left-1/2 -bottom-1 h-2 w-2 -translate-x-1/2 rotate-45 border-b-2 border-r-2 ${
+            bankrupt ? 'border-red-300 bg-red-50' : 'border-amber-200 bg-white/95'
+          }`}
+        />
       </div>
 
-      <div className={cat.action === 'sleeping' ? '' : 'cat-float'}>
-        <CatIcon cat={cat} />
+      <div className="relative">
+        <div className={wrapperAnim}>
+          <CatIcon cat={cat} bankrupt={bankrupt} />
+        </div>
+        {bankrupt && (
+          <>
+            <span className="cat-tear absolute left-[26px] top-[40px] h-2.5 w-1.5 rounded-full bg-sky-400/90" />
+            <span
+              className="cat-tear absolute left-[46px] top-[40px] h-2.5 w-1.5 rounded-full bg-sky-400/90"
+              style={{ animationDelay: '0.5s' }}
+            />
+          </>
+        )}
       </div>
 
       <span className="-mt-1 rounded-full bg-amber-900/85 px-2 py-0.5 text-[11px] font-bold text-white shadow">
         {cat.name}
+      </span>
+      {/* real-time money badge */}
+      <span
+        className={`mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-extrabold shadow ${
+          bankrupt ? 'bg-red-600 text-white' : 'bg-white/90 text-amber-900'
+        }`}
+      >
+        {Math.round(cat.money)} CC
       </span>
     </div>
   );

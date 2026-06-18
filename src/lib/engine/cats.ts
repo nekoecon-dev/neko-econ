@@ -8,15 +8,23 @@ const WORK_CHANCE: Record<Cat['personality'], number> = {
 };
 
 const HUNGER_EAT_THRESHOLD = 65;
+const HUNGER_STARVING = 90;
 const ENERGY_SLEEP_THRESHOLD = 15;
 const ENERGY_WORK_MIN = 25;
 
 /**
  * Decide a single cat's next action (small state machine).
- * Priority: survival (sleep) > hunger (eat) > work-or-idle by personality.
+ * Priority: sleep when exhausted > eat when starving (even on credit) >
+ * hustle to recover when bankrupt > eat when hungry & able > work-or-idle.
  */
 export function decideCatAction(cat: Cat, market: Market): CatAction {
   if (cat.energy <= ENERGY_SLEEP_THRESHOLD) return 'sleeping';
+
+  // Starving: must eat to survive, even if it means going into debt.
+  if (cat.hunger >= HUNGER_STARVING) return 'eating';
+
+  // Bankrupt cats prioritise working to climb back out of debt.
+  if (cat.money <= 0 && cat.energy > ENERGY_WORK_MIN) return 'working';
 
   if (cat.hunger >= HUNGER_EAT_THRESHOLD) {
     const canEat = cat.inventory > 0 || cat.money >= market.soupPrice;
@@ -61,6 +69,12 @@ export function updateCat(cat: Cat, market: Market, policy: PlayerPolicy): Cat {
         inventory -= 1;
       } else if (money >= market.soupPrice) {
         money = round2(money - market.soupPrice);
+      } else {
+        // Soup kitchen: a cat that can't afford the full price spends its last
+        // coins (down to 0) and is subsidised. Money is floored at 0, so the
+        // village's money supply can never drain negative — but a cat reaching
+        // 0 is "bankrupt" (shown crying) until it works its way back up.
+        money = 0;
       }
       hunger = clamp(hunger - 40, 0, 100);
       break;

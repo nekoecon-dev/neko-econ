@@ -27,6 +27,8 @@ export function buildNewsPrompt(eventName: string, economy: Economy, cats: Cat[]
 /** Local templated headline used when no API key is available or the call fails. */
 export function buildFallbackNews(eventName: string, economy: Economy): string {
   switch (eventName) {
+    case '破産':
+      return `悲報ニャ…生活に行き詰まり破産する猫が出てしまったニャ。スープは${economy.soupPrice}CCニャ。`;
     case 'ハイパーインフレ':
       return `速報ニャ！スープ価格が高騰、インフレ率${economy.inflationRate}%に達したニャ！`;
     case 'デフレ不況':

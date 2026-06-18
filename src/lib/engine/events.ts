@@ -11,6 +11,7 @@ interface EventRule {
 }
 
 const RULES: EventRule[] = [
+  { name: '破産', test: (s) => s.cats.some((c) => c.money <= 0) },
   { name: 'ハイパーインフレ', test: (s) => s.economy.inflationRate > 20 },
   { name: 'デフレ不況', test: (s) => s.economy.inflationRate < -15 },
   { name: '食料危機', test: (s) => s.economy.soupPrice > 30 },

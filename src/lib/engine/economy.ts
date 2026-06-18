@@ -1,4 +1,4 @@
-import type { Cat, GameState } from '@/types/game';
+import type { Cat, Economy, GameState, VillageMood } from '@/types/game';
 import { clamp, round2 } from './math';
 
 const PRICE_MIN = 1;
@@ -55,6 +55,21 @@ export function calcGini(cats: Cat[]): number {
   }
   const gini = (2 * weighted) / (n * total) - (n + 1) / n;
   return round2(clamp(gini, 0, 1));
+}
+
+/**
+ * Classify the overall economic mood from inflation + unemployment.
+ * Used to subtly tint the village background (boom = bright, recession = dark).
+ */
+export function getVillageMood(economy: Economy): VillageMood {
+  const { inflationRate, unemploymentRate } = economy;
+  if (unemploymentRate > 40 || inflationRate > 20 || inflationRate < -15) {
+    return 'recession';
+  }
+  if (unemploymentRate < 20 && inflationRate >= 0 && inflationRate <= 10) {
+    return 'boom';
+  }
+  return 'normal';
 }
 
 /**

@@ -1,7 +1,5 @@
-import type { Cat } from '@/types/game';
+import type { Cat, VillageMood } from '@/types/game';
 import CatSprite from './CatSprite';
-
-export type VillageMood = 'boom' | 'normal' | 'recession';
 
 // Tint overlay laid over the map to reflect the economic mood.
 const MOOD_OVERLAY: Record<VillageMood, string> = {

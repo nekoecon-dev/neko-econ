@@ -38,6 +38,9 @@ export interface PlayerPolicy {
   taxRate: number; // 0..50 (%)
 }
 
+/** Overall economic mood, used to tint the village. */
+export type VillageMood = 'boom' | 'normal' | 'recession';
+
 export interface NewsItem {
   tick: number;
   event: string;

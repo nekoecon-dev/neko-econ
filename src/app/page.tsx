@@ -1,6 +1,7 @@
 'use client';
 
 import { useGameLoop } from '@/hooks/useGameLoop';
+import { getVillageMood } from '@/lib/engine/economy';
 import VillageMap from '@/components/VillageMap';
 import EconomyDashboard from '@/components/EconomyDashboard';
 import ControlPanel from '@/components/ControlPanel';
@@ -8,6 +9,7 @@ import NewsTicker from '@/components/NewsTicker';
 
 export default function Home() {
   const { state, dispatch } = useGameLoop();
+  const mood = getVillageMood(state.economy);
 
   return (
     <main
@@ -31,7 +33,7 @@ export default function Home() {
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2">
-          <VillageMap cats={state.cats} />
+          <VillageMap cats={state.cats} mood={mood} />
         </section>
         <aside className="flex flex-col gap-4">
           <EconomyDashboard economy={state.economy} />
