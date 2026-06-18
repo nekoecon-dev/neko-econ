@@ -103,4 +103,5 @@ export const INITIAL_STATE: GameState = {
     costBasis: {},
     hasEverInvested: false,
   },
+  weather: { current: 'normal', lockUntil: 0 },
 };

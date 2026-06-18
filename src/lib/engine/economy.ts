@@ -1,5 +1,8 @@
-import type { Cat, Economy, GameState, VillageMood, Weather } from '@/types/game';
+import type { Cat, Economy, GameState, VillageMood, Weather, WeatherState } from '@/types/game';
 import { clamp, round2 } from './math';
+
+// Minimum hold for dramatic weather (~30s at the default 500ms tick).
+export const WEATHER_LOCK_TICKS = 60;
 
 const PRICE_MIN = 1;
 const PRICE_MAX = 9999;
@@ -97,6 +100,31 @@ export function getWeather(economy: Economy): Weather {
   if (economy.unemploymentRate > 80) return 'depression';
   if (smoothedInflation >= 2 && smoothedInflation <= 5) return 'boom';
   return 'normal';
+}
+
+/** Dramatic weather that must hold for a minimum duration once triggered. */
+function isLockable(weather: Weather): boolean {
+  return weather === 'hyperinflation' || weather === 'depression';
+}
+
+/**
+ * Advance the weather state, enforcing a minimum-duration lock so a
+ * hyperinflation/depression doesn't vanish the instant its trigger eases.
+ */
+export function nextWeatherState(
+  economy: Economy,
+  prev: WeatherState,
+  tick: number,
+): WeatherState {
+  // Hold a locked dramatic weather until its lock expires.
+  if (isLockable(prev.current) && tick < prev.lockUntil) {
+    return prev;
+  }
+  const raw = getWeather(economy);
+  return {
+    current: raw,
+    lockUntil: isLockable(raw) ? tick + WEATHER_LOCK_TICKS : 0,
+  };
 }
 
 /**

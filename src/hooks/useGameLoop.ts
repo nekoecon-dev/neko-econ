@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Cat, GameState, NewsItem, PolicyAction } from '@/types/game';
 import { updateAllCats } from '@/lib/engine/cats';
-import { getWeather, updateEconomy } from '@/lib/engine/economy';
+import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
@@ -94,15 +94,18 @@ export function useGameLoop(): {
   useEffect(() => {
     const id = setInterval(() => {
       setState((prev) => {
+        const tick = prev.tick + 1;
         let next = updateAllCats(prev);
         next = updateEconomy(next);
         next = updateStocks(next);
         // Weather drives movement: 3x frenzy in hyperinflation, frozen in a
-        // depression, normal otherwise.
-        const weather = getWeather(next.economy);
-        const speed = weather === 'hyperinflation' ? 3 : weather === 'depression' ? 0 : 1;
+        // depression, normal otherwise. Dramatic weather holds for a minimum
+        // duration (see nextWeatherState) so it doesn't flicker.
+        const weather = nextWeatherState(next.economy, prev.weather, tick);
+        const speed =
+          weather.current === 'hyperinflation' ? 3 : weather.current === 'depression' ? 0 : 1;
         const cats = speed === 0 ? next.cats : next.cats.map((c) => wander(c, speed));
-        next = { ...next, tick: prev.tick + 1, cats };
+        next = { ...next, tick, weather, cats };
         return next;
       });
     }, resolveTickMs());

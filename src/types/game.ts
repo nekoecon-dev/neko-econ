@@ -44,6 +44,16 @@ export type VillageMood = 'boom' | 'normal' | 'recession';
 /** Economy-driven weather/atmosphere for the village map. */
 export type Weather = 'boom' | 'hyperinflation' | 'depression' | 'normal';
 
+/**
+ * Active weather plus a minimum-duration lock. Dramatic weather
+ * (hyperinflation / depression) holds until `lockUntil` (a tick number) so it
+ * doesn't flicker away the instant the triggering condition eases.
+ */
+export interface WeatherState {
+  current: Weather;
+  lockUntil: number;
+}
+
 export interface NewsItem {
   tick: number;
   event: string;
@@ -84,6 +94,7 @@ export interface GameState {
   newsLog: NewsItem[];
   stocks: Record<string, StockShare>; // keyed by catId
   player: PlayerWallet;
+  weather: WeatherState;
 }
 
 export type PolicyAction =

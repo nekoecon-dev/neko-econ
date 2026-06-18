@@ -1,7 +1,6 @@
 'use client';
 
 import { useGameLoop } from '@/hooks/useGameLoop';
-import { getWeather } from '@/lib/engine/economy';
 import VillageMap from '@/components/VillageMap';
 import EconomyDashboard from '@/components/EconomyDashboard';
 import ControlPanel from '@/components/ControlPanel';
@@ -10,7 +9,7 @@ import NewsTicker from '@/components/NewsTicker';
 
 export default function Home() {
   const { state, dispatch } = useGameLoop();
-  const weather = getWeather(state.economy);
+  const weather = state.weather.current;
 
   return (
     <main

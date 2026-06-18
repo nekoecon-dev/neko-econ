@@ -123,6 +123,9 @@ export default function StockMarket({
           if (!stock) return null;
           const shares = player.holdings[cat.id] ?? 0;
           const basis = player.costBasis[cat.id] ?? 0;
+          // Buy is gated ONLY on affordability — the 2000 CC price cap never
+          // disables buying (you can still buy a capped stock if you can pay).
+          const canBuy = player.cash >= stock.price;
           return (
             <StockRow
               key={cat.id}
@@ -130,7 +133,7 @@ export default function StockMarket({
               stock={stock}
               shares={shares}
               basis={basis}
-              canBuy={player.cash >= stock.price}
+              canBuy={canBuy}
               onBuy={() => handleBuy(cat.id)}
               onSell={() => dispatch({ type: 'SELL_STOCK', catId: cat.id })}
             />
