@@ -45,6 +45,7 @@ export function decideCatAction(cat: Cat, market: Market): CatAction {
  */
 export interface CatTickOptions {
   hiring?: boolean; // an active venture is hiring idle cats
+  onStrike?: boolean; // a labor strike halts all work (cats picket = idle)
 }
 
 export function updateCat(
@@ -53,13 +54,18 @@ export function updateCat(
   policy: PlayerPolicy,
   opts: CatTickOptions = {},
 ): Cat {
+  // During a strike the whole village pickets: every cat is frozen in place —
+  // no work, no eating, no metabolism — so money/hunger stay put (this keeps
+  // the economy bounded and avoids a post-strike mass-starvation cascade).
+  if (opts.onStrike) return { ...cat, action: 'idle' };
+
   // Metabolism: hunger creeps up, a little energy is always spent.
   let hunger = clamp(cat.hunger + 4, 0, 100);
   let energy = clamp(cat.energy - 1, 0, 100);
   let money = cat.money;
   let inventory = cat.inventory;
 
-  let action = decideCatAction(cat, market);
+  let action: CatAction = decideCatAction(cat, market);
 
   // Policy hook: high interest rate -> conservative cats stop working.
   if (action === 'working' && cat.personality === 'conservative') {

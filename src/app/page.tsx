@@ -5,6 +5,7 @@ import VillageMap from '@/components/VillageMap';
 import EconomyDashboard from '@/components/EconomyDashboard';
 import ControlPanel from '@/components/ControlPanel';
 import StockMarket from '@/components/StockMarket';
+import StrikeBanner from '@/components/StrikeBanner';
 import NewsTicker from '@/components/NewsTicker';
 
 export default function Home() {
@@ -43,8 +44,11 @@ export default function Home() {
       </header>
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-2">
-          <VillageMap cats={state.cats} weather={weather} />
+        <section className="relative lg:col-span-2">
+          <VillageMap cats={state.cats} weather={weather} strikeActive={state.strike.active} />
+          {state.strike.active && (
+            <StrikeBanner reliefCount={state.strike.reliefCount} taxRate={state.policy.taxRate} />
+          )}
         </section>
         <aside className="flex flex-col gap-4">
           <EconomyDashboard economy={state.economy} />

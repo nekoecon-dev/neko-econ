@@ -132,11 +132,17 @@ export function nextWeatherState(
  * inflation, unemployment, gini, total money, and the rolling inflation chart.
  * Call this each tick AFTER updateAllCats (which sets market.supply/demand).
  */
-export function updateEconomy(state: GameState): GameState {
+export function updateEconomy(
+  state: GameState,
+  opts: { freezePrice?: boolean } = {},
+): GameState {
   const { market, cats } = state;
   const previousPrice = market.soupPrice;
-  const newPrice = updatePrice(previousPrice, market.supply, market.demand);
-  const inflationRate = calcInflationRate(newPrice, previousPrice);
+  // During a strike the market is frozen: price holds, inflation is zero.
+  const newPrice = opts.freezePrice
+    ? previousPrice
+    : updatePrice(previousPrice, market.supply, market.demand);
+  const inflationRate = opts.freezePrice ? 0 : calcInflationRate(newPrice, previousPrice);
   const unemploymentRate = calcUnemploymentRate(cats);
   const gini = calcGini(cats);
   const totalMoney = round2(cats.reduce((sum, c) => sum + c.money, 0));

@@ -58,9 +58,11 @@ function Rain() {
 export default function VillageMap({
   cats,
   weather = 'normal',
+  strikeActive = false,
 }: {
   cats: Cat[];
   weather?: Weather;
+  strikeActive?: boolean;
 }) {
   const depression = weather === 'depression';
   const hyper = weather === 'hyperinflation';
@@ -112,7 +114,7 @@ export default function VillageMap({
 
       {/* cats */}
       {cats.map((cat) => (
-        <CatSprite key={cat.id} cat={cat} weather={weather} />
+        <CatSprite key={cat.id} cat={cat} weather={weather} onStrike={strikeActive} />
       ))}
 
       {/* weather effects */}

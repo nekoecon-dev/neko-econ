@@ -62,6 +62,17 @@ export interface WeatherState {
   lockUntil: number;
 }
 
+/**
+ * Labor strike state. Triggered by extreme inequality; resolved by raising tax
+ * or by repeated relief payouts (with a failsafe max duration).
+ */
+export interface StrikeState {
+  active: boolean;
+  reliefCount: number; // +100CC distributions made during this strike
+  startTick: number;
+  cooldownUntil: number; // no new strike may start before this tick
+}
+
 export interface NewsItem {
   tick: number;
   event: string;
@@ -103,6 +114,7 @@ export interface GameState {
   stocks: Record<string, StockShare>; // keyed by catId
   player: PlayerWallet;
   weather: WeatherState;
+  strike: StrikeState;
 }
 
 export type PolicyAction =

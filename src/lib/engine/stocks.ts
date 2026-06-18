@@ -1,5 +1,6 @@
 import type { GameState, StockShare } from '@/types/game';
 import { clamp, round2 } from './math';
+import { STRIKE_STOCK_DECAY } from './strike';
 
 // Defensive price bounds — stock prices can never escape this range.
 export const STOCK_MIN = 10;
@@ -24,11 +25,16 @@ export function initStock(money: number): StockShare {
  * - the temporary news `shock` decays toward 1,
  * - the displayed `price = base * shock`, all clamped to [STOCK_MIN, STOCK_MAX].
  */
-export function updateStocks(state: GameState): GameState {
+export function updateStocks(
+  state: GameState,
+  opts: { onStrike?: boolean } = {},
+): GameState {
   const stocks: Record<string, StockShare> = {};
   for (const cat of state.cats) {
     const prev = state.stocks[cat.id] ?? initStock(cat.money);
-    const base = clamp(prev.base + (cat.money - prev.base) * BASE_SMOOTH, STOCK_MIN, STOCK_MAX);
+    let base = clamp(prev.base + (cat.money - prev.base) * BASE_SMOOTH, STOCK_MIN, STOCK_MAX);
+    // During a strike every stock bleeds -1%/tick.
+    if (opts.onStrike) base = clamp(base * STRIKE_STOCK_DECAY, STOCK_MIN, STOCK_MAX);
     const shock = prev.shock + (1 - prev.shock) * SHOCK_DECAY;
     const price = clamp(base * shock, STOCK_MIN, STOCK_MAX);
     stocks[cat.id] = {

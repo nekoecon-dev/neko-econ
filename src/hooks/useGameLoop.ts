@@ -6,6 +6,7 @@ import { updateAllCats } from '@/lib/engine/cats';
 import { updateCompanies } from '@/lib/engine/companies';
 import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
+import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
 import {
@@ -56,7 +57,11 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
         ...c,
         money: round2(c.money + action.amount),
       }));
-      return { ...state, cats };
+      // Relief payouts during a strike count toward ending it.
+      const strike = state.strike.active
+        ? { ...state.strike, reliefCount: state.strike.reliefCount + 1 }
+        : state.strike;
+      return { ...state, cats, strike };
     }
     case 'SET_INTEREST_RATE':
       return { ...state, policy: { ...state.policy, interestRate: action.value } };
@@ -98,11 +103,13 @@ export function useGameLoop(): {
         const tick = prev.tick + 1;
         // An active venture hires idle cats this tick (lowers unemployment).
         const hiring = prev.cats.some((c) => c.company !== null);
-        let next = updateAllCats(prev, { hiring });
+        const onStrike = prev.strike.active;
+        let next = updateAllCats(prev, { hiring, onStrike });
         next = { ...next, tick };
         next = updateCompanies(next); // found / fail ventures (uses next.tick)
-        next = updateEconomy(next);
-        next = updateStocks(next);
+        next = updateEconomy(next, { freezePrice: onStrike }); // strike freezes price
+        next = updateStocks(next, { onStrike }); // strike bleeds stocks -1%/tick
+        next = updateStrike(next); // start / resolve strike for next tick
         // Weather drives movement: 3x frenzy in hyperinflation, frozen in a
         // depression, normal otherwise. Dramatic weather holds for a minimum
         // duration (see nextWeatherState) so it doesn't flicker.

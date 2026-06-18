@@ -108,21 +108,25 @@ function CatIcon({ cat, bankrupt }: { cat: Cat; bankrupt: boolean }) {
 export default function CatSprite({
   cat,
   weather = 'normal',
+  onStrike = false,
 }: {
   cat: Cat;
   weather?: Weather;
+  onStrike?: boolean;
 }) {
   const bankrupt = cat.money <= 0;
   const depression = weather === 'depression';
   const bubble = bankrupt
     ? '😭 もうだめニャ…'
-    : depression
-      ? '🥶 さむい…ニャ'
-      : BUBBLE[cat.action];
-  // Priority: bankrupt cry > depression shiver > sleeping (still) > idle bob.
+    : onStrike
+      ? '✊ 賃上げ要求ニャ！'
+      : depression
+        ? '🥶 さむい…ニャ'
+        : BUBBLE[cat.action];
+  // Priority: bankrupt cry > strike picket > depression shiver > sleep > bob.
   const wrapperAnim = bankrupt
     ? 'cat-cry'
-    : depression
+    : onStrike || depression
       ? 'cat-tremble'
       : cat.action === 'sleeping'
         ? ''
@@ -168,6 +172,7 @@ export default function CatSprite({
             />
           </>
         )}
+        {onStrike && <span className="absolute -right-1 -top-2 text-xl">🪧</span>}
       </div>
 
       <span className="-mt-1 rounded-full bg-amber-900/85 px-2 py-0.5 text-[11px] font-bold text-white shadow">
