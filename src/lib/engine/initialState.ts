@@ -1,0 +1,95 @@
+import type { Cat, GameState } from '@/types/game';
+
+const INITIAL_MONEY = 100;
+const INITIAL_PRICE = 10;
+
+export const INITIAL_CATS: Cat[] = [
+  {
+    id: '1',
+    name: 'シロ',
+    personality: 'aggressive',
+    job: 'investor',
+    money: INITIAL_MONEY,
+    hunger: 30,
+    energy: 90,
+    inventory: 0,
+    action: 'idle',
+    x: 20,
+    y: 30,
+  },
+  {
+    id: '2',
+    name: 'クロ',
+    personality: 'conservative',
+    job: 'producer',
+    money: INITIAL_MONEY,
+    hunger: 40,
+    energy: 80,
+    inventory: 1,
+    action: 'idle',
+    x: 55,
+    y: 25,
+  },
+  {
+    id: '3',
+    name: 'タマ',
+    personality: 'lazy',
+    job: 'producer',
+    money: INITIAL_MONEY,
+    hunger: 50,
+    energy: 70,
+    inventory: 1,
+    action: 'idle',
+    x: 75,
+    y: 50,
+  },
+  {
+    id: '4',
+    name: 'ミケ',
+    personality: 'conservative',
+    job: 'trader',
+    money: INITIAL_MONEY,
+    hunger: 35,
+    energy: 85,
+    inventory: 0,
+    action: 'idle',
+    x: 35,
+    y: 60,
+  },
+  {
+    id: '5',
+    name: 'チャトラ',
+    personality: 'aggressive',
+    job: 'trader',
+    money: INITIAL_MONEY,
+    hunger: 45,
+    energy: 75,
+    inventory: 0,
+    action: 'idle',
+    x: 60,
+    y: 70,
+  },
+];
+
+export const INITIAL_STATE: GameState = {
+  tick: 0,
+  cats: INITIAL_CATS,
+  market: {
+    soupPrice: INITIAL_PRICE,
+    supply: 0,
+    demand: 0,
+  },
+  economy: {
+    soupPrice: INITIAL_PRICE,
+    inflationRate: 0,
+    unemploymentRate: 0,
+    gini: 0,
+    totalMoney: INITIAL_CATS.length * INITIAL_MONEY,
+    inflationHistory: [],
+  },
+  policy: {
+    interestRate: 5,
+    taxRate: 10,
+  },
+  newsLog: [],
+};

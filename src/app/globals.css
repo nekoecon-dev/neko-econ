@@ -24,3 +24,18 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes neko-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.news-marquee {
+  display: inline-flex;
+  min-width: 200%;
+  animation: neko-marquee 22s linear infinite;
+}
