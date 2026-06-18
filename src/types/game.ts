@@ -41,6 +41,9 @@ export interface PlayerPolicy {
 /** Overall economic mood, used to tint the village. */
 export type VillageMood = 'boom' | 'normal' | 'recession';
 
+/** Economy-driven weather/atmosphere for the village map. */
+export type Weather = 'boom' | 'hyperinflation' | 'depression' | 'normal';
+
 export interface NewsItem {
   tick: number;
   event: string;

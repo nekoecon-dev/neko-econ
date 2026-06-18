@@ -1,4 +1,4 @@
-import type { Cat, CatAction } from '@/types/game';
+import type { Cat, CatAction, Weather } from '@/types/game';
 
 // Per-cat fur palette, keyed by id.
 const FUR: Record<string, { coat: string; shade: string; ear: string }> = {
@@ -105,10 +105,28 @@ function CatIcon({ cat, bankrupt }: { cat: Cat; bankrupt: boolean }) {
   );
 }
 
-export default function CatSprite({ cat }: { cat: Cat }) {
+export default function CatSprite({
+  cat,
+  weather = 'normal',
+}: {
+  cat: Cat;
+  weather?: Weather;
+}) {
   const bankrupt = cat.money <= 0;
-  const bubble = bankrupt ? '😭 もうだめニャ…' : BUBBLE[cat.action];
-  const wrapperAnim = bankrupt ? 'cat-cry' : cat.action === 'sleeping' ? '' : 'cat-float';
+  const depression = weather === 'depression';
+  const bubble = bankrupt
+    ? '😭 もうだめニャ…'
+    : depression
+      ? '🥶 さむい…ニャ'
+      : BUBBLE[cat.action];
+  // Priority: bankrupt cry > depression shiver > sleeping (still) > idle bob.
+  const wrapperAnim = bankrupt
+    ? 'cat-cry'
+    : depression
+      ? 'cat-tremble'
+      : cat.action === 'sleeping'
+        ? ''
+        : 'cat-float';
 
   return (
     <div

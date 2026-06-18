@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Cat, GameState, NewsItem, PolicyAction } from '@/types/game';
 import { updateAllCats } from '@/lib/engine/cats';
-import { updateEconomy } from '@/lib/engine/economy';
+import { getWeather, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
@@ -33,10 +33,14 @@ function resolveTickMs(): number {
   return clamp(ms, 1, 1000);
 }
 
-/** Gentle random walk so the cats visibly wander around the map. */
-function wander(cat: Cat): Cat {
-  const dx = (Math.random() - 0.5) * 10;
-  const dy = (Math.random() - 0.5) * 10;
+/**
+ * Gentle random walk so the cats visibly wander around the map. `speed` scales
+ * the step size — 3x during hyperinflation (frenzy), 0 freezes them (handled by
+ * the caller skipping the call) during a depression.
+ */
+function wander(cat: Cat, speed: number): Cat {
+  const dx = (Math.random() - 0.5) * 10 * speed;
+  const dy = (Math.random() - 0.5) * 10 * speed;
   return {
     ...cat,
     x: clamp(cat.x + dx, 5, 90),
@@ -93,7 +97,12 @@ export function useGameLoop(): {
         let next = updateAllCats(prev);
         next = updateEconomy(next);
         next = updateStocks(next);
-        next = { ...next, tick: prev.tick + 1, cats: next.cats.map(wander) };
+        // Weather drives movement: 3x frenzy in hyperinflation, frozen in a
+        // depression, normal otherwise.
+        const weather = getWeather(next.economy);
+        const speed = weather === 'hyperinflation' ? 3 : weather === 'depression' ? 0 : 1;
+        const cats = speed === 0 ? next.cats : next.cats.map((c) => wander(c, speed));
+        next = { ...next, tick: prev.tick + 1, cats };
         return next;
       });
     }, resolveTickMs());

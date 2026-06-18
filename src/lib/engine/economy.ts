@@ -1,4 +1,4 @@
-import type { Cat, Economy, GameState, VillageMood } from '@/types/game';
+import type { Cat, Economy, GameState, VillageMood, Weather } from '@/types/game';
 import { clamp, round2 } from './math';
 
 const PRICE_MIN = 1;
@@ -7,7 +7,10 @@ const PRICE_MAX = 9999;
 /**
  * Update the soup price from the supply/demand balance.
  * The price drifts toward the demand/supply ratio; the per-tick change is
- * clamped to [-20%, +20%] for smooth animation, and the price to [1, 9999].
+ * clamped to [-40%, +40%] (wide enough that a demand shock — e.g. mass currency
+ * issuance — can push inflation past +30% into hyperinflation), and the price
+ * to [1, 9999]. Demand has built-in negative feedback so the price still
+ * mean-reverts and stays bounded.
  */
 export function updatePrice(
   currentPrice: number,
@@ -18,7 +21,7 @@ export function updatePrice(
   const ratio = demand / safeSupply;
   // ratio > 1 -> shortage -> price up; ratio < 1 -> glut -> price down.
   const rawChange = 0.15 * (ratio - 1);
-  const change = clamp(rawChange, -0.12, 0.12);
+  const change = clamp(rawChange, -0.4, 0.4);
   const next = currentPrice * (1 + change);
   return round2(clamp(next, PRICE_MIN, PRICE_MAX));
 }
@@ -69,6 +72,30 @@ export function getVillageMood(economy: Economy): VillageMood {
   if (unemploymentRate < 20 && inflationRate >= 0 && inflationRate <= 10) {
     return 'boom';
   }
+  return 'normal';
+}
+
+/**
+ * Map the economy to a dramatic weather/atmosphere state for the map.
+ * Priority: hyperinflation > depression > boom > normal.
+ * - hyperinflation: smoothed inflation > +30%
+ * - depression: unemployment > 80%
+ * - boom: smoothed inflation between +2% and +5%
+ *
+ * Inflation is smoothed over the last few ticks so a single transient price
+ * spike (e.g. a momentary supply gap) doesn't flip the whole village to red;
+ * only a *sustained* surge (e.g. mass currency issuance) counts.
+ */
+export function getWeather(economy: Economy): Weather {
+  const recent = economy.inflationHistory.slice(-5);
+  const smoothedInflation =
+    recent.length > 0
+      ? recent.reduce((sum, v) => sum + v, 0) / recent.length
+      : economy.inflationRate;
+
+  if (smoothedInflation > 30) return 'hyperinflation';
+  if (economy.unemploymentRate > 80) return 'depression';
+  if (smoothedInflation >= 2 && smoothedInflation <= 5) return 'boom';
   return 'normal';
 }
 

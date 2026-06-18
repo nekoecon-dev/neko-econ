@@ -76,7 +76,8 @@ type PolicyAction =
 
 - **Price** moves toward the demand/supply ratio with negative feedback baked
   into demand (cats buy less when price is high), so the price self-stabilises.
-  Per-tick change is clamped to ±20%, price clamped to [1, 9999].
+  Per-tick change is clamped to ±40% (wide enough that a sustained demand shock
+  can push inflation past +30% into hyperinflation), price clamped to [1, 9999].
 - **Inflation** = % change of soup price vs the previous tick.
 - **Unemployment** = share of cats whose `action === 'idle'`.
 - **Gini** = standard Gini coefficient over `money` (0 = equal, 1 = unequal).
@@ -175,6 +176,27 @@ buy is a no-op if `cash < price`, sell is a no-op if the player holds none.
 The matching UI buttons are `disabled` under the same conditions. The first
 successful buy shows a one-time education popup ("投資とは企業の成長にお金を
 預けること"). Unrealized P/L = `shares*price − costBasis`.
+
+**Direct finance**: trades move money between the player and the cat. Buying
+adds the paid price straight to that cat's `money` (funding its activity — the
+investment virtuous cycle); selling withdraws the price from the cat's `money`,
+floored at 0 (the system absorbs any shortfall so a cat's wealth never goes
+negative from a sale).
+
+## Weather (`getWeather` in `economy.ts`)
+
+`getWeather(economy)` returns `boom | hyperinflation | depression | normal`
+(priority in that order) and drives the map's atmosphere + cat behaviour:
+
+| weather        | trigger                       | map                                   | cats            |
+|----------------|-------------------------------|---------------------------------------|-----------------|
+| boom           | smoothed inflation +2…+5%     | golden sky + money-confetti           | normal          |
+| hyperinflation | smoothed inflation > +30%     | red/magma gradient + giant pulsing sun| move **3× fast**|
+| depression     | unemployment > 80%            | grayscale + rain                      | **frozen**, shiver |
+| normal         | otherwise                     | blue sky / green grass (default)      | normal          |
+
+Inflation is smoothed over the last 5 ticks so a single transient price spike
+doesn't flip the village; movement speed is applied in `useGameLoop` (3× / 0×).
 
 Cat-specific events (`events.ts`): `破産` (a cat at ≤0 CC) and `大儲け` (the
 richest cat, ≥1.6× the village average) carry `catId`/`catName`, driving both

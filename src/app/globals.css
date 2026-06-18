@@ -117,6 +117,67 @@ body {
   animation: neko-press 0.18s ease-out;
 }
 
+/* Boom: money confetti drifting down */
+@keyframes neko-confetti {
+  0% {
+    transform: translateY(-24px) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(500px) rotate(340deg);
+    opacity: 0.85;
+  }
+}
+.confetti-bill {
+  position: absolute;
+  top: 0;
+  animation: neko-confetti linear infinite;
+}
+
+/* Depression: cold rain */
+@keyframes neko-rain {
+  0% {
+    transform: translateY(-40px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateY(540px);
+    opacity: 0;
+  }
+}
+.rain-drop {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 18px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, rgba(226, 232, 240, 0), rgba(203, 213, 225, 0.85));
+  animation: neko-rain linear infinite;
+}
+
+/* Depression: cats shiver in place */
+@keyframes neko-tremble {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1.5px);
+  }
+  75% {
+    transform: translateX(1.5px);
+  }
+}
+.cat-tremble {
+  animation: neko-tremble 0.18s linear infinite;
+}
+
 /* Soft pulsing glow for the headline currency button */
 @keyframes neko-glow {
   0%,

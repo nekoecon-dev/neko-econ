@@ -52,7 +52,12 @@ export function applyStockShock(state: GameState, catId: string, multiplier: num
   };
 }
 
-/** Buy one share. No-op if the cat has no stock or the player can't afford it. */
+/**
+ * Buy one share (direct finance): the player pays the price and the CC flows
+ * straight into that cat's wealth, funding its economic activity — the
+ * "investment virtuous cycle". No-op if the cat has no stock or the player
+ * can't afford it.
+ */
 export function executeBuy(state: GameState, catId: string): GameState {
   const stock = state.stocks[catId];
   if (!stock) return state;
@@ -60,8 +65,13 @@ export function executeBuy(state: GameState, catId: string): GameState {
   const { player } = state;
   if (player.cash < price) return state; // defensive: insufficient funds
 
+  const cats = state.cats.map((c) =>
+    c.id === catId ? { ...c, money: round2(c.money + price) } : c,
+  );
+
   return {
     ...state,
+    cats,
     player: {
       ...player,
       cash: round2(player.cash - price),
@@ -72,7 +82,11 @@ export function executeBuy(state: GameState, catId: string): GameState {
   };
 }
 
-/** Sell one share. No-op if the player holds none. */
+/**
+ * Sell one share (direct finance): the player receives the price and that CC is
+ * withdrawn from the cat's wealth. If the cat can't cover it, its wealth floors
+ * at 0 and the system absorbs the shortfall. No-op if the player holds none.
+ */
 export function executeSell(state: GameState, catId: string): GameState {
   const stock = state.stocks[catId];
   if (!stock) return state;
@@ -85,8 +99,13 @@ export function executeSell(state: GameState, catId: string): GameState {
   // Reduce cost basis proportionally (average-cost method).
   const remainingBasis = shares > 1 ? round2(basis * ((shares - 1) / shares)) : 0;
 
+  const cats = state.cats.map((c) =>
+    c.id === catId ? { ...c, money: Math.max(0, round2(c.money - price)) } : c,
+  );
+
   return {
     ...state,
+    cats,
     player: {
       ...player,
       cash: round2(player.cash + price),
