@@ -6,6 +6,7 @@ import EconomyDashboard from '@/components/EconomyDashboard';
 import ControlPanel from '@/components/ControlPanel';
 import StockMarket from '@/components/StockMarket';
 import StrikeBanner from '@/components/StrikeBanner';
+import PlayerHouse from '@/components/PlayerHouse';
 import NewsTicker from '@/components/NewsTicker';
 
 export default function Home() {
@@ -56,6 +57,12 @@ export default function Home() {
           {state.strike.active && (
             <StrikeBanner reliefCount={state.strike.reliefCount} taxRate={state.policy.taxRate} />
           )}
+          <PlayerHouse
+            player={state.player}
+            interestRate={state.policy.interestRate}
+            dispatch={dispatch}
+            className="bottom-2 left-2"
+          />
         </section>
         <aside className="flex flex-col gap-4">
           <EconomyDashboard economy={state.economy} />

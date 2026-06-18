@@ -6,6 +6,7 @@ import { updateAllCats } from '@/lib/engine/cats';
 import { updateCompanies } from '@/lib/engine/companies';
 import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
+import { applyLoanInterest, repayLoan } from '@/lib/engine/loan';
 import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
@@ -71,6 +72,8 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return executeBuy(state, action.catId);
     case 'SELL_STOCK':
       return executeSell(state, action.catId);
+    case 'REPAY_LOAN':
+      return repayLoan(state, action.amount);
     default:
       return state;
   }
@@ -118,6 +121,7 @@ export function useGameLoop(): {
           weather.current === 'hyperinflation' ? 3 : weather.current === 'depression' ? 0 : 1;
         const cats = speed === 0 ? next.cats : next.cats.map((c) => wander(c, speed));
         next = { ...next, tick, weather, cats };
+        next = applyLoanInterest(next); // bank charges interest on the player loan
         return next;
       });
     }, resolveTickMs());

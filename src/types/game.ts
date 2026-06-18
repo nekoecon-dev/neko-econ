@@ -103,6 +103,7 @@ export interface PlayerWallet {
   holdings: Record<string, number>; // catId -> shares owned
   costBasis: Record<string, number>; // catId -> total CC spent on current shares
   hasEverInvested: boolean; // gates the one-time education popup
+  loan: number; // outstanding debt to シロ銀行 (0 = paid off -> house upgraded)
 }
 
 export interface GameState {
@@ -123,4 +124,5 @@ export type PolicyAction =
   | { type: 'SET_INTEREST_RATE'; value: number }
   | { type: 'SET_TAX_RATE'; value: number }
   | { type: 'BUY_STOCK'; catId: string }
-  | { type: 'SELL_STOCK'; catId: string };
+  | { type: 'SELL_STOCK'; catId: string }
+  | { type: 'REPAY_LOAN'; amount: number };
