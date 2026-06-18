@@ -40,16 +40,21 @@ export function updateStocks(state: GameState): GameState {
   return { ...state, stocks };
 }
 
+/** Set a temporary multiplicative shock on one cat's stock within a stocks map. */
+export function shockStockMap(
+  stocks: Record<string, StockShare>,
+  catId: string,
+  multiplier: number,
+): Record<string, StockShare> {
+  const prev = stocks[catId];
+  if (!prev) return stocks;
+  const price = clamp(prev.base * multiplier, STOCK_MIN, STOCK_MAX);
+  return { ...stocks, [catId]: { ...prev, shock: round2(multiplier), price: round2(price) } };
+}
+
 /** Apply a temporary multiplicative shock to one cat's stock (news-driven). */
 export function applyStockShock(state: GameState, catId: string, multiplier: number): GameState {
-  const prev = state.stocks[catId];
-  if (!prev) return state;
-  const shock = multiplier;
-  const price = clamp(prev.base * shock, STOCK_MIN, STOCK_MAX);
-  return {
-    ...state,
-    stocks: { ...state.stocks, [catId]: { ...prev, shock: round2(shock), price: round2(price) } },
-  };
+  return { ...state, stocks: shockStockMap(state.stocks, catId, multiplier) };
 }
 
 /**

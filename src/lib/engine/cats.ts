@@ -43,7 +43,16 @@ export function decideCatAction(cat: Cat, market: Market): CatAction {
  * updateAllCats). Policy hooks: a high interest rate pushes conservative cats
  * out of work and into idleness.
  */
-export function updateCat(cat: Cat, market: Market, policy: PlayerPolicy): Cat {
+export interface CatTickOptions {
+  hiring?: boolean; // an active venture is hiring idle cats
+}
+
+export function updateCat(
+  cat: Cat,
+  market: Market,
+  policy: PlayerPolicy,
+  opts: CatTickOptions = {},
+): Cat {
   // Metabolism: hunger creeps up, a little energy is always spent.
   let hunger = clamp(cat.hunger + 4, 0, 100);
   let energy = clamp(cat.energy - 1, 0, 100);
@@ -56,6 +65,11 @@ export function updateCat(cat: Cat, market: Market, policy: PlayerPolicy): Cat {
   if (action === 'working' && cat.personality === 'conservative') {
     const idleProbability = policy.interestRate / 40; // up to 0.5 at 20%
     if (Math.random() < idleProbability) action = 'idle';
+  }
+
+  // Employment hook: an active venture hires idle cats, lowering unemployment.
+  if (opts.hiring && action === 'idle' && cat.energy > ENERGY_WORK_MIN && Math.random() < 0.85) {
+    action = 'working';
   }
 
   switch (action) {
@@ -114,7 +128,7 @@ export function updateCat(cat: Cat, market: Market, policy: PlayerPolicy): Cat {
  * Advance every cat one tick, tally market supply/demand, then apply tax:
  * a share of each cat's work income is pooled and handed to the poorest cat.
  */
-export function updateAllCats(state: GameState): GameState {
+export function updateAllCats(state: GameState, opts: CatTickOptions = {}): GameState {
   const { market, policy, cats } = state;
 
   let supply = 0;
@@ -124,7 +138,7 @@ export function updateAllCats(state: GameState): GameState {
   const priceFactor = 10 / Math.max(market.soupPrice, 1); // negative feedback
 
   const next = cats.map((cat) => {
-    const updated = updateCat(cat, market, policy);
+    const updated = updateCat(cat, market, policy, opts);
 
     // Supply: soup put on the market by working producers / traders.
     if (updated.action === 'working') {

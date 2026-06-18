@@ -18,6 +18,8 @@ export const INITIAL_CATS: Cat[] = [
     action: 'idle',
     x: 20,
     y: 30,
+    ambition: 0.8,
+    company: null,
   },
   {
     id: '2',
@@ -31,6 +33,8 @@ export const INITIAL_CATS: Cat[] = [
     action: 'idle',
     x: 55,
     y: 25,
+    ambition: 0.3,
+    company: null,
   },
   {
     id: '3',
@@ -44,6 +48,8 @@ export const INITIAL_CATS: Cat[] = [
     action: 'idle',
     x: 75,
     y: 50,
+    ambition: 0.2,
+    company: null,
   },
   {
     id: '4',
@@ -57,6 +63,8 @@ export const INITIAL_CATS: Cat[] = [
     action: 'idle',
     x: 35,
     y: 60,
+    ambition: 0.45,
+    company: null,
   },
   {
     id: '5',
@@ -70,6 +78,8 @@ export const INITIAL_CATS: Cat[] = [
     action: 'idle',
     x: 60,
     y: 70,
+    ambition: 0.7,
+    company: null,
   },
 ];
 

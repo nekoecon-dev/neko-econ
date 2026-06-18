@@ -181,6 +181,12 @@ export default function CatSprite({
       >
         {Math.round(cat.money)} CC
       </span>
+      {/* venture badge for entrepreneur cats */}
+      {cat.company && (
+        <span className="mt-0.5 rounded-full bg-indigo-500 px-2 py-0.5 text-[9px] font-bold text-white shadow">
+          🏢 {cat.company.name}社長
+        </span>
+      )}
     </div>
   );
 }

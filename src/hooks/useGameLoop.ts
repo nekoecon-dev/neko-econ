@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Cat, GameState, NewsItem, PolicyAction } from '@/types/game';
 import { updateAllCats } from '@/lib/engine/cats';
+import { updateCompanies } from '@/lib/engine/companies';
 import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
@@ -95,7 +96,11 @@ export function useGameLoop(): {
     const id = setInterval(() => {
       setState((prev) => {
         const tick = prev.tick + 1;
-        let next = updateAllCats(prev);
+        // An active venture hires idle cats this tick (lowers unemployment).
+        const hiring = prev.cats.some((c) => c.company !== null);
+        let next = updateAllCats(prev, { hiring });
+        next = { ...next, tick };
+        next = updateCompanies(next); // found / fail ventures (uses next.tick)
         next = updateEconomy(next);
         next = updateStocks(next);
         // Weather drives movement: 3x frenzy in hyperinflation, frozen in a

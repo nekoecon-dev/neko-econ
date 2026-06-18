@@ -4,6 +4,12 @@ export type Personality = 'aggressive' | 'conservative' | 'lazy';
 export type Job = 'investor' | 'producer' | 'trader';
 export type CatAction = 'idle' | 'working' | 'eating' | 'sleeping';
 
+/** A venture founded by an entrepreneurial cat. */
+export interface CompanyState {
+  name: string;
+  foundedTick: number;
+}
+
 export interface Cat {
   id: string;
   name: string;
@@ -16,6 +22,8 @@ export interface Cat {
   action: CatAction;
   x: number; // 0..100 (% horizontal position on the map)
   y: number; // 0..100 (% vertical position on the map)
+  ambition: number; // 0..1 entrepreneurial drive (chance of founding a company)
+  company: CompanyState | null; // active venture, or null
 }
 
 export interface Market {
