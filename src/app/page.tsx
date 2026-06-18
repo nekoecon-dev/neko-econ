@@ -10,10 +10,23 @@ export default function Home() {
   const { state, dispatch } = useGameLoop();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 bg-green-50 p-4 text-gray-900">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-bold">🐾 NekoEcon</h1>
-        <span className="text-sm tabular-nums text-gray-500">tick: {state.tick}</span>
+    <main
+      className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 p-4 text-amber-950"
+      style={{
+        background:
+          'radial-gradient(1200px 500px at 50% -10%, #fff7e6 0%, #ffedcf 55%, #ffe3b3 100%)',
+      }}
+    >
+      <header className="flex items-center justify-between rounded-3xl border-4 border-amber-200 bg-[#fffdf7] px-5 py-3 shadow-md">
+        <h1 className="flex items-center gap-2 text-2xl font-black text-amber-900">
+          <span className="text-3xl">🐾</span> NekoEcon
+          <span className="hidden text-sm font-bold text-amber-700/70 sm:inline">
+            猫の経済シミュレーション村
+          </span>
+        </h1>
+        <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold tabular-nums text-amber-800">
+          🕒 tick {state.tick}
+        </span>
       </header>
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
