@@ -45,7 +45,13 @@ export default function Home() {
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
         <section className="relative lg:col-span-2">
-          <VillageMap cats={state.cats} weather={weather} strikeActive={state.strike.active} />
+          <VillageMap
+            cats={state.cats}
+            economy={state.economy}
+            stocks={state.stocks}
+            weather={weather}
+            strikeActive={state.strike.active}
+          />
           {state.strike.active && (
             <StrikeBanner reliefCount={state.strike.reliefCount} taxRate={state.policy.taxRate} />
           )}

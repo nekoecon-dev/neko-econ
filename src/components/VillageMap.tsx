@@ -1,5 +1,30 @@
-import type { Cat, Weather } from '@/types/game';
+import type { Cat, Economy, StockShare, Weather } from '@/types/game';
 import CatSprite from './CatSprite';
+
+// A wooden signboard overlaid on the village showing a live economic figure.
+function SignBoard({
+  className,
+  icon,
+  title,
+  value,
+}: {
+  className: string;
+  icon: string;
+  title: string;
+  value: string;
+}) {
+  return (
+    <div
+      className={`pointer-events-none absolute z-20 rounded-xl border-2 border-amber-800 bg-amber-50/95 px-2.5 py-1.5 text-center shadow-lg ${className}`}
+    >
+      <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-amber-800">
+        <span>{icon}</span>
+        {title}
+      </div>
+      <div className="text-sm font-black tabular-nums text-amber-900">{value}</div>
+    </div>
+  );
+}
 
 // Background gradient per weather state.
 const BG: Record<Weather, string> = {
@@ -57,16 +82,25 @@ function Rain() {
 
 export default function VillageMap({
   cats,
+  economy,
+  stocks,
   weather = 'normal',
   strikeActive = false,
 }: {
   cats: Cat[];
+  economy: Economy;
+  stocks: Record<string, StockShare>;
   weather?: Weather;
   strikeActive?: boolean;
 }) {
   const depression = weather === 'depression';
   const hyper = weather === 'hyperinflation';
   const boom = weather === 'boom';
+
+  // Top-valued stock for the "Neko Wall Street" sign.
+  const topStock = cats
+    .map((c) => ({ name: c.name, price: stocks[c.id]?.price ?? 0 }))
+    .sort((a, b) => b.price - a.price)[0];
 
   const sunClass = hyper
     ? 'right-1/2 top-2 h-44 w-44 translate-x-1/2 animate-pulse bg-orange-400 shadow-[0_0_90px_40px_rgba(249,115,22,0.85)]'
@@ -116,6 +150,26 @@ export default function VillageMap({
       {cats.map((cat) => (
         <CatSprite key={cat.id} cat={cat} weather={weather} onStrike={strikeActive} />
       ))}
+
+      {/* in-map economic signboards */}
+      <SignBoard
+        className="left-3 top-3"
+        icon="🏦"
+        title="ネコ銀行"
+        value={`${Math.round(economy.totalMoney)} CC`}
+      />
+      <SignBoard
+        className="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        icon="🍲"
+        title="スープ鍋"
+        value={`${economy.soupPrice} CC`}
+      />
+      <SignBoard
+        className="bottom-3 right-3"
+        icon="🏢"
+        title="ネコウォール街"
+        value={topStock ? `${topStock.name} ${Math.round(topStock.price)}CC` : '—'}
+      />
 
       {/* weather effects */}
       {boom && <Confetti />}

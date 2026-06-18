@@ -197,6 +197,34 @@ negative from a sale).
 
 Inflation is smoothed over the last 5 ticks so a single transient price spike
 doesn't flip the village; movement speed is applied in `useGameLoop` (3× / 0×).
+Dramatic weather (hyperinflation/depression) is held for a minimum duration via
+`nextWeatherState` + `WeatherState { current, lockUntil }` (~30s at 500ms/tick)
+so it doesn't flicker away the instant its trigger eases.
+
+## Startups & bankruptcy (`companies.ts`)
+
+Each cat has an `ambition` (0..1) and an optional `company`. `updateCompanies`
+(each tick): a cat with ≥500 CC may found a venture (chance ∝ ambition) →
+"起業" headline + stock 2×; a venture older than 40 ticks may go bankrupt →
+"倒産" headline + stock ½×. Active ventures hire idle cats (the `hiring` flag in
+`updateAllCats`/`updateCat`), lowering unemployment. Headlines are templated
+(pushed straight to `newsLog`, no API).
+
+## Strike (`strike.ts`)
+
+`updateStrike` (each tick): a strike starts when `gini > 0.7` and ends when
+`taxRate ≥ 30`, after 3 `ISSUE_CURRENCY` relief payouts, or a failsafe max
+duration; a post-strike cooldown prevents instant re-triggering. While active
+(`onStrike`): cats are **frozen** in place (no work/eat/metabolism — keeps the
+economy bounded), the soup price is frozen (`updateEconomy({freezePrice})`),
+and every stock bleeds −1%/tick (`updateStocks({onStrike})`). UI: a center
+`StrikeBanner` + picketing cats (🪧).
+
+## In-map signboards
+
+`VillageMap` overlays three live signboards (in addition to the dashboard
+panel): 🏦 ネコ銀行 (total money, top-left), 🍲 スープ鍋 (soup price, centre),
+🏢 ネコウォール街 (highest-priced stock's cat + price, bottom-right).
 
 Cat-specific events (`events.ts`): `破産` (a cat at ≤0 CC) and `大儲け` (the
 richest cat, ≥1.6× the village average) carry `catId`/`catName`, driving both
