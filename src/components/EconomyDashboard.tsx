@@ -104,11 +104,13 @@ export default function EconomyDashboard({ economy }: { economy: Economy }) {
         </div>
       </div>
 
-      <div className="mt-3 h-32 w-full rounded-2xl border-2 border-amber-100 bg-white/70 p-2">
+      <div className="mt-3 flex h-36 w-full flex-col rounded-2xl border-2 border-amber-100 bg-white/70 p-2">
         <p className="mb-1 text-xs font-semibold text-amber-800/70">
           インフレ率の推移（直近20tick）
         </p>
-        <InflationChart data={chartData} />
+        <div className="min-h-0 flex-1">
+          <InflationChart data={chartData} />
+        </div>
       </div>
     </div>
   );

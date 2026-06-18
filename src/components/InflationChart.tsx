@@ -16,7 +16,7 @@ export interface InflationPoint {
 
 export default function InflationChart({ data }: { data: InflationPoint[] }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
       <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
         <XAxis dataKey="t" tick={{ fontSize: 10 }} stroke="#9ca3af" />
         <YAxis tick={{ fontSize: 10 }} stroke="#9ca3af" width={32} />

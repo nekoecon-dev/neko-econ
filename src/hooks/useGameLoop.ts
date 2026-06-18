@@ -8,7 +8,22 @@ import { detectEvent } from '@/lib/engine/events';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
 
-const TICK_MS = 500;
+const DEFAULT_TICK_MS = 500;
+
+type WindowWithNeko = Window & typeof globalThis & { __neko?: GameState };
+
+/**
+ * Tick interval in ms. A `?turbo=<ms>` query param speeds up the loop (clamped
+ * to 1..1000) so automated stress tests can run thousands of ticks quickly.
+ */
+function resolveTickMs(): number {
+  if (typeof window === 'undefined') return DEFAULT_TICK_MS;
+  const turbo = new URLSearchParams(window.location.search).get('turbo');
+  if (turbo === null) return DEFAULT_TICK_MS;
+  const ms = Number(turbo);
+  if (!Number.isFinite(ms) || ms <= 0) return DEFAULT_TICK_MS;
+  return clamp(ms, 1, 1000);
+}
 
 /** Gentle random walk so the cats visibly wander around the map. */
 function wander(cat: Cat): Cat {
@@ -50,9 +65,13 @@ export function useGameLoop(): {
   // Guard against overlapping news fetches.
   const fetchingRef = useRef(false);
 
-  // Keep the mirror in sync after each render (never during render).
+  // Keep the mirror in sync after each render (never during render). Also
+  // expose the live state on window for automated stress tests.
   useEffect(() => {
     stateRef.current = state;
+    if (typeof window !== 'undefined') {
+      (window as WindowWithNeko).__neko = state;
+    }
   });
 
   // Main tick loop: pure state transition only (no side effects here).
@@ -64,7 +83,7 @@ export function useGameLoop(): {
         next = { ...next, tick: prev.tick + 1, cats: next.cats.map(wander) };
         return next;
       });
-    }, TICK_MS);
+    }, resolveTickMs());
     return () => clearInterval(id);
   }, []);
 
