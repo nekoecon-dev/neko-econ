@@ -91,7 +91,7 @@ export interface DetectedEvent {
 
 /** Tradable share for a single cat. */
 export interface StockShare {
-  price: number; // displayed price = base * shock, clamped to [10, 2000]
+  price: number; // displayed price = base * shock, clamped to [10, 9999]
   base: number; // fundamental price, smoothly tracks the cat's money level
   shock: number; // temporary news multiplier, decays back to 1
 }

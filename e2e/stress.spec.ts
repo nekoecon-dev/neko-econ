@@ -55,12 +55,12 @@ test('1000-tick stress run: economy stays within sane bounds', async ({ page }) 
   expect(economy.unemploymentRate).toBeGreaterThanOrEqual(0);
   expect(economy.unemploymentRate).toBeLessThanOrEqual(100);
 
-  // Stock prices respect the defensive bounds [10, 2000] at all times.
+  // Stock prices respect the defensive bounds [10, 9999] at all times.
   for (const id of Object.keys(state.stocks)) {
     const price = state.stocks[id].price;
     expect(Number.isFinite(price)).toBe(true);
     expect(price).toBeGreaterThanOrEqual(10);
-    expect(price).toBeLessThanOrEqual(2000);
+    expect(price).toBeLessThanOrEqual(9999);
   }
 
   // Player cash never goes negative.

@@ -164,7 +164,7 @@ cat has a tradable `StockShare`:
 - `base` smoothly tracks the cat's **money level** (`base += (money-base)*0.3`),
   so the price reflects 所持金 without compounding/ratcheting.
 - `shock` is a temporary news multiplier that **decays toward 1** each tick.
-- `price = clamp(base * shock, 10, 2000)` — the **defensive bounds** [10, 2000]
+- `price = clamp(base * shock, 10, 9999)` — the **defensive bounds** [10, 9999]
   are enforced on both `base` and `price` every tick.
 
 `updateStocks` runs each tick (after `updateEconomy`). News linkage: a `大儲け`

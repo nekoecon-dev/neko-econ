@@ -4,7 +4,7 @@ import { STRIKE_STOCK_DECAY } from './strike';
 
 // Defensive price bounds — stock prices can never escape this range.
 export const STOCK_MIN = 10;
-export const STOCK_MAX = 2000;
+export const STOCK_MAX = 9999;
 export const STOCK_BASE = 100; // 基準値 / initial price
 
 // News-driven temporary shocks (multipliers that decay back toward 1).
