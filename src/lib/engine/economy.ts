@@ -1,8 +1,8 @@
 import type { Cat, Economy, GameState, VillageMood, Weather, WeatherState } from '@/types/game';
 import { clamp, round2 } from './math';
 
-// Minimum hold for dramatic weather (~30s at the default 500ms tick).
-export const WEATHER_LOCK_TICKS = 60;
+// Minimum wall-clock hold for dramatic weather (30 seconds).
+export const WEATHER_LOCK_MS = 30_000;
 
 const PRICE_MIN = 1;
 const PRICE_MAX = 9999;
@@ -110,20 +110,19 @@ function isLockable(weather: Weather): boolean {
 /**
  * Advance the weather state, enforcing a minimum-duration lock so a
  * hyperinflation/depression doesn't vanish the instant its trigger eases.
+ * The lock is wall-clock based (Date.now() ms) so it holds for a real 30s
+ * regardless of tick speed.
  */
-export function nextWeatherState(
-  economy: Economy,
-  prev: WeatherState,
-  tick: number,
-): WeatherState {
+export function nextWeatherState(economy: Economy, prev: WeatherState): WeatherState {
+  const now = Date.now();
   // Hold a locked dramatic weather until its lock expires.
-  if (isLockable(prev.current) && tick < prev.lockUntil) {
+  if (isLockable(prev.current) && now < prev.lockUntil) {
     return prev;
   }
   const raw = getWeather(economy);
   return {
     current: raw,
-    lockUntil: isLockable(raw) ? tick + WEATHER_LOCK_TICKS : 0,
+    lockUntil: isLockable(raw) ? now + WEATHER_LOCK_MS : 0,
   };
 }
 

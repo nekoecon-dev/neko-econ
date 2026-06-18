@@ -113,7 +113,7 @@ export function useGameLoop(): {
         // Weather drives movement: 3x frenzy in hyperinflation, frozen in a
         // depression, normal otherwise. Dramatic weather holds for a minimum
         // duration (see nextWeatherState) so it doesn't flicker.
-        const weather = nextWeatherState(next.economy, prev.weather, tick);
+        const weather = nextWeatherState(next.economy, prev.weather);
         const speed =
           weather.current === 'hyperinflation' ? 3 : weather.current === 'depression' ? 0 : 1;
         const cats = speed === 0 ? next.cats : next.cats.map((c) => wander(c, speed));

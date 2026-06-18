@@ -54,8 +54,8 @@ export type Weather = 'boom' | 'hyperinflation' | 'depression' | 'normal';
 
 /**
  * Active weather plus a minimum-duration lock. Dramatic weather
- * (hyperinflation / depression) holds until `lockUntil` (a tick number) so it
- * doesn't flicker away the instant the triggering condition eases.
+ * (hyperinflation / depression) holds until `lockUntil` (a Date.now() epoch-ms
+ * timestamp) so it doesn't flicker away the instant the trigger eases.
  */
 export interface WeatherState {
   current: Weather;
