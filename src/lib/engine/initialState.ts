@@ -117,4 +117,5 @@ export const INITIAL_STATE: GameState = {
   },
   weather: { current: 'normal', lockUntil: 0 },
   strike: { active: false, reliefCount: 0, startTick: 0, cooldownUntil: 0 },
+  facilities: { soupFactory: 0, matatabiPark: 0, fishingPond: 0 },
 };

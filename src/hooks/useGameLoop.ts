@@ -6,6 +6,7 @@ import { updateAllCats } from '@/lib/engine/cats';
 import { updateCompanies } from '@/lib/engine/companies';
 import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
+import { FACILITY_COST } from '@/lib/engine/facilities';
 import { applyLoanInterest, repayLoan } from '@/lib/engine/loan';
 import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
@@ -74,6 +75,15 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return executeSell(state, action.catId);
     case 'REPAY_LOAN':
       return repayLoan(state, action.amount);
+    case 'BUY_FACILITY': {
+      const cost = FACILITY_COST[action.kind];
+      if (state.player.cash < cost) return state; // can't afford
+      return {
+        ...state,
+        player: { ...state.player, cash: round2(state.player.cash - cost) },
+        facilities: { ...state.facilities, [action.kind]: state.facilities[action.kind] + 1 },
+      };
+    }
     default:
       return state;
   }

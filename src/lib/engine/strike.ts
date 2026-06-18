@@ -1,4 +1,5 @@
 import type { GameState, NewsItem } from '@/types/game';
+import { PARK_STRIKE_THRESHOLD_BONUS } from './facilities';
 
 export const GINI_STRIKE_THRESHOLD = 0.7; // inequality that sparks a strike
 export const STRIKE_TAX_RESOLVE = 30; // tax rate (%) that ends a strike
@@ -23,9 +24,14 @@ export function updateStrike(state: GameState): GameState {
   const { strike, economy, policy, tick } = state;
 
   if (!strike.active) {
+    // Matatabi parks calm the cats, raising the inequality needed to strike.
+    const threshold = Math.min(
+      0.95,
+      GINI_STRIKE_THRESHOLD + PARK_STRIKE_THRESHOLD_BONUS * state.facilities.matatabiPark,
+    );
     // Respect the cooldown so a strike can't immediately re-trigger before the
     // economy has had a chance to redistribute and bring the Gini back down.
-    if (economy.gini > GINI_STRIKE_THRESHOLD && tick >= strike.cooldownUntil) {
+    if (economy.gini > threshold && tick >= strike.cooldownUntil) {
       return {
         ...state,
         strike: { ...strike, active: true, reliefCount: 0, startTick: tick },

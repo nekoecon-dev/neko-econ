@@ -198,8 +198,9 @@ negative from a sale).
 Inflation is smoothed over the last 5 ticks so a single transient price spike
 doesn't flip the village; movement speed is applied in `useGameLoop` (3× / 0×).
 Dramatic weather (hyperinflation/depression) is held for a minimum duration via
-`nextWeatherState` + `WeatherState { current, lockUntil }` (~30s at 500ms/tick)
-so it doesn't flicker away the instant its trigger eases.
+`nextWeatherState` + `WeatherState { current, lockUntil }`, where `lockUntil` is
+a wall-clock `Date.now()` epoch-ms timestamp — it holds a real **30 seconds**
+regardless of tick speed, so it doesn't flicker away when its trigger eases.
 
 ## Startups & bankruptcy (`companies.ts`)
 
@@ -222,9 +223,26 @@ and every stock bleeds −1%/tick (`updateStocks({onStrike})`). UI: a center
 
 ## In-map signboards
 
-`VillageMap` overlays three live signboards (in addition to the dashboard
-panel): 🏦 ネコ銀行 (total money, top-left), 🍲 スープ鍋 (soup price, centre),
-🏢 ネコウォール街 (highest-priced stock's cat + price, bottom-right).
+`VillageMap` overlays live signboards (in addition to the dashboard panel):
+🏦 ネコ銀行 (total money, top-left), 🍲 スープ鍋 (soup price, centre), and the
+🏢 ネコウォール街 LED ticker (bottom-right) scrolling every cat's price with
+▲/▼ (green/red) plus the latest headline.
+
+## Player house & loan (`loan.ts`)
+
+The player starts owing シロ銀行 10,000 CC (`PlayerWallet.loan`).
+`applyLoanInterest` each tick draws `loan * rate% * 0.01` from cash, floored at
+0 (cash never goes negative) — so raising the central-bank rate also squeezes
+the player. A clickable tent (⛺) at the map's bottom-left opens a repayment
+modal (`REPAY_LOAN`); paying the loan to 0 upgrades it to a house (🏡).
+
+## Public works (`facilities.ts`)
+
+`BUY_FACILITY` spends player cash to build facilities (`FacilityState` counts),
+shown as map icons and reflected live in the indicators:
+- 🏭 スープ工場 (5,000 CC): unemployment −10% each + extra supply (productivity)
+- 🌳 マタタビ公園 (3,000 CC): raises the Gini threshold for strikes (anti-strike)
+- 🎣 釣り堀 (2,000 CC): extra supply → downward (deflationary) price pressure
 
 Cat-specific events (`events.ts`): `破産` (a cat at ≤0 CC) and `大儲け` (the
 richest cat, ≥1.6× the village average) carry `catId`/`catName`, driving both

@@ -1,5 +1,6 @@
 import type { Cat, Economy, GameState, VillageMood, Weather, WeatherState } from '@/types/game';
 import { clamp, round2 } from './math';
+import { FACTORY_UNEMPLOYMENT_RELIEF } from './facilities';
 
 // Minimum wall-clock hold for dramatic weather (30 seconds).
 export const WEATHER_LOCK_MS = 30_000;
@@ -142,7 +143,12 @@ export function updateEconomy(
     ? previousPrice
     : updatePrice(previousPrice, market.supply, market.demand);
   const inflationRate = opts.freezePrice ? 0 : calcInflationRate(newPrice, previousPrice);
-  const unemploymentRate = calcUnemploymentRate(cats);
+  // Soup factories provide jobs, shaving points off the unemployment rate.
+  const unemploymentRate = clamp(
+    calcUnemploymentRate(cats) - FACTORY_UNEMPLOYMENT_RELIEF * state.facilities.soupFactory,
+    0,
+    100,
+  );
   const gini = calcGini(cats);
   const totalMoney = round2(cats.reduce((sum, c) => sum + c.money, 0));
   const inflationHistory = [...state.economy.inflationHistory, inflationRate].slice(-20);

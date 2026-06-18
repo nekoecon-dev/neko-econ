@@ -106,6 +106,10 @@ export interface PlayerWallet {
   loan: number; // outstanding debt to シロ銀行 (0 = paid off -> house upgraded)
 }
 
+/** Public-works facilities the player can build to steer the economy. */
+export type FacilityKind = 'soupFactory' | 'matatabiPark' | 'fishingPond';
+export type FacilityState = Record<FacilityKind, number>; // kind -> count built
+
 export interface GameState {
   tick: number;
   cats: Cat[];
@@ -117,6 +121,7 @@ export interface GameState {
   player: PlayerWallet;
   weather: WeatherState;
   strike: StrikeState;
+  facilities: FacilityState;
 }
 
 export type PolicyAction =
@@ -125,4 +130,5 @@ export type PolicyAction =
   | { type: 'SET_TAX_RATE'; value: number }
   | { type: 'BUY_STOCK'; catId: string }
   | { type: 'SELL_STOCK'; catId: string }
-  | { type: 'REPAY_LOAN'; amount: number };
+  | { type: 'REPAY_LOAN'; amount: number }
+  | { type: 'BUY_FACILITY'; kind: FacilityKind };

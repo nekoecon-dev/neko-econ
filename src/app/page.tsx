@@ -7,6 +7,7 @@ import ControlPanel from '@/components/ControlPanel';
 import StockMarket from '@/components/StockMarket';
 import StrikeBanner from '@/components/StrikeBanner';
 import PlayerHouse from '@/components/PlayerHouse';
+import PublicWorks from '@/components/PublicWorks';
 import NewsTicker from '@/components/NewsTicker';
 
 export default function Home() {
@@ -50,6 +51,7 @@ export default function Home() {
             cats={state.cats}
             economy={state.economy}
             stocks={state.stocks}
+            facilities={state.facilities}
             latestNews={state.newsLog[0]?.text}
             weather={weather}
             strikeActive={state.strike.active}
@@ -73,6 +75,11 @@ export default function Home() {
             dispatch={dispatch}
           />
           <ControlPanel policy={state.policy} dispatch={dispatch} />
+          <PublicWorks
+            facilities={state.facilities}
+            cash={state.player.cash}
+            dispatch={dispatch}
+          />
         </aside>
       </div>
 

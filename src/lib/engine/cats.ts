@@ -1,5 +1,6 @@
 import type { Cat, CatAction, GameState, Market, PlayerPolicy } from '@/types/game';
 import { clamp, round2 } from './math';
+import { facilitySupplyBonus } from './facilities';
 
 const WORK_CHANCE: Record<Cat['personality'], number> = {
   aggressive: 0.9,
@@ -168,6 +169,9 @@ export function updateAllCats(state: GameState, opts: CatTickOptions = {}): Game
     }
     return updated;
   });
+
+  // Public-works facilities add productivity/food supply (downward price push).
+  supply += facilitySupplyBonus(state.facilities);
 
   // Redistribute the tax pool to the single poorest cat.
   if (taxPool > 0 && next.length > 0) {

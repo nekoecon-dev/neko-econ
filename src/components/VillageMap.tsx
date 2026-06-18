@@ -1,5 +1,14 @@
-import type { Cat, Economy, StockShare, Weather } from '@/types/game';
+import type { Cat, Economy, FacilityKind, FacilityState, StockShare, Weather } from '@/types/game';
+import { FACILITY_META } from '@/lib/engine/facilities';
 import CatSprite from './CatSprite';
+
+// Where each built facility appears on the map.
+const FACILITY_POS: Record<FacilityKind, string> = {
+  soupFactory: 'left-[9%] top-[46%]',
+  matatabiPark: 'right-[26%] top-[58%]',
+  fishingPond: 'left-[15%] bottom-[19%]',
+};
+const FACILITY_KINDS: FacilityKind[] = ['soupFactory', 'matatabiPark', 'fishingPond'];
 
 // A wooden signboard overlaid on the village showing a live economic figure.
 function SignBoard({
@@ -126,6 +135,7 @@ export default function VillageMap({
   cats,
   economy,
   stocks,
+  facilities,
   latestNews = '村は今日も平和ニャ',
   weather = 'normal',
   strikeActive = false,
@@ -133,6 +143,7 @@ export default function VillageMap({
   cats: Cat[];
   economy: Economy;
   stocks: Record<string, StockShare>;
+  facilities: FacilityState;
   latestNews?: string;
   weather?: Weather;
   strikeActive?: boolean;
@@ -190,6 +201,23 @@ export default function VillageMap({
       <div className="pointer-events-none absolute left-1/2 bottom-10 text-3xl">🌷</div>
       <div className="pointer-events-none absolute right-1/4 bottom-12 text-3xl">🌼</div>
       <div className="pointer-events-none absolute left-24 top-[55%] text-2xl">🍄</div>
+
+      {/* public-works facilities */}
+      {FACILITY_KINDS.map((kind) =>
+        facilities[kind] > 0 ? (
+          <div
+            key={kind}
+            className={`pointer-events-none absolute z-10 flex flex-col items-center ${FACILITY_POS[kind]}`}
+          >
+            <span className="text-4xl drop-shadow">{FACILITY_META[kind].icon}</span>
+            {facilities[kind] > 1 && (
+              <span className="rounded-full bg-amber-900/85 px-1.5 text-[9px] font-bold text-white">
+                ×{facilities[kind]}
+              </span>
+            )}
+          </div>
+        ) : null,
+      )}
 
       {/* cats */}
       {cats.map((cat) => (
