@@ -21,6 +21,61 @@ body {
     sans-serif;
 }
 
+/* ---------- 3D cat HTML labels (CSS2DRenderer) ---------- */
+
+.cat-label {
+  pointer-events: none;
+  user-select: none;
+  text-align: center;
+  font-family: var(--font-geist-sans), "Hiragino Maru Gothic ProN", sans-serif;
+  white-space: nowrap;
+  line-height: 1.15;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+.cat-label-name {
+  display: inline-block;
+  border-radius: 9999px;
+  background: rgba(120, 53, 15, 0.92);
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+}
+.cat-label-action {
+  margin-top: 1px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0 6px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #7c2d12;
+  display: inline-block;
+}
+.cat-label-money {
+  margin-top: 1px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #fde68a;
+}
+.cat-zzz {
+  pointer-events: none;
+  font-size: 18px;
+  animation: neko-zzz 1.6s ease-in-out infinite;
+}
+@keyframes neko-zzz {
+  0% {
+    transform: translateY(0) scale(0.7);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-16px) scale(1.1);
+    opacity: 0;
+  }
+}
+
 /* ---------- Animations ---------- */
 
 @keyframes neko-marquee {

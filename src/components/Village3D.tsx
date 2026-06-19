@@ -2,18 +2,63 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import type { GameState, PolicyAction, Weather } from '@/types/game';
+import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import type { CatAction, GameState, PolicyAction, Weather } from '@/types/game';
 import { isFacilityKind } from '@/lib/engine/facilities';
 import {
   buildVillage,
-  CAT_COLORS,
-  DEFAULT_CAT_COLOR,
+  CAT_STYLES,
+  DEFAULT_CAT_STYLE,
   GROUND,
   makeCat,
   makeFacility,
   mapToWorld,
   worldToMap,
 } from '@/lib/three/builders';
+
+// Short Japanese caption per action, shown under each cat's name label.
+const ACTION_LABEL: Record<CatAction, string> = {
+  idle: 'ひま〜',
+  working: 'はたらくニャ',
+  sleeping: 'Zzz',
+  eating: 'いただきます',
+};
+
+/** Per-cat runtime handles: the animated rig + cached parts and label DOM. */
+interface CatRuntime {
+  group: THREE.Group;
+  rig: THREE.Object3D;
+  head: THREE.Object3D;
+  tail: THREE.Object3D;
+  headBaseY: number;
+  phase: number;
+  zzz: CSS2DObject;
+  actionEl: HTMLElement;
+  moneyEl: HTMLElement;
+  lastAction: CatAction | null;
+  lastMoney: number;
+}
+
+/** Build the floating HTML label (name / action / money) for a cat. */
+function makeCatLabel(name: string): {
+  label: CSS2DObject;
+  actionEl: HTMLElement;
+  moneyEl: HTMLElement;
+} {
+  const root = document.createElement('div');
+  root.className = 'cat-label';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'cat-label-name';
+  nameEl.textContent = name;
+  const actionEl = document.createElement('div');
+  actionEl.className = 'cat-label-action';
+  const moneyEl = document.createElement('div');
+  moneyEl.className = 'cat-label-money';
+  root.append(nameEl, document.createElement('br'), actionEl, document.createElement('br'), moneyEl);
+  const label = new CSS2DObject(root);
+  label.position.set(0, 1.85, 0);
+  return { label, actionEl, moneyEl };
+}
 
 /** Interpolate an angle toward a target along the shortest arc. */
 function approachAngle(current: number, target: number, t: number): number {
@@ -155,6 +200,16 @@ export default function Village3D({
     renderer.setSize(width, height);
     mount.appendChild(renderer.domElement);
 
+    // Separate DOM layer for the cats' HTML name labels (CSS2DRenderer),
+    // overlaid on the canvas and click-through.
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(width, height);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0';
+    labelRenderer.domElement.style.left = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    mount.appendChild(labelRenderer.domElement);
+
     // Soft daytime lighting: sky/ground hemisphere fill + a warm sun.
     const hemi = new THREE.HemisphereLight('#ffffff', '#6f9a3f', 0.95);
     scene.add(hemi);
@@ -186,18 +241,45 @@ export default function Village3D({
     const village = buildVillage();
     scene.add(village);
 
-    // Spawn one mesh per cat (ids are stable), each with a phase offset so
-    // their idle bobbing isn't synchronised.
+    // Spawn one cat per id (stable), each with a phase offset (so idle bobbing
+    // isn't synchronised), an HTML name label, and a floating Zzz puff.
     const catLayer = new THREE.Group();
-    const catMeshes = new Map<string, THREE.Group>();
-    const catPhase = new Map<string, number>();
+    const catRuntimes = new Map<string, CatRuntime>();
     stateRef.current.cats.forEach((cat, i) => {
-      const mesh = makeCat(CAT_COLORS[cat.id] ?? DEFAULT_CAT_COLOR);
+      const group = makeCat(CAT_STYLES[cat.id] ?? DEFAULT_CAT_STYLE);
       const w = mapToWorld(cat.x, cat.y);
-      mesh.position.set(w.x, 0, w.z);
-      catMeshes.set(cat.id, mesh);
-      catPhase.set(cat.id, i * 1.3);
-      catLayer.add(mesh);
+      group.position.set(w.x, 0, w.z);
+
+      const rig = group.getObjectByName('rig') ?? group;
+      const head = group.getObjectByName('head') ?? rig;
+      const tail = group.getObjectByName('tail') ?? rig;
+
+      const { label, actionEl, moneyEl } = makeCatLabel(cat.name);
+      group.add(label);
+
+      // A 💤 puff shown only while sleeping.
+      const zzzEl = document.createElement('div');
+      zzzEl.className = 'cat-zzz';
+      zzzEl.textContent = '💤';
+      const zzz = new CSS2DObject(zzzEl);
+      zzz.position.set(0.35, 1.5, 0);
+      zzz.visible = false;
+      group.add(zzz);
+
+      catRuntimes.set(cat.id, {
+        group,
+        rig,
+        head,
+        tail,
+        headBaseY: head.position.y,
+        phase: i * 1.3,
+        zzz,
+        actionEl,
+        moneyEl,
+        lastAction: null,
+        lastMoney: Number.NaN,
+      });
+      catLayer.add(group);
     });
     scene.add(catLayer);
 
@@ -273,9 +355,9 @@ export default function Village3D({
       const shiver = weather === 'depression';
 
       for (const cat of stateRef.current.cats) {
-        const mesh = catMeshes.get(cat.id);
-        if (!mesh) continue;
-        const phase = catPhase.get(cat.id) ?? 0;
+        const rt = catRuntimes.get(cat.id);
+        if (!rt) continue;
+        const { group, rig, head, tail, phase } = rt;
 
         // Target ground position: normally the cat's map spot, but when eating
         // it walks up to a ring around the central soup pot.
@@ -288,49 +370,77 @@ export default function Village3D({
           tz = (w.z / len) * 2.2;
         }
 
-        const prevX = mesh.position.x;
-        const prevZ = mesh.position.z;
+        const prevX = group.position.x;
+        const prevZ = group.position.z;
         // Sleeping cats walk slowly to a stop; others stroll at a normal pace.
         const moveRate = cat.action === 'sleeping' ? 0.6 : 2;
-        mesh.position.x += (tx - prevX) * Math.min(1, dt * moveRate);
-        mesh.position.z += (tz - prevZ) * Math.min(1, dt * moveRate);
+        group.position.x += (tx - prevX) * Math.min(1, dt * moveRate);
+        group.position.z += (tz - prevZ) * Math.min(1, dt * moveRate);
 
         // Face the direction of travel.
-        const vx = mesh.position.x - prevX;
-        const vz = mesh.position.z - prevZ;
+        const vx = group.position.x - prevX;
+        const vz = group.position.z - prevZ;
         if (Math.hypot(vx, vz) > 0.0008) {
-          mesh.rotation.y = approachAngle(mesh.rotation.y, Math.atan2(vx, vz), dt * 5);
+          group.rotation.y = approachAngle(group.rotation.y, Math.atan2(vx, vz), dt * 5);
         }
 
-        // Action animation: working bobs, sleeping rolls onto its side, eating
-        // and idle gently sway.
-        let targetY = 0;
-        let targetRollZ = 0;
+        // Action animation, applied to the rig/head/tail (the outer group keeps
+        // walking + turning, so the label stays upright above the cat):
+        //  working  -> hops up/down + pitches forward (ピョコピョコ)
+        //  sleeping -> rolls fully onto its side
+        //  eating   -> dips its head toward the pot
+        //  idle     -> sways gently while the tail swishes side to side
+        let bobY = 0;
+        let rollZ = 0;
+        let pitchX = 0;
+        let tailSwing = 0;
+        let headDip = 0;
         switch (cat.action) {
           case 'working':
-            targetY = Math.abs(Math.sin(t * 6 + phase)) * 0.18;
+            bobY = Math.abs(Math.sin(t * 8 + phase)) * 0.16;
+            pitchX = Math.sin(t * 8 + phase) * 0.18;
             break;
           case 'sleeping':
-            targetY = -0.05;
-            targetRollZ = Math.PI / 2;
+            bobY = -0.05;
+            rollZ = Math.PI / 2;
             break;
           case 'eating':
-            targetY = Math.sin(t * 3 + phase) * 0.04;
+            bobY = Math.sin(t * 3 + phase) * 0.03;
+            headDip = -Math.abs(Math.sin(t * 5 + phase)) * 0.14;
             break;
           default:
-            targetY = Math.sin(t * 2 + phase) * 0.05;
+            bobY = Math.sin(t * 2 + phase) * 0.05;
+            tailSwing = Math.sin(t * 2.2 + phase) * 0.5;
         }
-        mesh.position.y += (targetY - mesh.position.y) * Math.min(1, dt * 6);
-        mesh.rotation.z += (targetRollZ - mesh.rotation.z) * Math.min(1, dt * 4);
+        rig.position.y += (bobY - rig.position.y) * Math.min(1, dt * 6);
+        rig.rotation.z += (rollZ - rig.rotation.z) * Math.min(1, dt * 4);
+        rig.rotation.x += (pitchX - rig.rotation.x) * Math.min(1, dt * 8);
+        tail.rotation.y += (tailSwing - tail.rotation.y) * Math.min(1, dt * 5);
+        head.position.y += (rt.headBaseY + headDip - head.position.y) * Math.min(1, dt * 8);
+
+        // Zzz puff only while sleeping.
+        rt.zzz.visible = cat.action === 'sleeping';
 
         // Depression: cats shiver in the cold.
         if (shiver) {
-          mesh.position.x += (Math.random() - 0.5) * 0.04;
-          mesh.position.z += (Math.random() - 0.5) * 0.04;
+          group.position.x += (Math.random() - 0.5) * 0.04;
+          group.position.z += (Math.random() - 0.5) * 0.04;
+        }
+
+        // Refresh the label text only when it actually changes.
+        if (rt.lastAction !== cat.action) {
+          rt.actionEl.textContent = ACTION_LABEL[cat.action];
+          rt.lastAction = cat.action;
+        }
+        const money = Math.round(cat.money);
+        if (rt.lastMoney !== money) {
+          rt.moneyEl.textContent = `${money} CC`;
+          rt.lastMoney = money;
         }
       }
 
       renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
       raf = requestAnimationFrame(render);
     };
     render();
@@ -341,6 +451,7 @@ export default function Village3D({
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      labelRenderer.setSize(width, height);
     };
     const resizeObserver = new ResizeObserver(onResize);
     resizeObserver.observe(mount);
@@ -361,8 +472,11 @@ export default function Village3D({
       if (renderer.domElement.parentNode === mount) {
         mount.removeChild(renderer.domElement);
       }
+      if (labelRenderer.domElement.parentNode === mount) {
+        mount.removeChild(labelRenderer.domElement);
+      }
     };
   }, []);
 
-  return <div ref={mountRef} className="h-full w-full" />;
+  return <div ref={mountRef} className="relative h-full w-full" />;
 }

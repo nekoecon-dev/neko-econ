@@ -115,54 +115,134 @@ export function makeSoupPot(): THREE.Group {
   return pot;
 }
 
-// Per-cat fur colour, keyed by id (matches the 2D palette).
-export const CAT_COLORS: Record<string, THREE.ColorRepresentation> = {
-  '1': '#fbfcfe', // シロ (white)
-  '2': '#4b5563', // クロ (dark grey)
-  '3': '#fb923c', // タマ (orange tabby)
-  '4': '#fcd34d', // ミケ (cream)
-  '5': '#f97316', // チャトラ (deep orange)
+// Per-cat appearance: base coat, eye colour, fur pattern, and the secondary /
+// tertiary colours that pattern uses. Keyed by cat id.
+export type CatPattern = 'plain' | 'spotted' | 'calico' | 'tabby';
+export interface CatStyle {
+  coat: THREE.ColorRepresentation;
+  eye: THREE.ColorRepresentation; // iris/sclera colour (pupil is always dark)
+  pattern: CatPattern;
+  secondary?: THREE.ColorRepresentation;
+  tertiary?: THREE.ColorRepresentation;
+}
+export const CAT_STYLES: Record<string, CatStyle> = {
+  '1': { coat: '#fcfdff', eye: '#2b2b2b', pattern: 'plain' }, // シロ: pure white
+  '2': { coat: '#3b3f47', eye: '#ffd23f', pattern: 'plain' }, // クロ: dark grey + yellow eyes
+  '3': { coat: '#fb923c', eye: '#2b2b2b', pattern: 'spotted', secondary: '#ffffff' }, // タマ: orange + white
+  '4': {
+    coat: '#fbf4ea',
+    eye: '#2b2b2b',
+    pattern: 'calico',
+    secondary: '#f59330',
+    tertiary: '#3a3a3a',
+  }, // ミケ: white + orange + black (calico)
+  '5': { coat: '#dd8a3e', eye: '#2b2b2b', pattern: 'tabby', secondary: '#9a5a26' }, // チャトラ: brown tabby
 };
-export const DEFAULT_CAT_COLOR: THREE.ColorRepresentation = '#fcd34d';
+export const DEFAULT_CAT_STYLE: CatStyle = { coat: '#fcd34d', eye: '#2b2b2b', pattern: 'plain' };
+
+/** A flattened "patch" of fur laid just over a surface (no z-fighting). */
+function furPatch(
+  color: THREE.ColorRepresentation,
+  pos: [number, number, number],
+  scale: [number, number, number],
+): THREE.Mesh {
+  const patch = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), matte(color));
+  patch.position.set(...pos);
+  patch.scale.set(...scale);
+  return patch;
+}
 
 /**
- * A low-poly cat that faces +Z: a box body, a sphere head with two cone ears,
- * an angled tail, and dark eyes. The whole group is translated/rotated by the
- * render loop to walk, bob, and lie down.
+ * A low-poly cat facing +Z. The returned group's only child is a "rig" group
+ * holding every body part (big head, tall pointed ears, expressive eyes, a long
+ * curved tail) — the render loop bobs/rolls the rig while the outer group does
+ * the walking and turning, and pattern decorations colour the fur.
  */
-export function makeCat(color: THREE.ColorRepresentation): THREE.Group {
+export function makeCat(style: CatStyle): THREE.Group {
   const cat = new THREE.Group();
-  const coat = matte(color);
+  const rig = new THREE.Group();
+  rig.name = 'rig';
+  cat.add(rig);
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.45, 0.9), coat);
-  body.position.y = 0.32;
-  cat.add(body);
+  const coat = matte(style.coat);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), coat);
-  head.position.set(0, 0.62, 0.5);
-  cat.add(head);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.5, 0.95), coat);
+  body.position.y = 0.34;
+  rig.add(body);
 
-  const earGeo = new THREE.ConeGeometry(0.14, 0.26, 4);
+  // Head ~1.5x the body width (0.9 dia vs 0.62 body).
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 12), coat);
+  head.name = 'head';
+  head.position.set(0, 0.74, 0.42);
+  rig.add(head);
+
+  // Tall, sharply pointed ears.
+  const earGeo = new THREE.ConeGeometry(0.16, 0.44, 4);
   const earL = new THREE.Mesh(earGeo, coat);
-  earL.position.set(-0.18, 0.92, 0.52);
-  cat.add(earL);
+  earL.position.set(-0.23, 1.05, 0.4);
+  earL.rotation.set(-0.1, 0, 0.14);
+  rig.add(earL);
   const earR = new THREE.Mesh(earGeo, coat);
-  earR.position.set(0.18, 0.92, 0.52);
-  cat.add(earR);
+  earR.position.set(0.23, 1.05, 0.4);
+  earR.rotation.set(-0.1, 0, -0.14);
+  rig.add(earR);
 
-  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 5), coat);
-  tail.position.set(0, 0.45, -0.55);
-  tail.rotation.x = Math.PI / 3;
-  cat.add(tail);
+  // Long curved tail (a tube swept along a rising S-curve).
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0.4, -0.5),
+    new THREE.Vector3(0, 0.75, -0.78),
+    new THREE.Vector3(0.18, 1.05, -0.74),
+    new THREE.Vector3(0.42, 1.18, -0.52),
+  ]);
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, 0.075, 5, false), coat);
+  tail.name = 'tail';
+  rig.add(tail);
 
-  const eyeGeo = new THREE.SphereGeometry(0.05, 6, 6);
-  const eyeMat = new THREE.MeshStandardMaterial({ color: '#222', flatShading: true });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(-0.13, 0.66, 0.82);
-  cat.add(eyeL);
-  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeR.position.set(0.13, 0.66, 0.82);
-  cat.add(eyeR);
+  // Eyes: a coloured sclera/iris disc with a dark pupil in front.
+  const scleraGeo = new THREE.SphereGeometry(0.1, 8, 8);
+  const scleraMat = new THREE.MeshStandardMaterial({ color: style.eye });
+  const pupilGeo = new THREE.SphereGeometry(0.055, 8, 8);
+  const pupilMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a' });
+  for (const sx of [-0.17, 0.17]) {
+    const sclera = new THREE.Mesh(scleraGeo, scleraMat);
+    sclera.position.set(sx, 0.78, 0.78);
+    rig.add(sclera);
+    const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+    pupil.position.set(sx, 0.78, 0.84);
+    rig.add(pupil);
+  }
+
+  // Tiny pink nose.
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.08, 4), matte('#f7a8b8'));
+  nose.position.set(0, 0.68, 0.86);
+  nose.rotation.x = Math.PI / 2;
+  rig.add(nose);
+
+  // Fur pattern decorations.
+  if (style.pattern === 'spotted' && style.secondary) {
+    rig.add(furPatch(style.secondary, [0.06, 0.58, -0.12], [0.34, 0.12, 0.42]));
+    rig.add(furPatch(style.secondary, [-0.2, 0.95, 0.42], [0.22, 0.2, 0.22]));
+  } else if (style.pattern === 'calico') {
+    if (style.secondary) {
+      rig.add(furPatch(style.secondary, [0.22, 0.58, -0.05], [0.28, 0.14, 0.5]));
+      rig.add(furPatch(style.secondary, [0.22, 0.92, 0.34], [0.22, 0.2, 0.24]));
+    }
+    if (style.tertiary) {
+      rig.add(furPatch(style.tertiary, [-0.22, 0.6, 0.18], [0.26, 0.14, 0.4]));
+      rig.add(furPatch(style.tertiary, [-0.2, 0.96, 0.36], [0.2, 0.18, 0.22]));
+    }
+  } else if (style.pattern === 'tabby' && style.secondary) {
+    const stripeMat = matte(style.secondary);
+    for (const sz of [0.18, -0.02, -0.22]) {
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.07), stripeMat);
+      stripe.position.set(0, 0.58, sz);
+      rig.add(stripe);
+    }
+    // a stripe across the forehead too
+    const browStripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.07), stripeMat);
+    browStripe.position.set(0, 0.92, 0.5);
+    rig.add(browStripe);
+  }
 
   return cat;
 }
