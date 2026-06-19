@@ -118,6 +118,17 @@ export interface PlacedFacility {
   y: number; // 0..100 (% vertical position on the map)
 }
 
+/**
+ * Mission progress. Missions are completed one at a time in order; `index` is
+ * the current mission (equal to the mission count once all are done).
+ * `lastRewardTick` is the tick of the most recent completion (-1 if none) and
+ * drives the transient reward popup.
+ */
+export interface MissionState {
+  index: number;
+  lastRewardTick: number;
+}
+
 export interface GameState {
   tick: number;
   cats: Cat[];
@@ -131,6 +142,7 @@ export interface GameState {
   strike: StrikeState;
   facilities: FacilityState; // running count per kind (drives economic effects)
   placements: PlacedFacility[]; // individual buildings dropped on the map
+  missions: MissionState; // village-management mission progress
 }
 
 export type PolicyAction =

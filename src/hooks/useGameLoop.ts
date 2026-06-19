@@ -8,6 +8,7 @@ import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
 import { FACILITY_COST, FACILITY_NEWS } from '@/lib/engine/facilities';
 import { applyLoanInterest, repayLoan } from '@/lib/engine/loan';
+import { updateMissions } from '@/lib/engine/missions';
 import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
@@ -145,6 +146,7 @@ export function useGameLoop(): {
         const cats = speed === 0 ? next.cats : next.cats.map((c) => wander(c, speed));
         next = { ...next, tick, weather, cats };
         next = applyLoanInterest(next); // bank charges interest on the player loan
+        next = updateMissions(next); // grant rewards for completed missions
         return next;
       });
     }, resolveTickMs());

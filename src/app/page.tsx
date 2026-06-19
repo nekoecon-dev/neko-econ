@@ -10,6 +10,7 @@ import PlayerHouse from '@/components/PlayerHouse';
 import PublicWorks from '@/components/PublicWorks';
 import NewsTicker from '@/components/NewsTicker';
 import OpeningMessage from '@/components/OpeningMessage';
+import Missions from '@/components/Missions';
 
 export default function Home() {
   const { state, dispatch } = useGameLoop();
@@ -57,6 +58,11 @@ export default function Home() {
         <ControlPanel policy={state.policy} dispatch={dispatch} />
         <PublicWorks facilities={state.facilities} cash={state.player.cash} />
       </aside>
+
+      {/* mission panel + reward popup, left side under the title */}
+      <div className="pointer-events-none absolute left-3 top-16">
+        <Missions state={state} />
+      </div>
 
       {/* strike banner, centred */}
       {state.strike.active && (
