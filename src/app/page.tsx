@@ -1,7 +1,7 @@
 'use client';
 
 import { useGameLoop } from '@/hooks/useGameLoop';
-import VillageMap from '@/components/VillageMap';
+import Village3D from '@/components/Village3D';
 import EconomyDashboard from '@/components/EconomyDashboard';
 import ControlPanel from '@/components/ControlPanel';
 import StockMarket from '@/components/StockMarket';
@@ -13,7 +13,6 @@ import OpeningMessage from '@/components/OpeningMessage';
 
 export default function Home() {
   const { state, dispatch } = useGameLoop();
-  const weather = state.weather.current;
 
   return (
     <main
@@ -49,16 +48,9 @@ export default function Home() {
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
         <section className="relative lg:col-span-2">
-          <VillageMap
-            cats={state.cats}
-            economy={state.economy}
-            stocks={state.stocks}
-            placements={state.placements}
-            dispatch={dispatch}
-            latestNews={state.newsLog[0]?.text}
-            weather={weather}
-            strikeActive={state.strike.active}
-          />
+          <div className="h-full min-h-[480px] w-full overflow-hidden rounded-3xl border-4 border-amber-200 shadow-inner">
+            <Village3D state={state} />
+          </div>
           {state.strike.active && (
             <StrikeBanner reliefCount={state.strike.reliefCount} taxRate={state.policy.taxRate} />
           )}
