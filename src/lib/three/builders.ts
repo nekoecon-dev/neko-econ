@@ -105,6 +105,58 @@ export function makeSoupPot(): THREE.Group {
   return pot;
 }
 
+// Per-cat fur colour, keyed by id (matches the 2D palette).
+export const CAT_COLORS: Record<string, THREE.ColorRepresentation> = {
+  '1': '#fbfcfe', // シロ (white)
+  '2': '#4b5563', // クロ (dark grey)
+  '3': '#fb923c', // タマ (orange tabby)
+  '4': '#fcd34d', // ミケ (cream)
+  '5': '#f97316', // チャトラ (deep orange)
+};
+export const DEFAULT_CAT_COLOR: THREE.ColorRepresentation = '#fcd34d';
+
+/**
+ * A low-poly cat that faces +Z: a box body, a sphere head with two cone ears,
+ * an angled tail, and dark eyes. The whole group is translated/rotated by the
+ * render loop to walk, bob, and lie down.
+ */
+export function makeCat(color: THREE.ColorRepresentation): THREE.Group {
+  const cat = new THREE.Group();
+  const coat = matte(color);
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.45, 0.9), coat);
+  body.position.y = 0.32;
+  cat.add(body);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), coat);
+  head.position.set(0, 0.62, 0.5);
+  cat.add(head);
+
+  const earGeo = new THREE.ConeGeometry(0.14, 0.26, 4);
+  const earL = new THREE.Mesh(earGeo, coat);
+  earL.position.set(-0.18, 0.92, 0.52);
+  cat.add(earL);
+  const earR = new THREE.Mesh(earGeo, coat);
+  earR.position.set(0.18, 0.92, 0.52);
+  cat.add(earR);
+
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 5), coat);
+  tail.position.set(0, 0.45, -0.55);
+  tail.rotation.x = Math.PI / 3;
+  cat.add(tail);
+
+  const eyeGeo = new THREE.SphereGeometry(0.05, 6, 6);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#222', flatShading: true });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(-0.13, 0.66, 0.82);
+  cat.add(eyeL);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeR.position.set(0.13, 0.66, 0.82);
+  cat.add(eyeR);
+
+  return cat;
+}
+
 /** A still pond: a flat blue disc resting just above the grass. */
 function makePond(): THREE.Mesh {
   const pond = new THREE.Mesh(
