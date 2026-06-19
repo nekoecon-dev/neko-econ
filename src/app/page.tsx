@@ -15,30 +15,29 @@ export default function Home() {
   const { state, dispatch } = useGameLoop();
 
   return (
-    <main
-      className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 p-4 text-amber-950"
-      style={{
-        background:
-          'radial-gradient(1200px 500px at 50% -10%, #fff7e6 0%, #ffedcf 55%, #ffe3b3 100%)',
-      }}
-    >
+    <main className="relative h-screen w-screen overflow-hidden text-amber-950">
       <OpeningMessage />
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border-4 border-amber-200 bg-[#fffdf7] px-5 py-3 shadow-md">
-        <h1 className="flex items-center gap-2 text-2xl font-black text-amber-900">
-          <span className="text-3xl">🐾</span> NekoEcon
-          <span className="hidden text-sm font-bold text-amber-700/70 sm:inline">
-            猫の経済シミュレーション村
-          </span>
+
+      {/* 3D village fills the whole screen as the background */}
+      <div className="absolute inset-0">
+        <Village3D state={state} dispatch={dispatch} />
+      </div>
+
+      {/* top bar: title + tick + wallet (non-interactive, floats over the canvas) */}
+      <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center justify-between gap-2 p-3">
+        <h1 className="flex items-center gap-2 rounded-2xl border-2 border-amber-200 bg-[#fffdf7]/90 px-4 py-2 text-xl font-black text-amber-900 shadow-md backdrop-blur">
+          <span className="text-2xl">🐾</span> NekoEcon
+          <span className="hidden text-xs font-bold text-amber-700/70 sm:inline">3D村</span>
         </h1>
-        <div className="flex items-center gap-3">
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold tabular-nums text-amber-800">
-            🕒 tick {state.tick}
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border-2 border-amber-200 bg-[#fffdf7]/90 px-3 py-1.5 text-sm font-bold tabular-nums text-amber-800 shadow-md backdrop-blur">
+            🕒 {state.tick}
           </span>
-          <div className="flex items-center gap-2 rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-yellow-100 to-amber-100 px-4 py-1.5 shadow-sm">
-            <span className="text-2xl">👛</span>
+          <div className="flex items-center gap-2 rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-yellow-100/95 to-amber-100/95 px-3 py-1.5 shadow-md backdrop-blur">
+            <span className="text-xl">👛</span>
             <div className="leading-tight">
-              <div className="text-[10px] font-bold text-amber-700/70">あなたの所持金</div>
-              <div className="text-2xl font-black tabular-nums text-amber-900">
+              <div className="text-[9px] font-bold text-amber-700/70">所持金</div>
+              <div className="text-lg font-black tabular-nums text-amber-900">
                 {Math.round(state.player.cash).toLocaleString()} CC
               </div>
             </div>
@@ -46,35 +45,34 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-        <section className="relative lg:col-span-2">
-          <div className="h-full min-h-[480px] w-full overflow-hidden rounded-3xl border-4 border-amber-200 shadow-inner">
-            <Village3D state={state} />
-          </div>
-          {state.strike.active && (
-            <StrikeBanner reliefCount={state.strike.reliefCount} taxRate={state.policy.taxRate} />
-          )}
-          <PlayerHouse
-            player={state.player}
-            interestRate={state.policy.interestRate}
-            dispatch={dispatch}
-            className="bottom-2 left-2"
-          />
-        </section>
-        <aside className="flex flex-col gap-4">
-          <EconomyDashboard economy={state.economy} />
-          <StockMarket
-            cats={state.cats}
-            stocks={state.stocks}
-            player={state.player}
-            dispatch={dispatch}
-          />
-          <ControlPanel policy={state.policy} dispatch={dispatch} />
-          <PublicWorks facilities={state.facilities} cash={state.player.cash} />
-        </aside>
-      </div>
+      {/* right-hand control/dashboard column, scrollable, floating over the canvas */}
+      <aside className="pointer-events-none absolute right-0 top-16 bottom-20 flex w-[88%] max-w-xs flex-col gap-3 overflow-y-auto p-3 [&>*]:pointer-events-auto">
+        <EconomyDashboard economy={state.economy} />
+        <StockMarket
+          cats={state.cats}
+          stocks={state.stocks}
+          player={state.player}
+          dispatch={dispatch}
+        />
+        <ControlPanel policy={state.policy} dispatch={dispatch} />
+        <PublicWorks facilities={state.facilities} cash={state.player.cash} />
+      </aside>
 
-      <footer>
+      {/* strike banner, centred */}
+      {state.strike.active && (
+        <StrikeBanner reliefCount={state.strike.reliefCount} taxRate={state.policy.taxRate} />
+      )}
+
+      {/* player house / loan, bottom-left over the canvas */}
+      <PlayerHouse
+        player={state.player}
+        interestRate={state.policy.interestRate}
+        dispatch={dispatch}
+        className="bottom-24 left-3"
+      />
+
+      {/* news ticker pinned to the bottom */}
+      <footer className="absolute inset-x-0 bottom-0 p-3">
         <NewsTicker news={state.newsLog} />
       </footer>
     </main>

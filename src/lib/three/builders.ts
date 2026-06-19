@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { FacilityKind } from '@/types/game';
 
 // The playable ground is a GROUND x GROUND square centred on the origin. Cat /
 // facility positions arrive as map percentages (0..100); mapToWorld converts
@@ -11,6 +12,15 @@ export function mapToWorld(x: number, y: number): { x: number; z: number } {
   return {
     x: ((x - 50) / 50) * MAP_HALF,
     z: ((y - 50) / 50) * MAP_HALF,
+  };
+}
+
+/** Inverse of mapToWorld: world (x, z) back to a clamped 0..100 map (x, y). */
+export function worldToMap(x: number, z: number): { x: number; y: number } {
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  return {
+    x: clamp((x / MAP_HALF) * 50 + 50, 5, 90),
+    y: clamp((z / MAP_HALF) * 50 + 50, 5, 85),
   };
 }
 
@@ -183,6 +193,52 @@ const HOUSE_SPOTS: [number, number, THREE.ColorRepresentation][] = [
   [6, -5, '#4f7fd9'],
   [-5, 7, '#d99a4f'],
 ];
+
+/**
+ * A low-poly building for a placed public-works facility:
+ * - soupFactory: a grey factory box with a chimney
+ * - matatabiPark: a small green patch with a tree and a sign
+ * - fishingPond: a little blue pond with a wooden dock
+ */
+export function makeFacility(kind: FacilityKind): THREE.Group {
+  const group = new THREE.Group();
+
+  if (kind === 'soupFactory') {
+    const building = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.3, 1.6), matte('#9aa3ad'));
+    building.position.y = 0.65;
+    group.add(building);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), matte('#6d7782'));
+    roof.position.y = 1.4;
+    group.add(roof);
+    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.0, 8), matte('#5b636d'));
+    chimney.position.set(0.5, 1.7, 0.4);
+    group.add(chimney);
+  } else if (kind === 'matatabiPark') {
+    const patch = new THREE.Mesh(new THREE.CircleGeometry(1.6, 18), matte('#9bd36a'));
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.y = 0.04;
+    group.add(patch);
+    const tree = makeTree();
+    tree.scale.setScalar(0.7);
+    group.add(tree);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.08), matte('#3f9d4c'));
+    sign.position.set(0.9, 0.7, 0.4);
+    group.add(sign);
+  } else {
+    const water = new THREE.Mesh(
+      new THREE.CircleGeometry(1.5, 20),
+      new THREE.MeshStandardMaterial({ color: '#3f97d6', roughness: 0.3 }),
+    );
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = 0.04;
+    group.add(water);
+    const dock = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 1.4), matte('#8a5a2b'));
+    dock.position.set(0.7, 0.16, 0);
+    group.add(dock);
+  }
+
+  return group;
+}
 
 /** Assemble the whole static village (ground, trees, houses, pond, soup pot). */
 export function buildVillage(): THREE.Group {

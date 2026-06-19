@@ -2,15 +2,17 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import type { GameState } from '@/types/game';
-import type { Weather } from '@/types/game';
+import type { GameState, PolicyAction, Weather } from '@/types/game';
+import { isFacilityKind } from '@/lib/engine/facilities';
 import {
   buildVillage,
   CAT_COLORS,
   DEFAULT_CAT_COLOR,
   GROUND,
   makeCat,
+  makeFacility,
   mapToWorld,
+  worldToMap,
 } from '@/lib/three/builders';
 
 /** Interpolate an angle toward a target along the shortest arc. */
@@ -115,13 +117,22 @@ function driftParticles(points: THREE.Points, dy: number): void {
  * into a ref so the requestAnimationFrame loop can read the latest values
  * without re-running the (one-time) scene setup.
  */
-export default function Village3D({ state }: { state: GameState }) {
+export default function Village3D({
+  state,
+  dispatch,
+}: {
+  state: GameState;
+  dispatch: (action: PolicyAction) => void;
+}) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
+  const dispatchRef = useRef(dispatch);
 
-  // Mirror the latest state for the animation loop (never re-init the scene).
+  // Mirror the latest state/dispatch for the loop + drop handler (the scene is
+  // only set up once).
   useEffect(() => {
     stateRef.current = state;
+    dispatchRef.current = dispatch;
   });
 
   useEffect(() => {
@@ -190,6 +201,33 @@ export default function Village3D({ state }: { state: GameState }) {
     });
     scene.add(catLayer);
 
+    // Placed public-works facilities are synced incrementally in the loop.
+    const facilityLayer = new THREE.Group();
+    scene.add(facilityLayer);
+    const placedMeshes = new Map<string, THREE.Group>();
+
+    // Drag-and-drop: a building card dropped from the panel raycasts the ground
+    // to find where it landed, then dispatches PLACE_FACILITY at that map spot.
+    const raycaster = new THREE.Raycaster();
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const ndc = new THREE.Vector2();
+    const hitPoint = new THREE.Vector3();
+    const onDragOver = (e: DragEvent) => e.preventDefault();
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const kind = e.dataTransfer?.getData('text/plain');
+      if (!kind || !isFacilityKind(kind)) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (!raycaster.ray.intersectPlane(groundPlane, hitPoint)) return;
+      const map = worldToMap(hitPoint.x, hitPoint.z);
+      dispatchRef.current({ type: 'PLACE_FACILITY', kind, x: map.x, y: map.y });
+    };
+    mount.addEventListener('dragover', onDragOver);
+    mount.addEventListener('drop', onDrop);
+
     let raf = 0;
     const clock = new THREE.Clock();
     const render = () => {
@@ -221,6 +259,16 @@ export default function Village3D({ state }: { state: GameState }) {
       if (confetti.visible) driftParticles(confetti, -dt * 2.2);
       if (rain.visible) driftParticles(rain, -dt * 9);
       if (embers.visible) driftParticles(embers, dt * 3);
+
+      // Add a mesh for any newly placed facility.
+      for (const p of stateRef.current.placements) {
+        if (placedMeshes.has(p.id)) continue;
+        const facility = makeFacility(p.kind);
+        const w = mapToWorld(p.x, p.y);
+        facility.position.set(w.x, 0, w.z);
+        placedMeshes.set(p.id, facility);
+        facilityLayer.add(facility);
+      }
 
       const shiver = weather === 'depression';
 
@@ -300,6 +348,8 @@ export default function Village3D({ state }: { state: GameState }) {
     return () => {
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
+      mount.removeEventListener('dragover', onDragOver);
+      mount.removeEventListener('drop', onDrop);
       scene.traverse((obj) => {
         if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line) {
           obj.geometry.dispose();
