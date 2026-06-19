@@ -178,6 +178,66 @@ body {
   animation: neko-tremble 0.18s linear infinite;
 }
 
+/* ---------- Soup pot (village emotional symbol) ---------- */
+
+/* Flickering flame: scales/sways while keeping the upward teardrop point. */
+@keyframes neko-flame {
+  0%,
+  100% {
+    transform: rotate(-45deg) scale(1, 1);
+  }
+  35% {
+    transform: rotate(-45deg) scale(0.86, 1.16);
+  }
+  70% {
+    transform: rotate(-45deg) scale(1.08, 0.9);
+  }
+}
+.soup-flame {
+  display: inline-block;
+  border-radius: 50% 0 50% 50%;
+  transform: rotate(-45deg);
+  transform-origin: center bottom;
+  animation: neko-flame ease-in-out infinite;
+}
+
+/* Gentle bubbling of the pot itself */
+@keyframes neko-simmer {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.03);
+  }
+}
+.soup-simmer {
+  animation: neko-simmer 1.6s ease-in-out infinite;
+}
+
+/* Hyperinflation: the whole village trembles */
+@keyframes neko-quake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-3px, 2px);
+  }
+  40% {
+    transform: translate(3px, -2px);
+  }
+  60% {
+    transform: translate(-2px, -3px);
+  }
+  80% {
+    transform: translate(3px, 2px);
+  }
+}
+.soup-quake {
+  animation: neko-quake 0.28s linear infinite;
+}
+
 /* Soft pulsing glow for the headline currency button */
 @keyframes neko-glow {
   0%,

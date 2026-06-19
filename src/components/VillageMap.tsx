@@ -35,6 +35,131 @@ function SignBoard({
   );
 }
 
+// The soup pot is the village's emotional symbol: its fire mirrors the economy.
+type SoupMood = 'boom' | 'normal' | 'depression' | 'hyperinflation';
+
+// Pick the pot's mood. Hyperinflation/boom follow the weather; a depression here
+// is the soup-pot-specific "fire dying out" trigger (unemployment over 50%).
+function soupMood(economy: Economy, weather: Weather): SoupMood {
+  if (weather === 'hyperinflation') return 'hyperinflation';
+  if (economy.unemploymentRate > 50) return 'depression';
+  if (weather === 'boom') return 'boom';
+  return 'normal';
+}
+
+interface SoupCfg {
+  potScale: number; // overall size multiplier (the pot itself is already ~2x)
+  flameH: number; // px height of the central flame
+  count: number; // number of flame tongues
+  colors: [string, string]; // [base, tip] gradient
+  glow: string; // drop-shadow colour
+  speed: number; // flicker duration (s)
+  opacity: number;
+  caption: string;
+}
+
+const SOUP_CFG: Record<SoupMood, SoupCfg> = {
+  // Boom: a big roaring orange/red fire.
+  boom: {
+    potScale: 1.15,
+    flameH: 52,
+    count: 5,
+    colors: ['#ef4444', '#fde047'],
+    glow: 'rgba(249,115,22,0.85)',
+    speed: 0.38,
+    opacity: 1,
+    caption: '🔥 グツグツ好景気ニャ！',
+  },
+  // Normal: a calm, steady flame.
+  normal: {
+    potScale: 1,
+    flameH: 28,
+    count: 3,
+    colors: ['#f97316', '#fde047'],
+    glow: 'rgba(249,115,22,0.55)',
+    speed: 0.7,
+    opacity: 0.95,
+    caption: 'コトコト煮込み中…',
+  },
+  // Depression: a tiny pale-blue flame on the verge of going out.
+  depression: {
+    potScale: 0.9,
+    flameH: 13,
+    count: 2,
+    colors: ['#60a5fa', '#e0f2fe'],
+    glow: 'rgba(96,165,250,0.5)',
+    speed: 1.4,
+    opacity: 0.5,
+    caption: '…火が消えかけニャ',
+  },
+  // Hyperinflation: an explosive fire (the whole village shakes too).
+  hyperinflation: {
+    potScale: 1.35,
+    flameH: 80,
+    count: 6,
+    colors: ['#dc2626', '#fbbf24'],
+    glow: 'rgba(239,68,68,0.95)',
+    speed: 0.2,
+    opacity: 1,
+    caption: '💥 物価が大爆発ニャ！',
+  },
+};
+
+function SoupPot({ economy, mood }: { economy: Economy; mood: SoupMood }) {
+  const cfg = SOUP_CFG[mood];
+  // A cluster of flame tongues, tallest in the middle, fading to the sides.
+  const flames = Array.from({ length: cfg.count }, (_, i) => {
+    const fromCenter = Math.abs(i - (cfg.count - 1) / 2);
+    const h = Math.max(cfg.flameH * (1 - fromCenter * 0.22), cfg.flameH * 0.4);
+    return { size: h, delay: (i % 3) * 0.09 };
+  });
+
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex flex-col items-center"
+      style={{ transform: `translate(-50%, -50%) scale(${cfg.potScale})` }}
+    >
+      {/* price sign */}
+      <div className="mb-1 rounded-xl border-2 border-amber-800 bg-amber-50/95 px-2.5 py-1 text-center shadow-lg">
+        <div className="text-[10px] font-bold text-amber-800">🍲 スープ鍋</div>
+        <div className="text-sm font-black tabular-nums text-amber-900">
+          {economy.soupPrice} CC
+        </div>
+      </div>
+
+      {/* the pot — large emoji, gently simmering */}
+      <div className="soup-simmer text-6xl leading-none drop-shadow-lg">🍲</div>
+
+      {/* the fire underneath */}
+      <div
+        className="-mt-2 flex items-end justify-center"
+        style={{ height: cfg.flameH }}
+      >
+        {flames.map((f, i) => (
+          <span
+            key={i}
+            className="soup-flame"
+            style={{
+              width: f.size * 0.8,
+              height: f.size,
+              marginLeft: i === 0 ? 0 : -f.size * 0.35,
+              opacity: cfg.opacity,
+              background: `linear-gradient(to top, ${cfg.colors[0]}, ${cfg.colors[1]})`,
+              filter: `drop-shadow(0 0 6px ${cfg.glow})`,
+              animationDuration: `${cfg.speed}s`,
+              animationDelay: `${f.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="mt-1 rounded-full bg-amber-900/85 px-2 py-0.5 text-[10px] font-bold text-white shadow">
+        {cfg.caption}
+      </div>
+    </div>
+  );
+}
+
 // "Neko Wall Street" LED ticker: every cat's price with ▲/▼ + the latest news.
 function WallStreetTicker({
   entries,
@@ -151,6 +276,7 @@ export default function VillageMap({
   const depression = weather === 'depression';
   const hyper = weather === 'hyperinflation';
   const boom = weather === 'boom';
+  const potMood = soupMood(economy, weather);
 
   // Ticker entries: each cat's price with up/down direction vs the prev tick.
   const tickerEntries = cats.map((c) => {
@@ -166,7 +292,9 @@ export default function VillageMap({
 
   return (
     <div
-      className="relative h-full min-h-[480px] w-full overflow-hidden rounded-3xl border-4 border-amber-200 shadow-inner transition-[filter] duration-700"
+      className={`relative h-full min-h-[480px] w-full overflow-hidden rounded-3xl border-4 border-amber-200 shadow-inner transition-[filter] duration-700 ${
+        hyper ? 'soup-quake' : ''
+      }`}
       style={{
         background: BG[weather],
         filter: depression ? 'grayscale(1) brightness(0.7)' : 'none',
@@ -231,12 +359,7 @@ export default function VillageMap({
         title="ネコ銀行"
         value={`${Math.round(economy.totalMoney)} CC`}
       />
-      <SignBoard
-        className="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        icon="🍲"
-        title="スープ鍋"
-        value={`${economy.soupPrice} CC`}
-      />
+      <SoupPot economy={economy} mood={potMood} />
       <WallStreetTicker className="bottom-3 right-3" entries={tickerEntries} news={latestNews} />
 
       {/* weather effects */}
