@@ -1,9 +1,18 @@
 import type { GameState } from '@/types/game';
 import { round2 } from './math';
 
+// The debt every player starts the game owing シロ銀行.
+export const INITIAL_LOAN = 10000;
+
 // Per-tick interest as a fraction of the central-bank rate. Raising the rate
 // to fight inflation also squeezes the indebted player.
-const INTEREST_FACTOR = 0.01;
+export const INTEREST_FACTOR = 0.01;
+
+/** Interest drawn from the player this tick at the given central-bank rate. */
+export function tickInterest(loan: number, interestRate: number): number {
+  if (loan <= 0) return 0;
+  return round2(loan * (interestRate / 100) * INTEREST_FACTOR);
+}
 
 /**
  * Charge one tick of interest on the player's loan, drawn from cash. Cash is
@@ -13,7 +22,7 @@ const INTEREST_FACTOR = 0.01;
 export function applyLoanInterest(state: GameState): GameState {
   const { player, policy } = state;
   if (player.loan <= 0) return state;
-  const interest = round2(player.loan * (policy.interestRate / 100) * INTEREST_FACTOR);
+  const interest = tickInterest(player.loan, policy.interestRate);
   if (interest <= 0) return state;
   return {
     ...state,

@@ -1,10 +1,10 @@
 import type { Cat, GameState, StockShare } from '@/types/game';
 import { initStock } from './stocks';
+import { INITIAL_LOAN } from './loan';
 
 const INITIAL_MONEY = 100;
 const INITIAL_PRICE = 10;
 const PLAYER_INITIAL_CASH = 1000;
-const PLAYER_INITIAL_LOAN = 10000;
 
 export const INITIAL_CATS: Cat[] = [
   {
@@ -113,7 +113,7 @@ export const INITIAL_STATE: GameState = {
     holdings: {},
     costBasis: {},
     hasEverInvested: false,
-    loan: PLAYER_INITIAL_LOAN,
+    loan: INITIAL_LOAN,
   },
   weather: { current: 'normal', lockUntil: 0 },
   strike: { active: false, reliefCount: 0, startTick: 0, cooldownUntil: 0 },

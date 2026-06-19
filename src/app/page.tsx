@@ -9,6 +9,7 @@ import StrikeBanner from '@/components/StrikeBanner';
 import PlayerHouse from '@/components/PlayerHouse';
 import PublicWorks from '@/components/PublicWorks';
 import NewsTicker from '@/components/NewsTicker';
+import OpeningMessage from '@/components/OpeningMessage';
 
 export default function Home() {
   const { state, dispatch } = useGameLoop();
@@ -22,6 +23,7 @@ export default function Home() {
           'radial-gradient(1200px 500px at 50% -10%, #fff7e6 0%, #ffedcf 55%, #ffe3b3 100%)',
       }}
     >
+      <OpeningMessage />
       <header className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border-4 border-amber-200 bg-[#fffdf7] px-5 py-3 shadow-md">
         <h1 className="flex items-center gap-2 text-2xl font-black text-amber-900">
           <span className="text-3xl">🐾</span> NekoEcon
