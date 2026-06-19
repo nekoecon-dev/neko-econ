@@ -9,32 +9,44 @@ in real time. When the economy crosses certain thresholds, an AI-written news
 ticker reports it.
 
 Stack: Next.js 16 (App Router) · React 19 · TypeScript (strict, **no `any`**) ·
-Tailwind v4 · Recharts · `@anthropic-ai/sdk` (server-side only).
+Tailwind v4 · **Three.js** (3D village) · Recharts · `@anthropic-ai/sdk`
+(server-side only).
+
+The village is rendered in **3D with Three.js** (see "3D village" below). The
+React UI (dashboard, controls, news, stocks, public works, loan) floats over the
+canvas as overlays. The old 2D `VillageMap`/`CatSprite` have been retired.
 
 ## Directory layout
 
 ```
 src/
   app/
-    page.tsx              # main screen, 'use client', calls useGameLoop()
+    page.tsx              # full-screen 3D canvas + floating React overlays
     layout.tsx
     globals.css
     api/news/route.ts     # POST /api/news -> { news } (server-side AI call)
   components/
-    CatSprite.tsx
-    VillageMap.tsx
-    EconomyDashboard.tsx
+    Village3D.tsx         # the Three.js scene/camera/render-loop ('use client')
+    EconomyDashboard.tsx  # overlay panels (dashboard / controls / news / …)
     ControlPanel.tsx
+    StockMarket.tsx
+    PublicWorks.tsx       # draggable building cards -> drop on the 3D ground
+    PlayerHouse.tsx       # loan tent -> house, repayment modal
+    StrikeBanner.tsx
+    OpeningMessage.tsx
     NewsTicker.tsx
   hooks/
-    useGameLoop.ts        # 500ms tick loop, owns GameState
-  lib/engine/
-    math.ts               # clamp / round2 helpers
-    economy.ts            # price / inflation / unemployment / gini / updateEconomy
-    cats.ts               # decideCatAction / updateCat / updateAllCats
-    events.ts             # detectEvent (with per-event cooldown)
-    news.ts               # prompt builder + local fallback text
-    initialState.ts       # INITIAL_STATE, INITIAL_CATS
+    useGameLoop.ts        # 500ms tick loop, owns GameState (unchanged by 3D)
+  lib/
+    three/
+      builders.ts         # low-poly mesh builders + map<->world coord helpers
+    engine/
+      math.ts             # clamp / round2 helpers
+      economy.ts          # price / inflation / unemployment / gini / weather
+      cats.ts             # decideCatAction / updateCat / updateAllCats
+      events.ts           # detectEvent (with per-event cooldown)
+      news.ts             # prompt builder + local fallback text
+      initialState.ts     # INITIAL_STATE, INITIAL_CATS
   types/
     game.ts               # all shared types
 ```
@@ -132,23 +144,45 @@ event cannot fire repeatedly.
 - If `ANTHROPIC_API_KEY` is unset or the call fails, the route returns a local
   templated line from `buildFallbackNews()` so the game still runs key-free.
 
-## UI
+## 3D village (`Village3D.tsx` + `lib/three/builders.ts`)
 
-Layout (`page.tsx`):
-```
-+--------------------------------------------------+
-|  🐾 NekoEcon            tick: N                   |
-+---------------------------+----------------------+
-|                           |  EconomyDashboard    |
-|       VillageMap          |  (indicators + chart)|
-|   (5 cats wandering)      +----------------------+
-|                           |  ControlPanel        |
-+---------------------------+----------------------+
-|  NewsTicker (latest 3, marquee)                  |
-+--------------------------------------------------+
-```
-- **CatSprite**: emoji by action — 🐱 idle / 😴 sleeping / 🍲 eating / 💰 working;
-  position via `left/top` % with `transition: 0.4s ease`.
+The village is a single Three.js scene rendered into a full-screen canvas by
+`Village3D` ('use client'). Setup runs once in a `useEffect([])`; the latest
+`GameState`/`dispatch` are mirrored into refs so the `requestAnimationFrame`
+loop reads fresh values without re-initialising the scene. Cleanup cancels the
+RAF, disconnects the `ResizeObserver`, removes the drop listeners, and disposes
+every geometry/material. `renderer.setPixelRatio` is capped at 2 for mobile.
+
+- **Camera**: 45°-ish look-down `PerspectiveCamera` at `(13,13,13)` (Animal-
+  Crossing angle). **Coords**: cat/facility map percentages (0..100) map to world
+  via `mapToWorld` / `worldToMap` (`MAP_HALF`), on a `GROUND`×`GROUND` field.
+- **Builders** (`builders.ts`, all low-poly + `flatShading`): `buildVillage`
+  (grid grassland, 7 trees = cone+cylinder, 3 cottages = box+pyramid roof, pond,
+  central soup pot = cylinder+sphere), `makeCat` (box body, sphere head, cone
+  ears, tail, eyes — coloured per `CAT_COLORS`), `makeFacility` (factory / park /
+  pond).
+- **Cat animation** (per frame, delta-timed): lerp toward the cat's map spot and
+  face the travel direction; `working` bobs, `sleeping` rolls onto its side,
+  `eating` walks to a ring around the soup pot, `idle` sways.
+- **Weather** (`state.weather.current`, lerped smoothly via `WEATHER_LOOK`):
+  boom = bright sky + big golden sun + confetti; hyperinflation = red sky +
+  rising embers; depression = grey + rain + dimmed/hidden sun + shivering cats;
+  normal = blue day. Confetti/rain/embers are `THREE.Points` clouds, only the
+  active one is shown + drifted.
+- **Public works D&D**: a card dragged from `PublicWorks` and dropped on the
+  canvas raycasts the ground plane; `worldToMap` → `PLACE_FACILITY {kind,x,y}`.
+  New `state.placements` are synced into the scene incrementally each frame.
+
+## UI overlays (`page.tsx`)
+
+The React UI floats over the 3D canvas: a glassy top bar (title / tick /
+wallet), a scrollable right-hand column (`EconomyDashboard`, `StockMarket`,
+`ControlPanel`, `PublicWorks`), the `NewsTicker` along the bottom, the loan
+tent (`PlayerHouse`) bottom-left, and a centred `StrikeBanner`. `OpeningMessage`
+is a one-time welcome modal. The overlay column is `pointer-events-none` with
+`[&>*]:pointer-events-auto` so clicks fall through the gaps to nothing (the
+canvas needs no pointer interaction except the facility drop).
+
 - **EconomyDashboard** indicator colours: inflation >10 red / 0–10 green,
   unemployment >30 red, gini >0.6 red, price & total money black. Recharts
   line chart of the last 20 inflation points.
