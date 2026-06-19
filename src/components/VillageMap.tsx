@@ -1,14 +1,38 @@
-import type { Cat, Economy, FacilityKind, FacilityState, StockShare, Weather } from '@/types/game';
-import { FACILITY_META } from '@/lib/engine/facilities';
-import CatSprite from './CatSprite';
+import type {
+  Cat,
+  Economy,
+  PlacedFacility,
+  PolicyAction,
+  StockShare,
+  Weather,
+} from '@/types/game';
+import { FACILITY_META, isFacilityKind } from '@/lib/engine/facilities';
+import { clamp } from '@/lib/engine/math';
+import CatSprite, { type CatAura } from './CatSprite';
 
-// Where each built facility appears on the map.
-const FACILITY_POS: Record<FacilityKind, string> = {
-  soupFactory: 'left-[9%] top-[46%]',
-  matatabiPark: 'right-[26%] top-[58%]',
-  fishingPond: 'left-[15%] bottom-[19%]',
-};
-const FACILITY_KINDS: FacilityKind[] = ['soupFactory', 'matatabiPark', 'fishingPond'];
+// A cat within this many map-percent of a placed facility feels its effect.
+const AURA_RADIUS = 22;
+
+/**
+ * Which facility aura (if any) a cat is standing in. Picks the nearest placed
+ * facility within range: a soup factory puts idle cats to work, a matatabi park
+ * makes any cat happy, a fishing pond sets nearby cats fishing.
+ */
+function catAura(cat: Cat, placements: PlacedFacility[]): CatAura | null {
+  let nearest: PlacedFacility | null = null;
+  let nearestDist = AURA_RADIUS;
+  for (const p of placements) {
+    const dist = Math.hypot(p.x - cat.x, p.y - cat.y);
+    if (dist <= nearestDist) {
+      nearestDist = dist;
+      nearest = p;
+    }
+  }
+  if (!nearest) return null;
+  if (nearest.kind === 'soupFactory') return cat.action === 'idle' ? 'work' : null;
+  if (nearest.kind === 'matatabiPark') return 'happy';
+  return 'fishing';
+}
 
 // A wooden signboard overlaid on the village showing a live economic figure.
 function SignBoard({
@@ -260,7 +284,8 @@ export default function VillageMap({
   cats,
   economy,
   stocks,
-  facilities,
+  placements,
+  dispatch,
   latestNews = '村は今日も平和ニャ',
   weather = 'normal',
   strikeActive = false,
@@ -268,11 +293,22 @@ export default function VillageMap({
   cats: Cat[];
   economy: Economy;
   stocks: Record<string, StockShare>;
-  facilities: FacilityState;
+  placements: PlacedFacility[];
+  dispatch: (action: PolicyAction) => void;
   latestNews?: string;
   weather?: Weather;
   strikeActive?: boolean;
 }) {
+  // A facility dragged from the public-works panel is placed where it's dropped.
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const kind = e.dataTransfer.getData('text/plain');
+    if (!isFacilityKind(kind)) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = clamp(((e.clientX - rect.left) / rect.width) * 100, 5, 90);
+    const y = clamp(((e.clientY - rect.top) / rect.height) * 100, 5, 85);
+    dispatch({ type: 'PLACE_FACILITY', kind, x, y });
+  }
   const depression = weather === 'depression';
   const hyper = weather === 'hyperinflation';
   const boom = weather === 'boom';
@@ -299,6 +335,8 @@ export default function VillageMap({
         background: BG[weather],
         filter: depression ? 'grayscale(1) brightness(0.7)' : 'none',
       }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
     >
       {/* sun (hidden under the rain clouds during a depression) */}
       {!depression && (
@@ -330,26 +368,29 @@ export default function VillageMap({
       <div className="pointer-events-none absolute right-1/4 bottom-12 text-3xl">🌼</div>
       <div className="pointer-events-none absolute left-24 top-[55%] text-2xl">🍄</div>
 
-      {/* public-works facilities */}
-      {FACILITY_KINDS.map((kind) =>
-        facilities[kind] > 0 ? (
-          <div
-            key={kind}
-            className={`pointer-events-none absolute z-10 flex flex-col items-center ${FACILITY_POS[kind]}`}
-          >
-            <span className="text-4xl drop-shadow">{FACILITY_META[kind].icon}</span>
-            {facilities[kind] > 1 && (
-              <span className="rounded-full bg-amber-900/85 px-1.5 text-[9px] font-bold text-white">
-                ×{facilities[kind]}
-              </span>
-            )}
-          </div>
-        ) : null,
-      )}
+      {/* public-works facilities, each at its dropped location */}
+      {placements.map((p) => (
+        <div
+          key={p.id}
+          className="pointer-events-none absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+          style={{ left: `${p.x}%`, top: `${p.y}%` }}
+        >
+          <span className="text-4xl drop-shadow">{FACILITY_META[p.kind].icon}</span>
+          <span className="rounded-full bg-amber-900/85 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
+            {FACILITY_META[p.kind].name}
+          </span>
+        </div>
+      ))}
 
       {/* cats */}
       {cats.map((cat) => (
-        <CatSprite key={cat.id} cat={cat} weather={weather} onStrike={strikeActive} />
+        <CatSprite
+          key={cat.id}
+          cat={cat}
+          weather={weather}
+          onStrike={strikeActive}
+          aura={strikeActive ? null : catAura(cat, placements)}
+        />
       ))}
 
       {/* in-map economic signboards */}

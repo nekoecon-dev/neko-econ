@@ -6,7 +6,7 @@ import { updateAllCats } from '@/lib/engine/cats';
 import { updateCompanies } from '@/lib/engine/companies';
 import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
 import { detectEvent } from '@/lib/engine/events';
-import { FACILITY_COST } from '@/lib/engine/facilities';
+import { FACILITY_COST, FACILITY_NEWS } from '@/lib/engine/facilities';
 import { applyLoanInterest, repayLoan } from '@/lib/engine/loan';
 import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
@@ -75,13 +75,26 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return executeSell(state, action.catId);
     case 'REPAY_LOAN':
       return repayLoan(state, action.amount);
-    case 'BUY_FACILITY': {
+    case 'PLACE_FACILITY': {
       const cost = FACILITY_COST[action.kind];
       if (state.player.cash < cost) return state; // can't afford
+      const placement = {
+        id: `${action.kind}-${state.tick}-${state.placements.length}`,
+        kind: action.kind,
+        x: clamp(action.x, 5, 90),
+        y: clamp(action.y, 5, 85),
+      };
+      const news: NewsItem = {
+        tick: state.tick,
+        event: '公共事業',
+        text: FACILITY_NEWS[action.kind],
+      };
       return {
         ...state,
         player: { ...state.player, cash: round2(state.player.cash - cost) },
         facilities: { ...state.facilities, [action.kind]: state.facilities[action.kind] + 1 },
+        placements: [...state.placements, placement],
+        newsLog: [news, ...state.newsLog].slice(0, 50),
       };
     }
     default:

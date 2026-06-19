@@ -17,6 +17,14 @@ const BUBBLE: Record<CatAction, string> = {
   sleeping: '😴 Zzz…',
 };
 
+/** A nearby placed facility nudges the cat's mood/activity. */
+export type CatAura = 'work' | 'happy' | 'fishing';
+const AURA_BUBBLE: Record<CatAura, string> = {
+  work: '💼 はたらくニャ！',
+  happy: '😻 しあわせニャ〜',
+  fishing: '🎣 釣りするニャ',
+};
+
 function Eyes({ action, bankrupt }: { action: CatAction; bankrupt: boolean }) {
   if (bankrupt) {
     // squeezed-shut crying eyes >_<
@@ -109,20 +117,25 @@ export default function CatSprite({
   cat,
   weather = 'normal',
   onStrike = false,
+  aura = null,
 }: {
   cat: Cat;
   weather?: Weather;
   onStrike?: boolean;
+  aura?: CatAura | null;
 }) {
   const bankrupt = cat.money <= 0;
   const depression = weather === 'depression';
+  // A facility aura colours the bubble only in calm states (distress wins out).
   const bubble = bankrupt
     ? '😭 もうだめニャ…'
     : onStrike
       ? '✊ 賃上げ要求ニャ！'
       : depression
         ? '🥶 さむい…ニャ'
-        : BUBBLE[cat.action];
+        : aura
+          ? AURA_BUBBLE[aura]
+          : BUBBLE[cat.action];
   // Priority: bankrupt cry > strike picket > depression shiver > sleep > bob.
   const wrapperAnim = bankrupt
     ? 'cat-cry'
@@ -173,6 +186,9 @@ export default function CatSprite({
           </>
         )}
         {onStrike && <span className="absolute -right-1 -top-2 text-xl">🪧</span>}
+        {!bankrupt && !onStrike && aura === 'fishing' && (
+          <span className="cat-float absolute -right-3 top-1 text-2xl">🎣</span>
+        )}
       </div>
 
       <span className="-mt-1 rounded-full bg-amber-900/85 px-2 py-0.5 text-[11px] font-bold text-white shadow">

@@ -238,8 +238,15 @@ modal (`REPAY_LOAN`); paying the loan to 0 upgrades it to a house (🏡).
 
 ## Public works (`facilities.ts`)
 
-`BUY_FACILITY` spends player cash to build facilities (`FacilityState` counts),
-shown as map icons and reflected live in the indicators:
+The 公共事業 panel (`PublicWorks`) is a collapsible tray of draggable building
+cards. Dragging a card onto the map fires `PLACE_FACILITY {kind,x,y}`: it spends
+player cash, bumps the `FacilityState` count (which still drives all economic
+effects), appends an individual `PlacedFacility {id,kind,x,y}` to
+`state.placements`, and pushes a `FACILITY_NEWS` headline to the ticker (e.g.
+「スープ工場完成！失業率が10%低下」). `VillageMap` renders each placement at its
+dropped spot and applies a **proximity aura** to nearby cats (`catAura`, within
+`AURA_RADIUS`): a soup factory turns idle cats to「はたらくニャ」, a matatabi park
+to「しあわせニャ〜」, a fishing pond gives cats a 🎣 rod and「釣りするニャ」.
 - 🏭 スープ工場 (5,000 CC): unemployment −10% each + extra supply (productivity)
 - 🌳 マタタビ公園 (3,000 CC): raises the Gini threshold for strikes (anti-strike)
 - 🎣 釣り堀 (2,000 CC): extra supply → downward (deflationary) price pressure

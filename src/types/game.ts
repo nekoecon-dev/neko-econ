@@ -110,6 +110,14 @@ export interface PlayerWallet {
 export type FacilityKind = 'soupFactory' | 'matatabiPark' | 'fishingPond';
 export type FacilityState = Record<FacilityKind, number>; // kind -> count built
 
+/** A facility the player has dropped onto a specific spot on the map. */
+export interface PlacedFacility {
+  id: string;
+  kind: FacilityKind;
+  x: number; // 0..100 (% horizontal position on the map)
+  y: number; // 0..100 (% vertical position on the map)
+}
+
 export interface GameState {
   tick: number;
   cats: Cat[];
@@ -121,7 +129,8 @@ export interface GameState {
   player: PlayerWallet;
   weather: WeatherState;
   strike: StrikeState;
-  facilities: FacilityState;
+  facilities: FacilityState; // running count per kind (drives economic effects)
+  placements: PlacedFacility[]; // individual buildings dropped on the map
 }
 
 export type PolicyAction =
@@ -131,4 +140,4 @@ export type PolicyAction =
   | { type: 'BUY_STOCK'; catId: string }
   | { type: 'SELL_STOCK'; catId: string }
   | { type: 'REPAY_LOAN'; amount: number }
-  | { type: 'BUY_FACILITY'; kind: FacilityKind };
+  | { type: 'PLACE_FACILITY'; kind: FacilityKind; x: number; y: number };

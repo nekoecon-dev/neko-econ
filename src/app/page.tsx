@@ -51,7 +51,8 @@ export default function Home() {
             cats={state.cats}
             economy={state.economy}
             stocks={state.stocks}
-            facilities={state.facilities}
+            placements={state.placements}
+            dispatch={dispatch}
             latestNews={state.newsLog[0]?.text}
             weather={weather}
             strikeActive={state.strike.active}
@@ -75,11 +76,7 @@ export default function Home() {
             dispatch={dispatch}
           />
           <ControlPanel policy={state.policy} dispatch={dispatch} />
-          <PublicWorks
-            facilities={state.facilities}
-            cash={state.player.cash}
-            dispatch={dispatch}
-          />
+          <PublicWorks facilities={state.facilities} cash={state.player.cash} />
         </aside>
       </div>
 
