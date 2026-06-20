@@ -2,8 +2,7 @@
 
 import { useGameLoop } from '@/hooks/useGameLoop';
 import Village3D from '@/components/Village3D';
-import EconomyDashboard from '@/components/EconomyDashboard';
-import ControlPanel from '@/components/ControlPanel';
+import InflationPanel from '@/components/InflationPanel';
 import StockMarket from '@/components/StockMarket';
 import StrikeBanner from '@/components/StrikeBanner';
 import PlayerHouse from '@/components/PlayerHouse';
@@ -46,16 +45,16 @@ export default function Home() {
         </div>
       </header>
 
-      {/* right-hand control/dashboard column, scrollable, floating over the canvas */}
+      {/* right-hand overlay: only the small inflation graph + stock / works panels
+          (the economic dashboard now lives in the 3D world). */}
       <aside className="pointer-events-none absolute right-0 top-16 bottom-20 flex w-[88%] max-w-xs flex-col gap-3 overflow-y-auto p-3 [&>*]:pointer-events-auto">
-        <EconomyDashboard economy={state.economy} />
+        <InflationPanel economy={state.economy} />
         <StockMarket
           cats={state.cats}
           stocks={state.stocks}
           player={state.player}
           dispatch={dispatch}
         />
-        <ControlPanel policy={state.policy} dispatch={dispatch} />
         <PublicWorks facilities={state.facilities} cash={state.player.cash} />
       </aside>
 

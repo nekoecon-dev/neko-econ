@@ -189,6 +189,138 @@ export function makeSoupPot(): THREE.Group {
   return pot;
 }
 
+/* --------------------------- spatial UI props --------------------------- */
+
+/** A wooden signpost (two posts + a board). The board face is where a CSS2D
+ *  label is anchored; `boardY` is the board's local height. */
+export function makeSignpost(): THREE.Group {
+  const sign = new THREE.Group();
+  const postMat = matte('#8a5a2b');
+  for (const px of [-0.5, 0.5]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.6, 6), postMat);
+    post.position.set(px, 0.8, 0);
+    sign.add(post);
+  }
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 0.1), matte('#b9823f'));
+  board.position.y = 1.5;
+  sign.add(board);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.74, 0.94, 0.06), matte('#6b4423'));
+  frame.position.set(0, 1.5, -0.03);
+  sign.add(frame);
+  return sign;
+}
+
+/** The ネコ銀行 building: a stone box with a pediment and coin emblem. */
+export function makeBankBuilding(): THREE.Group {
+  const bank = new THREE.Group();
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.0, 2.0), matte('#dfe3ea'));
+  walls.position.y = 1.0;
+  bank.add(walls);
+  // columns
+  const colMat = matte('#f2f4f8');
+  for (const cx of [-0.9, -0.3, 0.3, 0.9]) {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.6, 8), colMat);
+    col.position.set(cx, 0.9, 1.05);
+    bank.add(col);
+  }
+  // pediment (triangular roof)
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.9, 0.9, 3), matte('#c2a76a'));
+  roof.position.y = 2.45;
+  roof.rotation.y = Math.PI / 2;
+  bank.add(roof);
+  // gold coin emblem
+  const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16), matte('#f1c84b'));
+  coin.position.set(0, 1.3, 1.06);
+  coin.rotation.x = Math.PI / 2;
+  bank.add(coin);
+  return bank;
+}
+
+/** The 役場 (town hall): a brick box with a little clock tower. */
+export function makeTownHall(): THREE.Group {
+  const hall = new THREE.Group();
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.8, 2.0), matte('#e7c9a0'));
+  walls.position.y = 0.9;
+  hall.add(walls);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.9, 1.0, 4), matte('#7c8a5a'));
+  roof.position.y = 2.3;
+  roof.rotation.y = Math.PI / 4;
+  hall.add(roof);
+  // clock tower
+  const tower = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.2, 0.7), matte('#efd9b8'));
+  tower.position.set(0, 2.6, 0);
+  hall.add(tower);
+  const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.7, 4), matte('#7c8a5a'));
+  towerRoof.position.set(0, 3.55, 0);
+  towerRoof.rotation.y = Math.PI / 4;
+  hall.add(towerRoof);
+  const clock = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 14), matte('#ffffff'));
+  clock.position.set(0, 2.7, 0.36);
+  clock.rotation.x = Math.PI / 2;
+  hall.add(clock);
+  return hall;
+}
+
+/**
+ * A clickable policy lever: a base box with a tilting handle. The handle mesh
+ * is named 'handle' so the render loop can tilt it to reflect the current value.
+ */
+export function makeLever(accent: THREE.ColorRepresentation): THREE.Group {
+  const lever = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.7), matte('#6b4423'));
+  base.position.y = 0.15;
+  lever.add(base);
+  const pivot = new THREE.Group();
+  pivot.name = 'handle';
+  pivot.position.y = 0.3;
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.9, 8), matte('#9c6b3b'));
+  stick.position.y = 0.45;
+  pivot.add(stick);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), matte(accent));
+  knob.position.y = 0.9;
+  pivot.add(knob);
+  lever.add(pivot);
+  return lever;
+}
+
+/**
+ * A three-column "thermometer" gauge board. Each column has a tube and a
+ * coloured fill mesh (named fill0/fill1/fill2) whose vertical scale the render
+ * loop drives from an economic metric.
+ */
+export function makeThermometers(): THREE.Group {
+  const board = new THREE.Group();
+  const H = 3;
+  const cols: [number, THREE.ColorRepresentation][] = [
+    [-1.1, '#ef5b5b'], // unemployment
+    [0, '#f59e3b'], // inflation
+    [1.1, '#9b6cf0'], // gini
+  ];
+  cols.forEach(([cx, color], i) => {
+    const tube = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, H, 12),
+      new THREE.MeshStandardMaterial({ color: '#eef1f6', transparent: true, opacity: 0.5 }),
+    );
+    tube.position.set(cx, H / 2 + 0.4, 0);
+    board.add(tube);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 12), matte(color));
+    bulb.position.set(cx, 0.4, 0);
+    board.add(bulb);
+    // fill grows upward from the bulb (geometry base at local y=0).
+    const fillGeo = new THREE.CylinderGeometry(0.15, 0.15, 1, 10).translate(0, 0.5, 0);
+    const fill = new THREE.Mesh(fillGeo, matte(color));
+    fill.name = `fill${i}`;
+    fill.position.set(cx, 0.5, 0);
+    fill.scale.y = 0.02;
+    board.add(fill);
+  });
+  // back panel
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(3.4, 4.2, 0.2), matte('#cfd6e0'));
+  panel.position.set(0, 2.2, -0.3);
+  board.add(panel);
+  return board;
+}
+
 /* ------------------------------- cats ------------------------------- */
 
 // Per-cat appearance: coat, big-eye colour, cheek colour, fur pattern, and the

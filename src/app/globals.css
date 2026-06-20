@@ -67,6 +67,82 @@ body {
   font-size: 17px;
   animation: neko-spin 2s linear infinite;
 }
+
+/* ---------- 3D spatial-UI panels (signs / levers / NPC) ---------- */
+.v3d-panel {
+  pointer-events: none;
+  user-select: none;
+  text-align: center;
+  font-family: var(--font-geist-sans), "Hiragino Maru Gothic ProN", sans-serif;
+  white-space: nowrap;
+  border-radius: 12px;
+  border: 2px solid #92400e;
+  background: rgba(255, 253, 247, 0.95);
+  padding: 4px 8px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+.v3d-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #7c2d12;
+}
+.v3d-val {
+  font-size: 15px;
+  font-weight: 900;
+  color: #1f2937;
+  font-variant-numeric: tabular-nums;
+}
+.v3d-sub {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b4423;
+  font-variant-numeric: tabular-nums;
+}
+.v3d-btnrow {
+  margin-top: 3px;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+.v3d-btn {
+  pointer-events: auto;
+  cursor: pointer;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-radius: 9px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+.v3d-btn:active {
+  transform: translateY(1px);
+}
+.v3d-btn-up {
+  background: #10b981;
+}
+.v3d-btn-down {
+  background: #ef4444;
+}
+.v3d-btn-cash {
+  background: #f59e0b;
+}
+.v3d-btn-loan {
+  background: #d97706;
+}
+/* quick "jump" pop re-triggered when a number changes */
+.v3d-jump {
+  animation: neko-jump 0.4s ease-out;
+}
+@keyframes neko-jump {
+  0% {
+    transform: scale(1.5);
+    color: #dc2626;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
 @keyframes neko-spin {
   from {
     transform: rotateY(0deg);

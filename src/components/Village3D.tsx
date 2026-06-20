@@ -5,16 +5,46 @@ import * as THREE from 'three';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import type { CatAction, GameState, PolicyAction, Weather } from '@/types/game';
 import { isFacilityKind } from '@/lib/engine/facilities';
+import { tickInterest } from '@/lib/engine/loan';
 import {
   buildVillage,
   CAT_STYLES,
   DEFAULT_CAT_STYLE,
   GROUND,
+  makeBankBuilding,
   makeCat,
   makeFacility,
+  makeLever,
+  makeSignpost,
+  makeThermometers,
+  makeTownHall,
   mapToWorld,
   worldToMap,
 } from '@/lib/three/builders';
+
+/** Clamp a number to [lo, hi]. */
+function clampNum(v: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, v));
+}
+
+/** A click-through CSS2D control button (HTML, anchored in 3D). */
+function ctlButton(text: string, cls: string, onClick: () => void): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.textContent = text;
+  b.className = `v3d-btn ${cls}`;
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return b;
+}
+
+/** Re-trigger the little "jump" pop animation on an element. */
+function popJump(el: HTMLElement): void {
+  el.classList.remove('v3d-jump');
+  void el.offsetWidth; // force reflow so the animation restarts
+  el.classList.add('v3d-jump');
+}
 
 // Short Japanese caption per action, shown under each cat's name label.
 const ACTION_LABEL: Record<CatAction, string> = {
@@ -286,6 +316,210 @@ export default function Village3D({
     const village = buildVillage();
     scene.add(village);
 
+    // ---- Spatial UI: info/controls embedded in 3D objects, refreshed each
+    // frame by the `updaters` list (they read the latest state via stateRef). ----
+    const updaters: Array<() => void> = [];
+
+    // Soup price signboard next to the pot (red when rising, green when falling).
+    const soupSign = makeSignpost();
+    soupSign.position.set(2.2, 0, 1.9);
+    soupSign.rotation.y = -0.5;
+    scene.add(soupSign);
+    {
+      const root = document.createElement('div');
+      root.className = 'v3d-panel';
+      const val = document.createElement('div');
+      val.className = 'v3d-val';
+      root.appendChild(val);
+      const obj = new CSS2DObject(root);
+      obj.position.set(0, 1.5, 0.12);
+      soupSign.add(obj);
+      let last = -1;
+      updaters.push(() => {
+        const e = stateRef.current.economy;
+        if (e.soupPrice !== last) {
+          val.textContent = `🍲 ${e.soupPrice} CC`;
+          last = e.soupPrice;
+        }
+        val.style.color =
+          e.inflationRate > 0 ? '#dc2626' : e.inflationRate < 0 ? '#16a34a' : '#1f2937';
+      });
+    }
+
+    // ネコ銀行 building + interest lever.
+    const bank = makeBankBuilding();
+    bank.position.set(-9.5, 0, 4.2);
+    bank.rotation.y = 0.5;
+    scene.add(bank);
+    {
+      const root = document.createElement('div');
+      root.className = 'v3d-panel';
+      const title = document.createElement('div');
+      title.className = 'v3d-title';
+      title.textContent = '🏦 ネコ銀行';
+      const rate = document.createElement('div');
+      rate.className = 'v3d-val';
+      const loan = document.createElement('div');
+      loan.className = 'v3d-sub';
+      root.append(title, rate, loan);
+      const obj = new CSS2DObject(root);
+      obj.position.set(0, 3.5, 0);
+      bank.add(obj);
+
+      const lever = makeLever('#10b981');
+      lever.position.set(-9.3, 0, 6.4);
+      lever.rotation.y = 0.5;
+      scene.add(lever);
+      const handle = lever.getObjectByName('handle') ?? null;
+      const ctlRoot = document.createElement('div');
+      ctlRoot.className = 'v3d-panel';
+      const ctlTitle = document.createElement('div');
+      ctlTitle.className = 'v3d-title';
+      ctlTitle.textContent = '⚙️ 金利レバー';
+      const row = document.createElement('div');
+      row.className = 'v3d-btnrow';
+      row.append(
+        ctlButton('▼ -1%', 'v3d-btn-down', () =>
+          dispatchRef.current({
+            type: 'SET_INTEREST_RATE',
+            value: clampNum(stateRef.current.policy.interestRate - 1, 0, 20),
+          }),
+        ),
+        ctlButton('+1% ▲', 'v3d-btn-up', () =>
+          dispatchRef.current({
+            type: 'SET_INTEREST_RATE',
+            value: clampNum(stateRef.current.policy.interestRate + 1, 0, 20),
+          }),
+        ),
+      );
+      ctlRoot.append(ctlTitle, row);
+      const ctlObj = new CSS2DObject(ctlRoot);
+      ctlObj.position.set(0, 1.7, 0);
+      lever.add(ctlObj);
+
+      let lastRate = -1;
+      let lastLoan = '';
+      updaters.push(() => {
+        const s = stateRef.current;
+        const r = s.policy.interestRate;
+        if (r !== lastRate) {
+          rate.textContent = `金利: ${r}%`;
+          popJump(rate);
+          if (handle) handle.rotation.z = -0.5 + (r / 20) * 1.0;
+          lastRate = r;
+        }
+        const interest = tickInterest(s.player.loan, r);
+        const txt = `ローン ${Math.round(s.player.loan)} / 利息 ${interest}`;
+        if (txt !== lastLoan) {
+          loan.textContent = txt;
+          lastLoan = txt;
+        }
+      });
+    }
+
+    // 役場 (town hall) + tax lever + currency-issue button.
+    const hall = makeTownHall();
+    hall.position.set(9.5, 0, 4.2);
+    hall.rotation.y = -0.5;
+    scene.add(hall);
+    {
+      const root = document.createElement('div');
+      root.className = 'v3d-panel';
+      const title = document.createElement('div');
+      title.className = 'v3d-title';
+      title.textContent = '🏛️ 役場';
+      const tax = document.createElement('div');
+      tax.className = 'v3d-val';
+      const row = document.createElement('div');
+      row.className = 'v3d-btnrow';
+      row.append(
+        ctlButton('💴 +100CC', 'v3d-btn-cash', () =>
+          dispatchRef.current({ type: 'ISSUE_CURRENCY', amount: 100 }),
+        ),
+      );
+      root.append(title, tax, row);
+      const obj = new CSS2DObject(root);
+      obj.position.set(0, 4.2, 0);
+      hall.add(obj);
+
+      const lever = makeLever('#ef4444');
+      lever.position.set(9.3, 0, 6.4);
+      lever.rotation.y = -0.5;
+      scene.add(lever);
+      const handle = lever.getObjectByName('handle') ?? null;
+      const ctlRoot = document.createElement('div');
+      ctlRoot.className = 'v3d-panel';
+      const ctlTitle = document.createElement('div');
+      ctlTitle.className = 'v3d-title';
+      ctlTitle.textContent = '⚙️ 税率レバー';
+      const ctlrow = document.createElement('div');
+      ctlrow.className = 'v3d-btnrow';
+      ctlrow.append(
+        ctlButton('▼ -5%', 'v3d-btn-down', () =>
+          dispatchRef.current({
+            type: 'SET_TAX_RATE',
+            value: clampNum(stateRef.current.policy.taxRate - 5, 0, 50),
+          }),
+        ),
+        ctlButton('+5% ▲', 'v3d-btn-up', () =>
+          dispatchRef.current({
+            type: 'SET_TAX_RATE',
+            value: clampNum(stateRef.current.policy.taxRate + 5, 0, 50),
+          }),
+        ),
+      );
+      ctlRoot.append(ctlTitle, ctlrow);
+      const ctlObj = new CSS2DObject(ctlRoot);
+      ctlObj.position.set(0, 1.7, 0);
+      lever.add(ctlObj);
+
+      let lastTax = -1;
+      updaters.push(() => {
+        const r = stateRef.current.policy.taxRate;
+        if (r !== lastTax) {
+          tax.textContent = `税率: ${r}%`;
+          popJump(tax);
+          if (handle) handle.rotation.z = -0.5 + (r / 50) * 1.0;
+          lastTax = r;
+        }
+      });
+    }
+
+    // Inflation/economy "thermometer" gauges at the back of the field.
+    const thermo = makeThermometers();
+    thermo.position.set(0, 0, -10);
+    scene.add(thermo);
+    {
+      const fills = [0, 1, 2].map((i) => thermo.getObjectByName(`fill${i}`) ?? null);
+      const makeGauge = (cx: number, title: string): HTMLElement => {
+        const root = document.createElement('div');
+        root.className = 'v3d-panel';
+        const t = document.createElement('div');
+        t.className = 'v3d-title';
+        t.textContent = title;
+        const v = document.createElement('div');
+        v.className = 'v3d-val';
+        root.append(t, v);
+        const obj = new CSS2DObject(root);
+        obj.position.set(cx, 4.0, 0);
+        thermo.add(obj);
+        return v;
+      };
+      const unV = makeGauge(-1.1, '😿失業');
+      const inV = makeGauge(0, '📈インフレ');
+      const giV = makeGauge(1.1, '⚖️格差');
+      const H = 3;
+      updaters.push(() => {
+        const e = stateRef.current.economy;
+        if (fills[0]) fills[0].scale.y = clampNum(e.unemploymentRate / 100, 0.02, 1) * H;
+        if (fills[1]) fills[1].scale.y = clampNum(e.inflationRate / 30, 0.02, 1) * H;
+        if (fills[2]) fills[2].scale.y = clampNum(e.gini, 0.02, 1) * H;
+        unV.textContent = `${e.unemploymentRate}%`;
+        inV.textContent = `${e.inflationRate >= 0 ? '+' : ''}${e.inflationRate}%`;
+        giV.textContent = e.gini.toFixed(2);
+      });
+    }
+
     // Spawn one cat per id (stable), each with a phase offset (so idle bobbing
     // isn't synchronised), an HTML name label, and a floating Zzz puff.
     const catLayer = new THREE.Group();
@@ -515,6 +749,9 @@ export default function Village3D({
           rt.lastMoney = money;
         }
       }
+
+      // Refresh all the embedded spatial-UI labels/gauges.
+      for (const u of updaters) u();
 
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
