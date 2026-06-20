@@ -1,11 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useGameLoop } from '@/hooks/useGameLoop';
 import Village3D from '@/components/Village3D';
 import InflationPanel from '@/components/InflationPanel';
 import StockMarket from '@/components/StockMarket';
 import StrikeBanner from '@/components/StrikeBanner';
-import PlayerHouse from '@/components/PlayerHouse';
+import LoanModal from '@/components/LoanModal';
 import PublicWorks from '@/components/PublicWorks';
 import NewsTicker from '@/components/NewsTicker';
 import OpeningMessage from '@/components/OpeningMessage';
@@ -13,6 +14,7 @@ import Missions from '@/components/Missions';
 
 export default function Home() {
   const { state, dispatch } = useGameLoop();
+  const [loanOpen, setLoanOpen] = useState(false);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden text-amber-950">
@@ -20,7 +22,7 @@ export default function Home() {
 
       {/* 3D village fills the whole screen as the background */}
       <div className="absolute inset-0">
-        <Village3D state={state} dispatch={dispatch} />
+        <Village3D state={state} dispatch={dispatch} onOpenLoan={() => setLoanOpen(true)} />
       </div>
 
       {/* top bar: title + tick + wallet (non-interactive, floats over the canvas) */}
@@ -68,12 +70,13 @@ export default function Home() {
         <StrikeBanner reliefCount={state.strike.reliefCount} taxRate={state.policy.taxRate} />
       )}
 
-      {/* player house / loan, bottom-left over the canvas */}
-      <PlayerHouse
+      {/* loan repayment popup, opened by clicking the たぬきち banker in 3D */}
+      <LoanModal
         player={state.player}
         interestRate={state.policy.interestRate}
         dispatch={dispatch}
-        className="bottom-24 left-3"
+        open={loanOpen}
+        onClose={() => setLoanOpen(false)}
       />
 
       {/* news ticker pinned to the bottom */}

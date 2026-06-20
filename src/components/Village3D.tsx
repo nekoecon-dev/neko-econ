@@ -11,10 +11,13 @@ import {
   CAT_STYLES,
   DEFAULT_CAT_STYLE,
   GROUND,
+  makeBanker,
   makeBankBuilding,
   makeCat,
   makeFacility,
+  makeHouse,
   makeLever,
+  makePlayerTent,
   makeSignpost,
   makeThermometers,
   makeTownHall,
@@ -236,19 +239,23 @@ function driftParticles(points: THREE.Points, dy: number): void {
 export default function Village3D({
   state,
   dispatch,
+  onOpenLoan,
 }: {
   state: GameState;
   dispatch: (action: PolicyAction) => void;
+  onOpenLoan: () => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
   const dispatchRef = useRef(dispatch);
+  const onOpenLoanRef = useRef(onOpenLoan);
 
   // Mirror the latest state/dispatch for the loop + drop handler (the scene is
   // only set up once).
   useEffect(() => {
     stateRef.current = state;
     dispatchRef.current = dispatch;
+    onOpenLoanRef.current = onOpenLoan;
   });
 
   useEffect(() => {
@@ -520,6 +527,63 @@ export default function Village3D({
       });
     }
 
+    // Player's dwelling (tent while in debt, house once paid off) + たぬきち
+    // banker NPC that shows the loan balance and opens the repayment popup.
+    const tent = makePlayerTent();
+    tent.position.set(-2.6, 0, 8.6);
+    scene.add(tent);
+    const playerHouse = makeHouse('#dc2626');
+    playerHouse.scale.setScalar(0.7);
+    playerHouse.position.set(-2.6, 0, 8.6);
+    playerHouse.visible = false;
+    scene.add(playerHouse);
+
+    const banker = makeBanker();
+    banker.position.set(-0.9, 0, 8.9);
+    banker.rotation.y = 2.6;
+    scene.add(banker);
+    {
+      const root = document.createElement('div');
+      root.className = 'v3d-panel';
+      const title = document.createElement('div');
+      title.className = 'v3d-title';
+      title.textContent = '🦝 ネコ銀行 たぬきち';
+      const balance = document.createElement('div');
+      balance.className = 'v3d-val';
+      const interestEl = document.createElement('div');
+      interestEl.className = 'v3d-sub';
+      const row = document.createElement('div');
+      row.className = 'v3d-btnrow';
+      row.append(ctlButton('💰 返済する', 'v3d-btn-loan', () => onOpenLoanRef.current()));
+      root.append(title, balance, interestEl, row);
+      const obj = new CSS2DObject(root);
+      obj.position.set(0, 2.4, 0);
+      banker.add(obj);
+
+      let lastLoan = -1;
+      let lastInterest = -1;
+      updaters.push(() => {
+        const s = stateRef.current;
+        const loanLeft = Math.round(s.player.loan);
+        const paid = loanLeft <= 0;
+        tent.visible = !paid;
+        playerHouse.visible = paid;
+        if (loanLeft !== lastLoan) {
+          balance.textContent = paid ? '完済！マイホーム🎉' : `借金残高: ${loanLeft} CC`;
+          balance.style.color = paid ? '#16a34a' : '#1f2937';
+          lastLoan = loanLeft;
+        }
+        const interest = tickInterest(s.player.loan, s.policy.interestRate);
+        if (interest !== lastInterest) {
+          interestEl.textContent = paid ? '' : `月利: ${interest} CC`;
+          // Jump + flash red when the interest climbs (e.g. the rate lever rises).
+          if (interest > lastInterest && lastInterest >= 0) popJump(interestEl);
+          interestEl.style.color = interest > 0 ? '#dc2626' : '#6b4423';
+          lastInterest = interest;
+        }
+      });
+    }
+
     // Spawn one cat per id (stable), each with a phase offset (so idle bobbing
     // isn't synchronised), an HTML name label, and a floating Zzz puff.
     const catLayer = new THREE.Group();
@@ -604,6 +668,18 @@ export default function Village3D({
     };
     mount.addEventListener('dragover', onDragOver);
     mount.addEventListener('drop', onDrop);
+
+    // Click the banker NPC to open the loan repayment popup.
+    const onCanvasClick = (e: MouseEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.intersectObject(banker, true).length > 0) {
+        onOpenLoanRef.current();
+      }
+    };
+    renderer.domElement.addEventListener('click', onCanvasClick);
 
     let raf = 0;
     const clock = new THREE.Clock();
@@ -775,6 +851,7 @@ export default function Village3D({
       resizeObserver.disconnect();
       mount.removeEventListener('dragover', onDragOver);
       mount.removeEventListener('drop', onDrop);
+      renderer.domElement.removeEventListener('click', onCanvasClick);
       scene.traverse((obj) => {
         if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line) {
           obj.geometry.dispose();

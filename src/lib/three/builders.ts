@@ -541,6 +541,53 @@ export function makeCat(style: CatStyle): THREE.Group {
   return cat;
 }
 
+/** たぬきち-style banker cat: a brown cat with a head leaf and a gold coin. */
+export function makeBanker(): THREE.Group {
+  const banker = makeCat({
+    coat: '#8a6a44',
+    eye: '#2b2b2b',
+    cheek: '#e9d4b3',
+    pattern: 'plain',
+  });
+  const head = banker.getObjectByName('head');
+  if (head) {
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), toon('#efe2cd'));
+    muzzle.position.set(0, -0.12, 0.46);
+    muzzle.scale.set(0.34, 0.26, 0.16);
+    head.add(muzzle);
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.42, 4), toon('#5cc169'));
+    leaf.position.set(0, 0.66, 0);
+    leaf.rotation.x = 0.3;
+    head.add(leaf);
+  }
+  const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.05, 14), toon('#f1c84b'));
+  coin.position.set(0, 0.5, 0.42);
+  coin.rotation.x = Math.PI / 2;
+  banker.add(coin);
+  banker.scale.setScalar(1.15);
+  return banker;
+}
+
+/** The player's tent (shown while in debt). */
+export function makePlayerTent(): THREE.Group {
+  const tent = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.5, 4), matte('#e2762e'));
+  body.position.y = 0.75;
+  body.rotation.y = Math.PI / 4;
+  tent.add(body);
+  const door = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.0, 3), matte('#7c2d12'));
+  door.position.set(0, 0.5, 0.74);
+  door.rotation.x = Math.PI;
+  tent.add(door);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 5), matte('#6b4423'));
+  pole.position.y = 1.6;
+  tent.add(pole);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.02), matte('#ef4444'));
+  flag.position.set(0.18, 1.72, 0);
+  tent.add(flag);
+  return tent;
+}
+
 /* ----------------------------- facilities ----------------------------- */
 
 const TREE_SPOTS: [number, number][] = [
