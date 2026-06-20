@@ -47,7 +47,11 @@ export function decideCatAction(cat: Cat, market: Market): CatAction {
 export interface CatTickOptions {
   hiring?: boolean; // an active venture is hiring idle cats
   onStrike?: boolean; // a labor strike halts all work (cats picket = idle)
+  forceWork?: boolean; // area buff: a nearby soup factory prioritises working
 }
+
+// Area-buff radius (map %) ≈ 3 road tiles around a public facility.
+export const AREA_BUFF_RADIUS = 15;
 
 export function updateCat(
   cat: Cat,
@@ -72,6 +76,11 @@ export function updateCat(
   if (action === 'working' && cat.personality === 'conservative') {
     const idleProbability = policy.interestRate / 40; // up to 0.5 at 20%
     if (Math.random() < idleProbability) action = 'idle';
+  }
+
+  // Area buff: a soup factory within range prioritises working for idle cats.
+  if (opts.forceWork && action === 'idle' && cat.energy > ENERGY_WORK_MIN) {
+    action = 'working';
   }
 
   // Employment hook: an active venture hires idle cats, lowering unemployment.
@@ -144,8 +153,14 @@ export function updateAllCats(state: GameState, opts: CatTickOptions = {}): Game
 
   const priceFactor = 10 / Math.max(market.soupPrice, 1); // negative feedback
 
+  // Soup factories within AREA_BUFF_RADIUS prioritise working for nearby cats.
+  const factories = state.placements.filter((p) => p.kind === 'soupFactory');
+  const nearFactory = (cat: Cat): boolean =>
+    factories.some((f) => Math.hypot(cat.x - f.x, cat.y - f.y) <= AREA_BUFF_RADIUS);
+
   const next = cats.map((cat) => {
-    const updated = updateCat(cat, market, policy, opts);
+    const catOpts = nearFactory(cat) ? { ...opts, forceWork: true } : opts;
+    const updated = updateCat(cat, market, policy, catOpts);
 
     // Supply: soup put on the market by working producers / traders.
     if (updated.action === 'working') {

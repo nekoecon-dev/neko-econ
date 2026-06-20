@@ -978,8 +978,9 @@ export default function Village3D({
       }
 
       // Precompute facility influence on cats: collect facility world positions,
-      // and pick the single nearest cat to each pond (it will go fishing).
-      const REACTION_RADIUS = 4.5;
+      // and pick the single nearest cat to each pond (it will go fishing). The
+      // radius is 3 road tiles, matching the engine's AREA_BUFF_RADIUS.
+      const REACTION_RADIUS = TILE * 3;
       const factories: { x: number; z: number }[] = [];
       const parks: { x: number; z: number }[] = [];
       const ponds: { x: number; z: number }[] = [];
