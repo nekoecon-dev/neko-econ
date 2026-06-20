@@ -13,11 +13,14 @@ import PublicWorks from '@/components/PublicWorks';
 import NewsTicker from '@/components/NewsTicker';
 import OpeningMessage from '@/components/OpeningMessage';
 import Missions from '@/components/Missions';
+import RepaymentTimer from '@/components/RepaymentTimer';
+import GameOverScreen from '@/components/GameOverScreen';
 
 export default function Home() {
-  const { state, dispatch } = useGameLoop();
+  const { state, dispatch, reset } = useGameLoop();
   const [loanOpen, setLoanOpen] = useState(false);
   const [pending, setPending] = useState<FacilityKind | null>(null);
+  const repayRemaining = Math.max(0, state.repayDueTick - state.tick);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden text-amber-950">
@@ -92,8 +95,13 @@ export default function Home() {
         />
       </aside>
 
+      {/* forced-repayment countdown, top centre */}
+      <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2">
+        <RepaymentTimer remaining={repayRemaining} />
+      </div>
+
       {/* mission panel + reward popup, left side under the title */}
-      <div className="pointer-events-none absolute left-3 top-16">
+      <div className="pointer-events-none absolute left-3 top-28">
         <Missions state={state} />
       </div>
 
@@ -115,6 +123,9 @@ export default function Home() {
       <footer className="absolute inset-x-0 bottom-0 p-3">
         <NewsTicker news={state.newsLog} />
       </footer>
+
+      {/* foreclosure / game over */}
+      {state.gameOver && <GameOverScreen onRetry={reset} />}
     </main>
   );
 }

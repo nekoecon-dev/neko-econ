@@ -1,6 +1,7 @@
 import type { Cat, GameState, StockShare } from '@/types/game';
 import { initStock } from './stocks';
 import { INITIAL_LOAN } from './loan';
+import { REPAY_INTERVAL } from './loanDeadline';
 
 const INITIAL_MONEY = 100;
 const INITIAL_PRICE = 10;
@@ -120,4 +121,6 @@ export const INITIAL_STATE: GameState = {
   facilities: { soupFactory: 0, matatabiPark: 0, fishingPond: 0 },
   placements: [],
   missions: { index: 0, lastRewardTick: -1 },
+  repayDueTick: REPAY_INTERVAL,
+  gameOver: false,
 };

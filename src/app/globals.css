@@ -82,6 +82,20 @@ body {
   }
 }
 
+/* Repayment countdown blink (when the deadline is near) */
+@keyframes neko-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.countdown-blink {
+  animation: neko-blink 0.6s ease-in-out infinite;
+}
+
 /* ---------- 3D spatial-UI panels (signs / levers / NPC) ---------- */
 .v3d-panel {
   pointer-events: none;

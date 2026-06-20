@@ -5,9 +5,10 @@ import type { Cat, GameState, NewsItem, PolicyAction } from '@/types/game';
 import { updateAllCats } from '@/lib/engine/cats';
 import { updateCompanies } from '@/lib/engine/companies';
 import { nextWeatherState, updateEconomy } from '@/lib/engine/economy';
-import { detectEvent } from '@/lib/engine/events';
+import { detectEvent, resetEventCooldowns } from '@/lib/engine/events';
 import { FACILITY_COST, FACILITY_NEWS } from '@/lib/engine/facilities';
 import { applyLoanInterest, repayLoan } from '@/lib/engine/loan';
+import { updateLoanDeadline } from '@/lib/engine/loanDeadline';
 import { updateMissions } from '@/lib/engine/missions';
 import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
@@ -106,6 +107,7 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
 export function useGameLoop(): {
   state: GameState;
   dispatch: (action: PolicyAction) => void;
+  reset: () => void;
 } {
   const [state, setState] = useState<GameState>(INITIAL_STATE);
 
@@ -127,6 +129,7 @@ export function useGameLoop(): {
   useEffect(() => {
     const id = setInterval(() => {
       setState((prev) => {
+        if (prev.gameOver) return prev; // sim is frozen under the game-over screen
         const tick = prev.tick + 1;
         // An active venture hires idle cats this tick (lowers unemployment).
         const hiring = prev.cats.some((c) => c.company !== null);
@@ -147,6 +150,7 @@ export function useGameLoop(): {
         next = { ...next, tick, weather, cats };
         next = applyLoanInterest(next); // bank charges interest on the player loan
         next = updateMissions(next); // grant rewards for completed missions
+        next = updateLoanDeadline(next); // forced repayment deadline / foreclosure
         return next;
       });
     }, resolveTickMs());
@@ -203,5 +207,12 @@ export function useGameLoop(): {
     setState((prev) => applyPolicy(prev, action));
   }, []);
 
-  return { state, dispatch };
+  // Restart the game from the initial state (used by the game-over retry button).
+  const reset = useCallback(() => {
+    resetEventCooldowns();
+    fetchingRef.current = false;
+    setState(INITIAL_STATE);
+  }, []);
+
+  return { state, dispatch, reset };
 }

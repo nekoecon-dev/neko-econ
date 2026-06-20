@@ -143,6 +143,8 @@ export interface GameState {
   facilities: FacilityState; // running count per kind (drives economic effects)
   placements: PlacedFacility[]; // individual buildings dropped on the map
   missions: MissionState; // village-management mission progress
+  repayDueTick: number; // tick of the next forced loan repayment deadline
+  gameOver: boolean; // true once the player is foreclosed on (freezes the sim)
 }
 
 export type PolicyAction =
