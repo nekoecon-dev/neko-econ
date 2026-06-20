@@ -23,7 +23,7 @@ import {
   updateStocks,
 } from '@/lib/engine/stocks';
 
-const DEFAULT_TICK_MS = 500;
+const DEFAULT_TICK_MS = 1500;
 
 type WindowWithNeko = Window & typeof globalThis & { __neko?: GameState };
 
