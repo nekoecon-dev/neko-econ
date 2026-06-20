@@ -72,6 +72,41 @@ body {
   font-size: 20px;
   animation: neko-cast 1s ease-in-out infinite;
 }
+.cat-bubble {
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+  animation: neko-bubble-blink 0.55s ease-in-out infinite;
+}
+.cat-bubble-title {
+  display: inline-block;
+  border-radius: 9999px;
+  background: #fde68a;
+  padding: 1px 9px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #b45309;
+  box-shadow: 0 0 10px 2px rgba(251, 191, 36, 0.9);
+}
+.cat-bubble-sec {
+  margin-top: 1px;
+  display: inline-block;
+  border-radius: 9999px;
+  background: #dc2626;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+}
+@keyframes neko-bubble-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
 @keyframes neko-cast {
   0%,
   100% {

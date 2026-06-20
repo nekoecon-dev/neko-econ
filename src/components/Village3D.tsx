@@ -71,6 +71,10 @@ interface CatRuntime {
   zzz: CSS2DObject;
   biz: CSS2DObject;
   fish: CSS2DObject;
+  aura: THREE.Points;
+  bubbleObj: CSS2DObject;
+  bubbleSecEl: HTMLElement;
+  lastBubbleSec: number;
   actionEl: HTMLElement;
   moneyEl: HTMLElement;
   lastLabel: string;
@@ -639,6 +643,46 @@ export default function Village3D({
       fish.visible = false;
       group.add(fish);
 
+      // Golden bubble aura (a ring of sparkles) + blinking "💰 BUBBLE!" label.
+      const auraN = 26;
+      const auraPos = new Float32Array(auraN * 3);
+      for (let a = 0; a < auraN; a++) {
+        const ang = (a / auraN) * Math.PI * 2;
+        const r = 0.85 + Math.random() * 0.25;
+        auraPos[a * 3] = Math.cos(ang) * r;
+        auraPos[a * 3 + 1] = Math.random() * 1.4;
+        auraPos[a * 3 + 2] = Math.sin(ang) * r;
+      }
+      const auraGeo = new THREE.BufferGeometry();
+      auraGeo.setAttribute('position', new THREE.BufferAttribute(auraPos, 3));
+      const aura = new THREE.Points(
+        auraGeo,
+        new THREE.PointsMaterial({
+          color: '#ffd24a',
+          size: 0.2,
+          transparent: true,
+          opacity: 0.95,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        }),
+      );
+      aura.position.y = 0.5;
+      aura.visible = false;
+      group.add(aura);
+
+      const bubbleRoot = document.createElement('div');
+      bubbleRoot.className = 'cat-bubble';
+      const bubbleTitle = document.createElement('div');
+      bubbleTitle.className = 'cat-bubble-title';
+      bubbleTitle.textContent = '💰 BUBBLE!';
+      const bubbleSecEl = document.createElement('div');
+      bubbleSecEl.className = 'cat-bubble-sec';
+      bubbleRoot.append(bubbleTitle, bubbleSecEl);
+      const bubbleObj = new CSS2DObject(bubbleRoot);
+      bubbleObj.position.set(0, 2.7, 0);
+      bubbleObj.visible = false;
+      group.add(bubbleObj);
+
       catRuntimes.set(cat.id, {
         group,
         rig,
@@ -652,6 +696,10 @@ export default function Village3D({
         zzz,
         biz,
         fish,
+        aura,
+        bubbleObj,
+        bubbleSecEl,
+        lastBubbleSec: -1,
         actionEl,
         moneyEl,
         lastLabel: '',
@@ -785,6 +833,7 @@ export default function Village3D({
     const render = () => {
       const dt = clock.getDelta();
       const t = clock.elapsedTime;
+      const nowMs = Date.now();
       const weather = stateRef.current.weather.current;
 
       // Ease the sky, sun and fog toward the current weather's look.
@@ -1030,6 +1079,20 @@ export default function Village3D({
         rt.zzz.visible = asleep;
         rt.biz.visible = cat.company !== null;
         rt.fish.visible = fishing;
+
+        // News-driven stock bubble: golden aura + blinking "💰 BUBBLE!" + countdown.
+        const bub = stateRef.current.bubbles[cat.id];
+        const bubbling = bub !== undefined && nowMs < bub.until;
+        rt.aura.visible = bubbling;
+        rt.bubbleObj.visible = bubbling;
+        if (bubbling) {
+          rt.aura.rotation.y += dt * 3;
+          const sec = Math.max(0, Math.ceil((bub.until - nowMs) / 1000));
+          if (sec !== rt.lastBubbleSec) {
+            rt.bubbleSecEl.textContent = `残り${sec}秒`;
+            rt.lastBubbleSec = sec;
+          }
+        }
 
         // Depression: cats shiver in the cold.
         if (shiver) {

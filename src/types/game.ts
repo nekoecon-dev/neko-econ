@@ -89,6 +89,11 @@ export interface DetectedEvent {
   catName?: string;
 }
 
+/** A speculative "bubble" on a cat's stock (news-triggered, wall-clock timed). */
+export interface BubbleState {
+  until: number; // Date.now() epoch-ms at which the bubble bursts/lands
+}
+
 /** Tradable share for a single cat. */
 export interface StockShare {
   price: number; // displayed price = base * shock, clamped to [10, 9999]
@@ -145,6 +150,7 @@ export interface GameState {
   missions: MissionState; // village-management mission progress
   repayDueTick: number; // tick of the next forced loan repayment deadline
   gameOver: boolean; // true once the player is foreclosed on (freezes the sim)
+  bubbles: Record<string, BubbleState>; // catId -> active stock bubble
 }
 
 export type PolicyAction =

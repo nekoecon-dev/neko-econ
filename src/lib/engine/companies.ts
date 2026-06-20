@@ -1,5 +1,6 @@
-import type { GameState, NewsItem, StockShare } from '@/types/game';
+import type { BubbleState, GameState, NewsItem, StockShare } from '@/types/game';
 import { shockStockMap } from './stocks';
+import { BUBBLE_MS } from './bubble';
 
 const FOUND_MONEY = 500; // wealth needed to consider founding a venture
 const FOUND_PROB = 0.05; // base per-tick chance, scaled by the cat's ambition
@@ -22,12 +23,14 @@ const VENTURE_NAMES = ['もふもふ', 'ちゅ〜る', 'こたつ', 'またた�
 export function updateCompanies(state: GameState): GameState {
   const news: NewsItem[] = [];
   const shocks: { catId: string; mult: number }[] = [];
+  const founded: string[] = []; // cats that just founded a venture (start a bubble)
 
   const cats = state.cats.map((cat) => {
     if (!cat.company) {
       if (cat.money >= FOUND_MONEY && Math.random() < FOUND_PROB * cat.ambition) {
         const name = VENTURE_NAMES[Math.floor(Math.random() * VENTURE_NAMES.length)];
         shocks.push({ catId: cat.id, mult: SUCCESS_SHOCK });
+        founded.push(cat.id);
         news.push({
           tick: state.tick,
           event: '起業',
@@ -59,5 +62,14 @@ export function updateCompanies(state: GameState): GameState {
   for (const s of shocks) stocks = shockStockMap(stocks, s.catId, s.mult);
   const newsLog = [...news.reverse(), ...state.newsLog].slice(0, 50);
 
-  return { ...state, cats, stocks, newsLog };
+  // 起業 (急騰) puts the founder's stock into a 15s speculative bubble.
+  let bubbles = state.bubbles;
+  if (founded.length > 0) {
+    const until = Date.now() + BUBBLE_MS;
+    const added: Record<string, BubbleState> = {};
+    for (const id of founded) added[id] = { until };
+    bubbles = { ...bubbles, ...added };
+  }
+
+  return { ...state, cats, stocks, newsLog, bubbles };
 }

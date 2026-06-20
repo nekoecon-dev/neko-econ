@@ -10,6 +10,7 @@ import { FACILITY_COST, FACILITY_NEWS } from '@/lib/engine/facilities';
 import { applyLoanInterest, repayLoan } from '@/lib/engine/loan';
 import { updateLoanDeadline } from '@/lib/engine/loanDeadline';
 import { updateMissions } from '@/lib/engine/missions';
+import { resolveBubbles, startBubble } from '@/lib/engine/bubble';
 import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
@@ -138,7 +139,9 @@ export function useGameLoop(): {
         next = { ...next, tick };
         next = updateCompanies(next); // found / fail ventures (uses next.tick)
         next = updateEconomy(next, { freezePrice: onStrike }); // strike freezes price
-        next = updateStocks(next, { onStrike }); // strike bleeds stocks -1%/tick
+        // Strike bleeds stocks -1%/tick; bubbles inflate them (faster at low rates).
+        next = updateStocks(next, { onStrike, interestRate: next.policy.interestRate });
+        next = resolveBubbles(next); // burst / soft-land any expired bubble
         next = updateStrike(next); // start / resolve strike for next tick
         // Weather drives movement: 3x frenzy in hyperinflation, frozen in a
         // depression, normal otherwise. Dramatic weather holds for a minimum
@@ -170,7 +173,8 @@ export function useGameLoop(): {
     const shockCatId = event.catId;
     if (shockCatId) {
       if (event.name === '大儲け') {
-        setState((s) => applyStockShock(s, shockCatId, SHOCK_RICH));
+        // 大儲け spikes the stock and puts it into a 15s speculative bubble.
+        setState((s) => startBubble(applyStockShock(s, shockCatId, SHOCK_RICH), shockCatId));
       } else if (event.name === '破産') {
         setState((s) => applyStockShock(s, shockCatId, SHOCK_BANKRUPT));
       }

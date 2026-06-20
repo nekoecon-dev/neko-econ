@@ -123,4 +123,5 @@ export const INITIAL_STATE: GameState = {
   missions: { index: 0, lastRewardTick: -1 },
   repayDueTick: REPAY_INTERVAL,
   gameOver: false,
+  bubbles: {},
 };

@@ -13,6 +13,16 @@ export const SHOCK_BANKRUPT = 0.7; // 破産: -30%
 const SHOCK_DECAY = 0.1; // per tick, toward 1
 const BASE_SMOOTH = 0.3; // how fast `base` tracks the cat's money level
 
+/**
+ * Per-tick base growth (%) for a stock in a news-driven bubble. The lower the
+ * interest rate, the faster it inflates: 0% → +10%/tick, 5% → +3%/tick, clamped
+ * at 0 (high rates cool the bubble). Defined here (not in bubble.ts) to avoid a
+ * circular import.
+ */
+export function bubbleGrowthPct(interestRate: number): number {
+  return Math.max(0, 10 - 1.4 * interestRate);
+}
+
 /** Build the initial stock for a cat (called from initialState). */
 export function initStock(money: number): StockShare {
   return {
@@ -32,14 +42,21 @@ export function initStock(money: number): StockShare {
  */
 export function updateStocks(
   state: GameState,
-  opts: { onStrike?: boolean } = {},
+  opts: { onStrike?: boolean; interestRate?: number } = {},
 ): GameState {
+  const now = Date.now();
+  const bubbleFactor = 1 + bubbleGrowthPct(opts.interestRate ?? 0) / 100;
   const stocks: Record<string, StockShare> = {};
   for (const cat of state.cats) {
     const prev = state.stocks[cat.id] ?? initStock(cat.money);
     let base = clamp(prev.base + (cat.money - prev.base) * BASE_SMOOTH, STOCK_MIN, STOCK_MAX);
     // During a strike every stock bleeds -1%/tick.
     if (opts.onStrike) base = clamp(base * STRIKE_STOCK_DECAY, STOCK_MIN, STOCK_MAX);
+    // A news bubble inflates the base price each tick (faster at low rates).
+    const bubble = state.bubbles[cat.id];
+    if (bubble && now < bubble.until) {
+      base = clamp(base * bubbleFactor, STOCK_MIN, STOCK_MAX);
+    }
     const shock = prev.shock + (1 - prev.shock) * SHOCK_DECAY;
     const price = clamp(base * shock, STOCK_MIN, STOCK_MAX);
     stocks[cat.id] = {
