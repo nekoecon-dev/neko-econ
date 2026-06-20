@@ -445,6 +445,20 @@ body {
   animation: neko-quake 0.28s linear infinite;
 }
 
+/* Tutorial: yellow blinking ring on the UI element the player should press */
+@keyframes neko-tutorial-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.95), 0 0 0 4px rgba(250, 204, 21, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0), 0 0 0 14px rgba(250, 204, 21, 0);
+  }
+}
+.tutorial-cta {
+  animation: neko-tutorial-pulse 1s ease-in-out infinite;
+}
+
 /* Soft pulsing glow for the headline currency button */
 @keyframes neko-glow {
   0%,

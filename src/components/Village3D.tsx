@@ -828,8 +828,9 @@ export default function Village3D({
         if (raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
           const map = worldToMap(hitPoint.x, hitPoint.z);
           if (stateRef.current.player.cash >= FACILITY_COST[pending]) {
+            // The sparkle is spawned by the placement-sync loop when the new
+            // facility mesh appears, so every placement gets one.
             dispatchRef.current({ type: 'PLACE_FACILITY', kind: pending, x: map.x, y: map.y });
-            spawnSparkle(hitPoint.x, hitPoint.z);
           }
           onPlacedRef.current();
         }
@@ -910,7 +911,7 @@ export default function Village3D({
       if (rain.visible) driftParticles(rain, -dt * 9);
       if (embers.visible) driftParticles(embers, dt * 3);
 
-      // Add a mesh for any newly placed facility.
+      // Add a mesh for any newly placed facility (with a celebratory sparkle).
       for (const p of stateRef.current.placements) {
         if (placedMeshes.has(p.id)) continue;
         const facility = makeFacility(p.kind);
@@ -918,6 +919,7 @@ export default function Village3D({
         facility.position.set(w.x, 0, w.z);
         placedMeshes.set(p.id, facility);
         facilityLayer.add(facility);
+        spawnSparkle(w.x, w.z);
       }
 
       // Sync laid road tiles, and build a lookup of paved cells for the cats.

@@ -11,7 +11,7 @@ import StrikeBanner from '@/components/StrikeBanner';
 import LoanModal from '@/components/LoanModal';
 import PublicWorks from '@/components/PublicWorks';
 import NewsTicker from '@/components/NewsTicker';
-import OpeningMessage from '@/components/OpeningMessage';
+import TutorialOverlay from '@/components/TutorialOverlay';
 import Missions from '@/components/Missions';
 import RepaymentTimer from '@/components/RepaymentTimer';
 import GameOverScreen from '@/components/GameOverScreen';
@@ -25,7 +25,7 @@ export default function Home() {
 
   return (
     <main className="relative h-screen w-screen overflow-hidden text-amber-950">
-      <OpeningMessage />
+      <TutorialOverlay state={state} dispatch={dispatch} />
 
       {/* 3D village fills the whole screen as the background */}
       <div className="absolute inset-0">
@@ -105,10 +105,12 @@ export default function Home() {
         <RepaymentTimer remaining={repayRemaining} />
       </div>
 
-      {/* mission panel + reward popup, left side under the title */}
-      <div className="pointer-events-none absolute left-3 top-28">
-        <Missions state={state} />
-      </div>
+      {/* free-play mission panel (hidden while the guided tutorial runs) */}
+      {!state.tutorial.active && (
+        <div className="pointer-events-none absolute left-3 top-28">
+          <Missions state={state} />
+        </div>
+      )}
 
       {/* road-laying button (bottom-left) */}
       <div className="absolute bottom-20 left-3 z-30 flex flex-col items-start gap-1">

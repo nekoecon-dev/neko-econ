@@ -125,4 +125,26 @@ export const INITIAL_STATE: GameState = {
   gameOver: false,
   bubbles: {},
   roads: [],
+  // Free-play / automated-test baseline: the tutorial is already finished.
+  tutorial: { active: false, phase: 'done', dividend: 0 },
+};
+
+// Chapter 0 — "ネコ村、差し押さえ寸前". The real game boots into this state: the
+// village is in a slump (80% unemployment, デフレ寄り), the player owes 9,000CC
+// with a forced repayment looming in 18 ticks, and the guided tutorial is active
+// (which freezes the sim until the player finishes it).
+export const TUTORIAL_INITIAL_STATE: GameState = {
+  ...INITIAL_STATE,
+  player: { ...INITIAL_STATE.player, cash: 1200, loan: 9000 },
+  repayDueTick: 18,
+  market: { soupPrice: 6, supply: 0, demand: 0 },
+  economy: {
+    soupPrice: 6,
+    inflationRate: -3,
+    unemploymentRate: 80,
+    gini: 0.2,
+    totalMoney: INITIAL_CATS.length * INITIAL_MONEY,
+    inflationHistory: [-1, -2, -3],
+  },
+  tutorial: { active: true, phase: 'opening', dividend: 0 },
 };

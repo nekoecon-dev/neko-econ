@@ -33,7 +33,7 @@ src/
     PublicWorks.tsx       # draggable building cards -> drop on the 3D ground
     PlayerHouse.tsx       # loan tent -> house, repayment modal
     StrikeBanner.tsx
-    OpeningMessage.tsx
+    TutorialOverlay.tsx   # story-driven onboarding tutorial (chapter 0 + 3 missions)
     NewsTicker.tsx
   hooks/
     useGameLoop.ts        # 500ms tick loop, owns GameState (unchanged by 3D)
@@ -178,8 +178,8 @@ every geometry/material. `renderer.setPixelRatio` is capped at 2 for mobile.
 The React UI floats over the 3D canvas: a glassy top bar (title / tick /
 wallet), a scrollable right-hand column (`EconomyDashboard`, `StockMarket`,
 `ControlPanel`, `PublicWorks`), the `NewsTicker` along the bottom, the loan
-tent (`PlayerHouse`) bottom-left, and a centred `StrikeBanner`. `OpeningMessage`
-is a one-time welcome modal. The overlay column is `pointer-events-none` with
+tent (`PlayerHouse`) bottom-left, and a centred `StrikeBanner`. `TutorialOverlay`
+runs the story-driven onboarding on first launch (see below). The overlay column is `pointer-events-none` with
 `[&>*]:pointer-events-auto` so clicks fall through the gaps to nothing (the
 canvas needs no pointer interaction except the facility drop).
 
@@ -254,6 +254,34 @@ duration; a post-strike cooldown prevents instant re-triggering. While active
 economy bounded), the soup price is frozen (`updateEconomy({freezePrice})`),
 and every stock bleeds −1%/tick (`updateStocks({onStrike})`). UI: a center
 `StrikeBanner` + picketing cats (🪧).
+
+## Story tutorial (`tutorial.ts` + `TutorialOverlay.tsx`)
+
+The real game boots into a guided, story-driven tutorial (`TUTORIAL_INITIAL_STATE`:
+village in a slump — 80% unemployment, 9,000 CC debt, a forced repayment in 18
+ticks). `GameState.tutorial` (`{ active, phase, dividend }`) tracks it;
+`phase` runs `opening → mission1 → mission2 → mission3 → done`.
+
+- **The sim is paused while `tutorial.active`** (the tick loop early-returns), so
+  the village can't drift or foreclose mid-lesson. The 3D RAF loop keeps running,
+  so scripted changes (a new shop, a rate hike) still animate live.
+- **Chapter 0** is a full-screen cinematic (危機 narration + ミケ/タマ speech
+  bubbles + a「はじめる」call to action).
+- Each mission shows a big speech bubble + one yellow-blinking CTA (`.tutorial-cta`)
+  and dispatches a scripted reducer in `tutorial.ts`, which advances `phase`,
+  hand-sets the economy snapshot for narrative effect, and pushes a templated
+  headline (no API): **M1** `TUTORIAL_INVEST` opens ミケのスープ屋 (places a
+  `soupFactory`, whose 3D work-aura walks タマ over) and starts a +10 CC/tick
+  dividend; **M2** `TUTORIAL_LAY_ROADS` paves 2 tiles and bumps the dividend to
+  +20 (and nudges inflation up, setting up M3); **M3** `TUTORIAL_RAISE_RATE`
+  raises the interest rate and cools inflation. Each is followed by a 💡 education
+  popup. `TUTORIAL_FINISH` (or the top-right skip → `TUTORIAL_SKIP`) sets
+  `active=false` and hands off to free play.
+- `applyDividend` pays `tutorial.dividend` to the player each tick (free play
+  only, since the sim is paused during the tutorial).
+- Automated stress tests (`?turbo=`) boot from the pristine `INITIAL_STATE`
+  (tutorial already `done`, `dividend:0`) so the loop runs unimpeded; the
+  free-play `Missions` panel is hidden while the tutorial is active.
 
 ## In-map signboards
 

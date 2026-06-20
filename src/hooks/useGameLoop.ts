@@ -13,7 +13,16 @@ import { updateMissions } from '@/lib/engine/missions';
 import { resolveBubbles, startBubble } from '@/lib/engine/bubble';
 import { layRoad, updateRoadEconomy } from '@/lib/engine/roads';
 import { updateStrike } from '@/lib/engine/strike';
-import { INITIAL_STATE } from '@/lib/engine/initialState';
+import {
+  applyDividend,
+  tutorialAdvance,
+  tutorialFinish,
+  tutorialInvest,
+  tutorialLayRoads,
+  tutorialRaiseRate,
+  tutorialSkip,
+} from '@/lib/engine/tutorial';
+import { INITIAL_STATE, TUTORIAL_INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
 import {
   applyStockShock,
@@ -81,6 +90,18 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return repayLoan(state, action.amount);
     case 'LAY_ROAD':
       return layRoad(state, action.gx, action.gz);
+    case 'TUTORIAL_ADVANCE':
+      return tutorialAdvance(state);
+    case 'TUTORIAL_INVEST':
+      return tutorialInvest(state);
+    case 'TUTORIAL_LAY_ROADS':
+      return tutorialLayRoads(state);
+    case 'TUTORIAL_RAISE_RATE':
+      return tutorialRaiseRate(state);
+    case 'TUTORIAL_FINISH':
+      return tutorialFinish(state);
+    case 'TUTORIAL_SKIP':
+      return tutorialSkip(state);
     case 'PLACE_FACILITY': {
       const cost = FACILITY_COST[action.kind];
       if (state.player.cash < cost) return state; // can't afford
@@ -113,7 +134,19 @@ export function useGameLoop(): {
   dispatch: (action: PolicyAction) => void;
   reset: () => void;
 } {
-  const [state, setState] = useState<GameState>(INITIAL_STATE);
+  // Boot into the story tutorial. Automated stress tests (`?turbo=`) skip it and
+  // start from the pristine free-play baseline so the loop runs unimpeded.
+  // (Production has no `turbo` param, so server and client both yield the
+  // tutorial state — the only branch is test-only and resolves on the client.)
+  const [state, setState] = useState<GameState>(() => {
+    if (
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).has('turbo')
+    ) {
+      return INITIAL_STATE;
+    }
+    return TUTORIAL_INITIAL_STATE;
+  });
 
   // Mirror of the latest state for the event-detection effect.
   const stateRef = useRef<GameState>(state);
@@ -134,6 +167,7 @@ export function useGameLoop(): {
     const id = setInterval(() => {
       setState((prev) => {
         if (prev.gameOver) return prev; // sim is frozen under the game-over screen
+        if (prev.tutorial.active) return prev; // sim is paused during the tutorial
         const tick = prev.tick + 1;
         // An active venture hires idle cats this tick (lowers unemployment).
         const hiring = prev.cats.some((c) => c.company !== null);
@@ -156,6 +190,7 @@ export function useGameLoop(): {
         const cats = speed === 0 ? next.cats : next.cats.map((c) => wander(c, speed));
         next = { ...next, tick, weather, cats };
         next = applyLoanInterest(next); // bank charges interest on the player loan
+        next = applyDividend(next); // ミケのスープ屋 pays the player a dividend
         next = updateMissions(next); // grant rewards for completed missions
         next = updateLoanDeadline(next); // forced repayment deadline / foreclosure
         return next;

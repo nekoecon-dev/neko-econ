@@ -140,6 +140,19 @@ export interface MissionState {
   lastRewardTick: number;
 }
 
+/**
+ * Story-tutorial phase. The guided tutorial walks the player through three
+ * missions (invest → roads → interest) and pauses the simulation until done.
+ * `opening` is the chapter-0 cinematic; `done` is free play.
+ */
+export type TutorialPhase = 'opening' | 'mission1' | 'mission2' | 'mission3' | 'done';
+
+export interface TutorialState {
+  active: boolean; // true while the guided tutorial runs (freezes the sim)
+  phase: TutorialPhase;
+  dividend: number; // CC/tick the player earns from ミケのスープ屋 (0 until invested)
+}
+
 export interface GameState {
   tick: number;
   cats: Cat[];
@@ -158,6 +171,7 @@ export interface GameState {
   gameOver: boolean; // true once the player is foreclosed on (freezes the sim)
   bubbles: Record<string, BubbleState>; // catId -> active stock bubble
   roads: RoadTile[]; // laid road tiles (speed cats up + boost GDP)
+  tutorial: TutorialState; // guided story-tutorial progress
 }
 
 export type PolicyAction =
@@ -168,4 +182,10 @@ export type PolicyAction =
   | { type: 'SELL_STOCK'; catId: string }
   | { type: 'REPAY_LOAN'; amount: number }
   | { type: 'PLACE_FACILITY'; kind: FacilityKind; x: number; y: number }
-  | { type: 'LAY_ROAD'; gx: number; gz: number };
+  | { type: 'LAY_ROAD'; gx: number; gz: number }
+  | { type: 'TUTORIAL_ADVANCE' } // opening cinematic -> mission 1
+  | { type: 'TUTORIAL_INVEST' } // mission 1: invest 300CC in ミケ
+  | { type: 'TUTORIAL_LAY_ROADS' } // mission 2: pave the road to the shop
+  | { type: 'TUTORIAL_RAISE_RATE' } // mission 3: raise the interest rate
+  | { type: 'TUTORIAL_FINISH' } // close the tutorial -> free play
+  | { type: 'TUTORIAL_SKIP' }; // skip the whole tutorial -> free play
