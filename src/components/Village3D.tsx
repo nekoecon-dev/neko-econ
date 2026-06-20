@@ -30,9 +30,13 @@ interface CatRuntime {
   rig: THREE.Object3D;
   head: THREE.Object3D;
   tail: THREE.Object3D;
+  eyesOpen: THREE.Object3D | null;
+  eyesClosed: THREE.Object3D | null;
+  mouth: THREE.Object3D | null;
   headBaseY: number;
   phase: number;
   zzz: CSS2DObject;
+  biz: CSS2DObject;
   actionEl: HTMLElement;
   moneyEl: HTMLElement;
   lastAction: CatAction | null;
@@ -68,9 +72,11 @@ function approachAngle(current: number, target: number, t: number): number {
 }
 
 // Per-weather lighting/atmosphere targets, lerped toward each frame so the
-// village transitions smoothly rather than snapping.
+// village transitions smoothly rather than snapping. The sky is a vertical
+// gradient (top -> bottom).
 interface WeatherLook {
-  sky: string;
+  skyTop: string;
+  skyBottom: string;
   hemi: number; // hemisphere (ambient) intensity
   sunInt: number; // directional sun intensity
   sunColor: string;
@@ -81,27 +87,30 @@ interface WeatherLook {
 }
 const WEATHER_LOOK: Record<Weather, WeatherLook> = {
   normal: {
-    sky: '#bfe6ff',
+    skyTop: '#79b8ff',
+    skyBottom: '#eaf6ff',
     hemi: 0.95,
     sunInt: 1.1,
     sunColor: '#fff4d6',
     sunScale: 1,
     sunVisible: true,
-    fog: '#cfecff',
+    fog: '#dcefff',
     fogFar: 60,
   },
   boom: {
-    sky: '#9fd8ff',
+    skyTop: '#5fb0ff',
+    skyBottom: '#fff7d6',
     hemi: 1.2,
     sunInt: 1.7,
     sunColor: '#fff0a8',
     sunScale: 1.4,
     sunVisible: true,
-    fog: '#dff2ff',
+    fog: '#eaf6ff',
     fogFar: 72,
   },
   hyperinflation: {
-    sky: '#bd4a30',
+    skyTop: '#7c1d1d',
+    skyBottom: '#ef8a45',
     hemi: 0.7,
     sunInt: 1.35,
     sunColor: '#ff7a3c',
@@ -111,7 +120,8 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
     fogFar: 40,
   },
   depression: {
-    sky: '#8b94a1',
+    skyTop: '#59616d',
+    skyBottom: '#aab2bc',
     hemi: 0.5,
     sunInt: 0.35,
     sunColor: '#b3bbc6',
@@ -121,6 +131,37 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
     fogFar: 30,
   },
 };
+
+/** A big inverted sphere with a vertical gradient shader for the sky. */
+function makeSkyDome(): { mesh: THREE.Mesh; material: THREE.ShaderMaterial } {
+  const material = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    uniforms: {
+      topColor: { value: new THREE.Color('#79b8ff') },
+      bottomColor: { value: new THREE.Color('#eaf6ff') },
+    },
+    vertexShader: `
+      varying vec3 vPos;
+      void main() {
+        vPos = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 topColor;
+      uniform vec3 bottomColor;
+      varying vec3 vPos;
+      void main() {
+        float h = clamp(normalize(vPos).y * 0.5 + 0.5, 0.0, 1.0);
+        gl_FragColor = vec4(mix(bottomColor, topColor, smoothstep(0.0, 1.0, h)), 1.0);
+      }
+    `,
+  });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(90, 24, 16), material);
+  return { mesh, material };
+}
 
 /** A cloud of falling/rising particles (confetti, rain, embers). */
 function makeParticles(count: number, color: string, size: number, opacity: number): THREE.Points {
@@ -188,7 +229,10 @@ export default function Village3D({
     let height = mount.clientHeight || 1;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#bfe6ff');
+
+    // Gradient sky dome (its colours are lerped by the weather each frame).
+    const { mesh: skyDome, material: skyMat } = makeSkyDome();
+    scene.add(skyDome);
 
     // 45° isometric-style look-down camera.
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 200);
@@ -234,7 +278,8 @@ export default function Village3D({
     scene.add(confetti, rain, embers);
 
     // Reusable scratch colours for per-frame lerping (no per-frame allocation).
-    const skyTarget = new THREE.Color();
+    const skyTopTarget = new THREE.Color();
+    const skyBottomTarget = new THREE.Color();
     const sunColorTarget = new THREE.Color();
     const fogTarget = new THREE.Color();
 
@@ -253,6 +298,9 @@ export default function Village3D({
       const rig = group.getObjectByName('rig') ?? group;
       const head = group.getObjectByName('head') ?? rig;
       const tail = group.getObjectByName('tail') ?? rig;
+      const eyesOpen = group.getObjectByName('eyesOpen') ?? null;
+      const eyesClosed = group.getObjectByName('eyesClosed') ?? null;
+      const mouth = group.getObjectByName('mouth') ?? null;
 
       const { label, actionEl, moneyEl } = makeCatLabel(cat.name);
       group.add(label);
@@ -262,18 +310,31 @@ export default function Village3D({
       zzzEl.className = 'cat-zzz';
       zzzEl.textContent = '💤';
       const zzz = new CSS2DObject(zzzEl);
-      zzz.position.set(0.35, 1.5, 0);
+      zzz.position.set(0.4, 1.7, 0);
       zzz.visible = false;
       group.add(zzz);
+
+      // A spinning 💼 shown only while the cat is running a company.
+      const bizEl = document.createElement('div');
+      bizEl.className = 'cat-biz';
+      bizEl.textContent = '💼';
+      const biz = new CSS2DObject(bizEl);
+      biz.position.set(0, 2.35, 0);
+      biz.visible = false;
+      group.add(biz);
 
       catRuntimes.set(cat.id, {
         group,
         rig,
         head,
         tail,
+        eyesOpen,
+        eyesClosed,
+        mouth,
         headBaseY: head.position.y,
         phase: i * 1.3,
         zzz,
+        biz,
         actionEl,
         moneyEl,
         lastAction: null,
@@ -320,7 +381,8 @@ export default function Village3D({
       // Ease the sky, sun and fog toward the current weather's look.
       const look = WEATHER_LOOK[weather];
       const k = Math.min(1, dt * 1.6);
-      (scene.background as THREE.Color).lerp(skyTarget.set(look.sky), k);
+      skyMat.uniforms.topColor.value.lerp(skyTopTarget.set(look.skyTop), k);
+      skyMat.uniforms.bottomColor.value.lerp(skyBottomTarget.set(look.skyBottom), k);
       scene.fog?.color.lerp(fogTarget.set(look.fog), k);
       if (scene.fog instanceof THREE.Fog) {
         scene.fog.far += (look.fogFar - scene.fog.far) * k;
@@ -384,42 +446,57 @@ export default function Village3D({
           group.rotation.y = approachAngle(group.rotation.y, Math.atan2(vx, vz), dt * 5);
         }
 
+        // Constant gentle "breathing" bob on top of the action animation.
+        const breathing = Math.sin(t * 1.6 + phase) * 0.03;
+
         // Action animation, applied to the rig/head/tail (the outer group keeps
         // walking + turning, so the label stays upright above the cat):
-        //  working  -> hops up/down + pitches forward (ピョコピョコ)
-        //  sleeping -> rolls fully onto its side
-        //  eating   -> dips its head toward the pot
-        //  idle     -> sways gently while the tail swishes side to side
+        //  working  -> bounces up and down (ぴょんぴょん)
+        //  sleeping -> rolls onto its side, eyes become × , 💤 rises
+        //  eating   -> dips its head + works its mouth (パクパク)
+        //  idle     -> looks around (キョロキョロ) and swishes the tail
         let bobY = 0;
         let rollZ = 0;
         let pitchX = 0;
         let tailSwing = 0;
+        let headTurn = 0;
         let headDip = 0;
+        let mouthY = 0.5; // resting mouth scale
         switch (cat.action) {
           case 'working':
-            bobY = Math.abs(Math.sin(t * 8 + phase)) * 0.16;
-            pitchX = Math.sin(t * 8 + phase) * 0.18;
+            bobY = Math.abs(Math.sin(t * 9 + phase)) * 0.24;
+            pitchX = Math.sin(t * 9 + phase) * 0.1;
             break;
           case 'sleeping':
-            bobY = -0.05;
+            bobY = -0.06;
             rollZ = Math.PI / 2;
             break;
           case 'eating':
-            bobY = Math.sin(t * 3 + phase) * 0.03;
+            bobY = Math.sin(t * 3 + phase) * 0.02;
             headDip = -Math.abs(Math.sin(t * 5 + phase)) * 0.14;
+            mouthY = 0.5 + Math.abs(Math.sin(t * 9 + phase)) * 1.0;
             break;
           default:
-            bobY = Math.sin(t * 2 + phase) * 0.05;
+            bobY = Math.sin(t * 2 + phase) * 0.04;
             tailSwing = Math.sin(t * 2.2 + phase) * 0.5;
+            headTurn = Math.sin(t * 1.1 + phase) * 0.5;
         }
-        rig.position.y += (bobY - rig.position.y) * Math.min(1, dt * 6);
+        rig.position.y += (breathing + bobY - rig.position.y) * Math.min(1, dt * 6);
         rig.rotation.z += (rollZ - rig.rotation.z) * Math.min(1, dt * 4);
         rig.rotation.x += (pitchX - rig.rotation.x) * Math.min(1, dt * 8);
         tail.rotation.y += (tailSwing - tail.rotation.y) * Math.min(1, dt * 5);
+        head.rotation.y += (headTurn - head.rotation.y) * Math.min(1, dt * 4);
         head.position.y += (rt.headBaseY + headDip - head.position.y) * Math.min(1, dt * 8);
+        if (rt.mouth) rt.mouth.scale.y += (mouthY - rt.mouth.scale.y) * Math.min(1, dt * 10);
 
-        // Zzz puff only while sleeping.
-        rt.zzz.visible = cat.action === 'sleeping';
+        // Eyes: open normally, crossed (×) while sleeping.
+        const asleep = cat.action === 'sleeping';
+        if (rt.eyesOpen) rt.eyesOpen.visible = !asleep;
+        if (rt.eyesClosed) rt.eyesClosed.visible = asleep;
+
+        // Floating status emojis.
+        rt.zzz.visible = asleep;
+        rt.biz.visible = cat.company !== null;
 
         // Depression: cats shiver in the cold.
         if (shiver) {

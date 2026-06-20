@@ -62,6 +62,19 @@ body {
   font-size: 18px;
   animation: neko-zzz 1.6s ease-in-out infinite;
 }
+.cat-biz {
+  pointer-events: none;
+  font-size: 17px;
+  animation: neko-spin 2s linear infinite;
+}
+@keyframes neko-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
 @keyframes neko-zzz {
   0% {
     transform: translateY(0) scale(0.7);

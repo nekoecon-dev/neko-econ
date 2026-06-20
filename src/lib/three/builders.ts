@@ -24,50 +24,102 @@ export function worldToMap(x: number, z: number): { x: number; y: number } {
   };
 }
 
-// Low-poly = flat shading + tiny segment counts. A shared helper keeps every
-// material faceted and matte for the Animal-Crossing look.
+// Matte = flat-shaded standard material (used for the scenery props).
 function matte(color: THREE.ColorRepresentation): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.95 });
 }
 
-/** Green grid grassland: a flat green plane with a darker grid overlaid. */
+// Toon = cel-shaded material, used for the cute cartoon cats.
+function toon(color: THREE.ColorRepresentation): THREE.MeshToonMaterial {
+  return new THREE.MeshToonMaterial({ color });
+}
+
+// Unlit black, for crisp pupils / closed-eye crosses.
+function ink(): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({ color: '#241c1c' });
+}
+
+/**
+ * Wrap a mesh with a thick black cartoon outline: an inverted (back-side)
+ * copy of the geometry, scaled up a touch, rendered behind the real mesh.
+ */
+function outlined(
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  outlineScale = 1.08,
+): THREE.Group {
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(geometry, material));
+  const outline = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ color: '#241c1c', side: THREE.BackSide }),
+  );
+  outline.scale.setScalar(outlineScale);
+  group.add(outline);
+  return group;
+}
+
+/* ----------------------------- scenery ----------------------------- */
+
+// A patchwork green palette for the grass vertex colours.
+const GRASS = ['#7cc35a', '#74bd52', '#86cb63', '#6db04b', '#8ed06b'].map((c) => new THREE.Color(c));
+
+/** Grassy ground: a subdivided plane tinted with random green patches. */
 function makeGround(): THREE.Group {
   const group = new THREE.Group();
 
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(GROUND, GROUND), matte('#7cc35a'));
+  const seg = 26;
+  const geo = new THREE.PlaneGeometry(GROUND, GROUND, seg, seg);
+  const count = geo.attributes.position.count;
+  const colors = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const c = GRASS[Math.floor(Math.random() * GRASS.length)];
+    colors[i * 3] = c.r;
+    colors[i * 3 + 1] = c.g;
+    colors[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const plane = new THREE.Mesh(
+    geo,
+    new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }),
+  );
   plane.rotation.x = -Math.PI / 2;
   group.add(plane);
 
-  const grid = new THREE.GridHelper(GROUND, GROUND, '#5fa044', '#6bb14e');
-  grid.position.y = 0.02;
-  const gridMat = grid.material as THREE.Material;
-  gridMat.transparent = true;
-  gridMat.opacity = 0.5;
-  group.add(grid);
+  // Scatter little darker-green grass tufts for texture.
+  const tuftGeo = new THREE.ConeGeometry(0.12, 0.4, 4);
+  const tuftMat = matte('#5aa53f');
+  for (let i = 0; i < 60; i++) {
+    const tuft = new THREE.Mesh(tuftGeo, tuftMat);
+    tuft.position.set((Math.random() - 0.5) * GROUND * 0.92, 0.18, (Math.random() - 0.5) * GROUND * 0.92);
+    tuft.rotation.y = Math.random() * Math.PI;
+    group.add(tuft);
+  }
 
   return group;
 }
 
-/** A single low-poly tree: a brown trunk topped by two green cones. */
+/** A cute round tree: a short trunk topped with bulbous acorn-like foliage. */
 export function makeTree(): THREE.Group {
   const tree = new THREE.Group();
 
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.9, 6), matte('#8a5a2b'));
-  trunk.position.y = 0.45;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.7, 7), matte('#9c6b3b'));
+  trunk.position.y = 0.35;
   tree.add(trunk);
 
-  const lower = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.3, 7), matte('#3f9d4c'));
-  lower.position.y = 1.35;
-  tree.add(lower);
-
-  const upper = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.1, 7), matte('#4fb35c'));
-  upper.position.y = 2.05;
-  tree.add(upper);
+  const foliageMat = matte('#4fb35c');
+  const big = new THREE.Mesh(new THREE.SphereGeometry(0.95, 12, 10), foliageMat);
+  big.position.y = 1.5;
+  big.scale.set(1, 0.92, 1);
+  tree.add(big);
+  const small = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), matte('#5cc169'));
+  small.position.set(0.3, 2.05, 0.1);
+  tree.add(small);
 
   return tree;
 }
 
-/** A cottage: a cream box with a pyramid roof and a little door. */
+/** A cottage: a cream box under a tall, steeply-pitched cute roof. */
 export function makeHouse(roofColor: THREE.ColorRepresentation): THREE.Group {
   const house = new THREE.Group();
 
@@ -75,9 +127,9 @@ export function makeHouse(roofColor: THREE.ColorRepresentation): THREE.Group {
   walls.position.y = 0.7;
   house.add(walls);
 
-  // A 4-sided cone is a pyramid roof; rotate so the faces line up with the box.
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 1.1, 4), matte(roofColor));
-  roof.position.y = 1.95;
+  // Tall 4-sided cone = a steep pyramid roof.
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.7, 1.9, 4), matte(roofColor));
+  roof.position.y = 2.35;
   roof.rotation.y = Math.PI / 4;
   house.add(roof);
 
@@ -88,10 +140,33 @@ export function makeHouse(roofColor: THREE.ColorRepresentation): THREE.Group {
   return house;
 }
 
+// Cheerful flower-petal colours.
+const FLOWER_COLORS: THREE.ColorRepresentation[] = ['#ff8fab', '#ffd23f', '#ffffff', '#b497ff', '#ff7a59'];
+
+/** A tiny five-petal flower with a yellow centre. */
+function makeFlower(color: THREE.ColorRepresentation): THREE.Group {
+  const flower = new THREE.Group();
+  const petalGeo = new THREE.SphereGeometry(0.09, 6, 6);
+  const petalMat = matte(color);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const petal = new THREE.Mesh(petalGeo, petalMat);
+    petal.position.set(Math.cos(a) * 0.11, 0.12, Math.sin(a) * 0.11);
+    petal.scale.set(1, 0.5, 1);
+    flower.add(petal);
+  }
+  const center = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), matte('#ffd23f'));
+  center.position.y = 0.14;
+  flower.add(center);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.14, 4), matte('#4f9d4c'));
+  stem.position.y = 0.05;
+  flower.add(stem);
+  return flower;
+}
+
 /**
  * The village soup pot (its emotional symbol): a dark cylinder pot brimming
- * with an orange soup dome. Returned meshes are tagged so the render loop can
- * later recolour/scale the fire by economic mood.
+ * with an orange soup dome.
  */
 export function makeSoupPot(): THREE.Group {
   const pot = new THREE.Group();
@@ -105,7 +180,6 @@ export function makeSoupPot(): THREE.Group {
   rim.rotation.x = Math.PI / 2;
   pot.add(rim);
 
-  // Soup: a flattened sphere sitting in the pot's mouth.
   const soup = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 10), matte('#e8842c'));
   soup.scale.y = 0.4;
   soup.position.y = 1.05;
@@ -115,48 +189,92 @@ export function makeSoupPot(): THREE.Group {
   return pot;
 }
 
-// Per-cat appearance: base coat, eye colour, fur pattern, and the secondary /
-// tertiary colours that pattern uses. Keyed by cat id.
-export type CatPattern = 'plain' | 'spotted' | 'calico' | 'tabby';
+/* ------------------------------- cats ------------------------------- */
+
+// Per-cat appearance: coat, big-eye colour, cheek colour, fur pattern, and the
+// secondary / tertiary colours the pattern uses. Keyed by cat id.
+export type CatPattern = 'plain' | 'belly' | 'calico' | 'tabby';
 export interface CatStyle {
   coat: THREE.ColorRepresentation;
-  eye: THREE.ColorRepresentation; // iris/sclera colour (pupil is always dark)
+  eye: THREE.ColorRepresentation;
+  cheek: THREE.ColorRepresentation;
   pattern: CatPattern;
   secondary?: THREE.ColorRepresentation;
   tertiary?: THREE.ColorRepresentation;
 }
 export const CAT_STYLES: Record<string, CatStyle> = {
-  '1': { coat: '#fcfdff', eye: '#2b2b2b', pattern: 'plain' }, // シロ: pure white
-  '2': { coat: '#3b3f47', eye: '#ffd23f', pattern: 'plain' }, // クロ: dark grey + yellow eyes
-  '3': { coat: '#fb923c', eye: '#2b2b2b', pattern: 'spotted', secondary: '#ffffff' }, // タマ: orange + white
+  '1': { coat: '#fcfdff', eye: '#3aa0ff', cheek: '#ffb3c1', pattern: 'plain' }, // シロ: white, blue eyes
+  '2': { coat: '#2f333b', eye: '#ffd23f', cheek: '#ffffff', pattern: 'plain' }, // クロ: black, yellow eyes
+  '3': { coat: '#fb923c', eye: '#5bc46a', cheek: '#ffb3c1', pattern: 'belly', secondary: '#ffffff' }, // タマ: orange + white belly, green eyes
   '4': {
     coat: '#fbf4ea',
-    eye: '#2b2b2b',
+    eye: '#3aa0ff',
+    cheek: '#ffb3c1',
     pattern: 'calico',
     secondary: '#f59330',
-    tertiary: '#3a3a3a',
-  }, // ミケ: white + orange + black (calico)
-  '5': { coat: '#dd8a3e', eye: '#2b2b2b', pattern: 'tabby', secondary: '#9a5a26' }, // チャトラ: brown tabby
+    tertiary: '#33312f',
+  }, // ミケ: calico, blue eyes
+  '5': { coat: '#b5793a', eye: '#f0a830', cheek: '#ffb3c1', pattern: 'tabby', secondary: '#7c4a23' }, // チャトラ: brown tabby, amber eyes
 };
-export const DEFAULT_CAT_STYLE: CatStyle = { coat: '#fcd34d', eye: '#2b2b2b', pattern: 'plain' };
+export const DEFAULT_CAT_STYLE: CatStyle = {
+  coat: '#fcd34d',
+  eye: '#3aa0ff',
+  cheek: '#ffb3c1',
+  pattern: 'plain',
+};
 
-/** A flattened "patch" of fur laid just over a surface (no z-fighting). */
+/** One big round eye (white + coloured iris + dark pupil + shine). */
+function makeEye(eyeColor: THREE.ColorRepresentation): THREE.Group {
+  const eye = new THREE.Group();
+  const white = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 14), toon('#ffffff'));
+  eye.add(white);
+  const iris = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 12), toon(eyeColor));
+  iris.position.z = 0.1;
+  eye.add(iris);
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), ink());
+  pupil.position.z = 0.16;
+  eye.add(pupil);
+  const shine = new THREE.Mesh(
+    new THREE.SphereGeometry(0.035, 8, 8),
+    new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+  );
+  shine.position.set(0.05, 0.06, 0.2);
+  eye.add(shine);
+  return eye;
+}
+
+/** A closed "×" eye for sleeping (two crossed black bars). */
+function makeClosedEye(): THREE.Group {
+  const g = new THREE.Group();
+  const barGeo = new THREE.BoxGeometry(0.22, 0.045, 0.045);
+  for (const rot of [Math.PI / 4, -Math.PI / 4]) {
+    const bar = new THREE.Mesh(barGeo, ink());
+    bar.rotation.z = rot;
+    g.add(bar);
+  }
+  return g;
+}
+
+/** A flattened patch of fur laid just over the coat (for spots/patches). */
 function furPatch(
   color: THREE.ColorRepresentation,
   pos: [number, number, number],
   scale: [number, number, number],
 ): THREE.Mesh {
-  const patch = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), matte(color));
+  const patch = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), toon(color));
   patch.position.set(...pos);
   patch.scale.set(...scale);
   return patch;
 }
 
 /**
- * A low-poly cat facing +Z. The returned group's only child is a "rig" group
- * holding every body part (big head, tall pointed ears, expressive eyes, a long
- * curved tail) — the render loop bobs/rolls the rig while the outer group does
- * the walking and turning, and pattern decorations colour the fur.
+ * An Animal-Crossing-style deformed cat: an enormous head (~2x the tiny body),
+ * short stubby legs, huge round eyes, big pointed ears, a pink nose, blush
+ * cheeks, and a fluffy ball-chain tail. Cel-shaded with thick black outlines.
+ *
+ * Named parts the render loop animates: outer group (walk/turn), 'rig' (bob /
+ * roll / hop), 'head' (turn / dip), 'tail' (swish), 'eyesOpen' / 'eyesClosed'
+ * (toggle when sleeping), 'mouth' (パクパク while eating).
  */
 export function makeCat(style: CatStyle): THREE.Group {
   const cat = new THREE.Group();
@@ -164,101 +282,135 @@ export function makeCat(style: CatStyle): THREE.Group {
   rig.name = 'rig';
   cat.add(rig);
 
-  const coat = matte(style.coat);
+  const coatColor = style.coat;
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.5, 0.95), coat);
+  // Tiny rounded body.
+  const body = outlined(new THREE.SphereGeometry(0.5, 16, 14), toon(coatColor));
+  body.scale.set(0.72, 0.64, 0.8);
   body.position.y = 0.34;
   rig.add(body);
 
-  // Head ~1.5x the body width (0.9 dia vs 0.62 body).
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 12), coat);
-  head.name = 'head';
-  head.position.set(0, 0.74, 0.42);
-  rig.add(head);
-
-  // Tall, sharply pointed ears.
-  const earGeo = new THREE.ConeGeometry(0.16, 0.44, 4);
-  const earL = new THREE.Mesh(earGeo, coat);
-  earL.position.set(-0.23, 1.05, 0.4);
-  earL.rotation.set(-0.1, 0, 0.14);
-  rig.add(earL);
-  const earR = new THREE.Mesh(earGeo, coat);
-  earR.position.set(0.23, 1.05, 0.4);
-  earR.rotation.set(-0.1, 0, -0.14);
-  rig.add(earR);
-
-  // Long curved tail (a tube swept along a rising S-curve).
-  const tailCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0.4, -0.5),
-    new THREE.Vector3(0, 0.75, -0.78),
-    new THREE.Vector3(0.18, 1.05, -0.74),
-    new THREE.Vector3(0.42, 1.18, -0.52),
-  ]);
-  const tail = new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, 0.075, 5, false), coat);
-  tail.name = 'tail';
-  rig.add(tail);
-
-  // Eyes: a coloured sclera/iris disc with a dark pupil in front.
-  const scleraGeo = new THREE.SphereGeometry(0.1, 8, 8);
-  const scleraMat = new THREE.MeshStandardMaterial({ color: style.eye });
-  const pupilGeo = new THREE.SphereGeometry(0.055, 8, 8);
-  const pupilMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a' });
-  for (const sx of [-0.17, 0.17]) {
-    const sclera = new THREE.Mesh(scleraGeo, scleraMat);
-    sclera.position.set(sx, 0.78, 0.78);
-    rig.add(sclera);
-    const pupil = new THREE.Mesh(pupilGeo, pupilMat);
-    pupil.position.set(sx, 0.78, 0.84);
-    rig.add(pupil);
+  // Short, fat legs.
+  const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.18, 8);
+  const legMat = toon(coatColor);
+  for (const [lx, lz] of [
+    [-0.18, 0.16],
+    [0.18, 0.16],
+    [-0.18, -0.16],
+    [0.18, -0.16],
+  ]) {
+    const leg = new THREE.Mesh(legGeo, legMat);
+    leg.position.set(lx, 0.09, lz);
+    rig.add(leg);
   }
 
-  // Tiny pink nose.
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.08, 4), matte('#f7a8b8'));
-  nose.position.set(0, 0.68, 0.86);
-  nose.rotation.x = Math.PI / 2;
-  rig.add(nose);
-
-  // Fur pattern decorations.
-  if (style.pattern === 'spotted' && style.secondary) {
-    rig.add(furPatch(style.secondary, [0.06, 0.58, -0.12], [0.34, 0.12, 0.42]));
-    rig.add(furPatch(style.secondary, [-0.2, 0.95, 0.42], [0.22, 0.2, 0.22]));
+  // Belly patch (タマ).
+  if (style.pattern === 'belly' && style.secondary) {
+    rig.add(furPatch(style.secondary, [0, 0.28, 0.28], [0.34, 0.34, 0.18]));
   } else if (style.pattern === 'calico') {
-    if (style.secondary) {
-      rig.add(furPatch(style.secondary, [0.22, 0.58, -0.05], [0.28, 0.14, 0.5]));
-      rig.add(furPatch(style.secondary, [0.22, 0.92, 0.34], [0.22, 0.2, 0.24]));
-    }
-    if (style.tertiary) {
-      rig.add(furPatch(style.tertiary, [-0.22, 0.6, 0.18], [0.26, 0.14, 0.4]));
-      rig.add(furPatch(style.tertiary, [-0.2, 0.96, 0.36], [0.2, 0.18, 0.22]));
-    }
+    if (style.secondary) rig.add(furPatch(style.secondary, [0.2, 0.42, 0.05], [0.26, 0.2, 0.34]));
+    if (style.tertiary) rig.add(furPatch(style.tertiary, [-0.18, 0.5, -0.1], [0.24, 0.18, 0.3]));
   } else if (style.pattern === 'tabby' && style.secondary) {
-    const stripeMat = matte(style.secondary);
-    for (const sz of [0.18, -0.02, -0.22]) {
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.07), stripeMat);
-      stripe.position.set(0, 0.58, sz);
+    const stripeMat = toon(style.secondary);
+    for (const sz of [0.16, -0.04, -0.22]) {
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.16, 0.06), stripeMat);
+      stripe.position.set(0, 0.5, sz);
       rig.add(stripe);
     }
-    // a stripe across the forehead too
-    const browStripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.07), stripeMat);
-    browStripe.position.set(0, 0.92, 0.5);
-    rig.add(browStripe);
   }
+
+  // Fluffy ball-chain tail.
+  const tail = new THREE.Group();
+  tail.name = 'tail';
+  const tailPts: [number, number, number, number][] = [
+    [0, 0.34, -0.42, 0.2],
+    [0.12, 0.58, -0.6, 0.18],
+    [0.28, 0.82, -0.62, 0.15],
+    [0.44, 1.0, -0.48, 0.12],
+  ];
+  const tailMat = toon(coatColor);
+  for (const [bx, by, bz, r] of tailPts) {
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), tailMat);
+    ball.position.set(bx, by, bz);
+    tail.add(ball);
+  }
+  rig.add(tail);
+
+  // ---- The giant head (everything below is relative to the head centre) ----
+  const head = new THREE.Group();
+  head.name = 'head';
+  head.position.set(0, 0.92, 0.12);
+  rig.add(head);
+
+  const headBall = outlined(new THREE.SphereGeometry(0.58, 18, 16), toon(coatColor));
+  head.add(headBall);
+
+  // Tabby forehead stripes.
+  if (style.pattern === 'tabby' && style.secondary) {
+    const browMat = toon(style.secondary);
+    for (const bx of [-0.16, 0, 0.16]) {
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.26, 0.06), browMat);
+      brow.position.set(bx, 0.42, 0.42);
+      head.add(brow);
+    }
+  } else if (style.pattern === 'calico' && style.tertiary) {
+    head.add(furPatch(style.tertiary, [-0.26, 0.28, 0.32], [0.28, 0.28, 0.18]));
+  }
+
+  // Big pointed ears (outlined) with pink inner ears.
+  for (const sx of [-1, 1]) {
+    const ear = outlined(new THREE.ConeGeometry(0.26, 0.5, 4), toon(coatColor));
+    ear.position.set(sx * 0.34, 0.52, 0.04);
+    ear.rotation.z = sx * -0.18;
+    head.add(ear);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 4), toon('#f7a8b8'));
+    inner.position.set(sx * 0.34, 0.5, 0.12);
+    inner.rotation.z = sx * -0.18;
+    head.add(inner);
+  }
+
+  // Huge round eyes (open) + crossed eyes (closed, hidden until sleeping).
+  const eyesOpen = new THREE.Group();
+  eyesOpen.name = 'eyesOpen';
+  const eyesClosed = new THREE.Group();
+  eyesClosed.name = 'eyesClosed';
+  eyesClosed.visible = false;
+  for (const sx of [-1, 1]) {
+    const eye = makeEye(style.eye);
+    eye.position.set(sx * 0.24, 0.06, 0.46);
+    eyesOpen.add(eye);
+    const closed = makeClosedEye();
+    closed.position.set(sx * 0.24, 0.06, 0.57);
+    eyesClosed.add(closed);
+  }
+  head.add(eyesOpen, eyesClosed);
+
+  // Blush cheeks.
+  for (const sx of [-1, 1]) {
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), toon(style.cheek));
+    cheek.position.set(sx * 0.42, -0.14, 0.42);
+    cheek.scale.set(1, 0.7, 0.5);
+    head.add(cheek);
+  }
+
+  // Little pink nose.
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), toon('#ff7a9c'));
+  nose.position.set(0, -0.04, 0.58);
+  nose.scale.set(1.2, 0.9, 0.8);
+  head.add(nose);
+
+  // Mouth (パクパク target while eating).
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), ink());
+  mouth.name = 'mouth';
+  mouth.position.set(0, -0.2, 0.54);
+  mouth.scale.set(1, 0.5, 0.5);
+  head.add(mouth);
 
   return cat;
 }
 
-/** A still pond: a flat blue disc resting just above the grass. */
-function makePond(): THREE.Mesh {
-  const pond = new THREE.Mesh(
-    new THREE.CircleGeometry(2.6, 24),
-    new THREE.MeshStandardMaterial({ color: '#4aa6e0', roughness: 0.3, metalness: 0.1 }),
-  );
-  pond.rotation.x = -Math.PI / 2;
-  pond.position.y = 0.03;
-  return pond;
-}
+/* ----------------------------- facilities ----------------------------- */
 
-// Fixed scenery layout (deterministic — no Math.random, stable across reloads).
 const TREE_SPOTS: [number, number][] = [
   [-9, -8],
   [-7, 6],
@@ -320,7 +472,18 @@ export function makeFacility(kind: FacilityKind): THREE.Group {
   return group;
 }
 
-/** Assemble the whole static village (ground, trees, houses, pond, soup pot). */
+/** A still pond: a flat blue disc resting just above the grass. */
+function makePond(): THREE.Mesh {
+  const pond = new THREE.Mesh(
+    new THREE.CircleGeometry(2.6, 24),
+    new THREE.MeshStandardMaterial({ color: '#4aa6e0', roughness: 0.3, metalness: 0.1 }),
+  );
+  pond.rotation.x = -Math.PI / 2;
+  pond.position.y = 0.03;
+  return pond;
+}
+
+/** Assemble the whole static village (ground, trees, houses, pond, pot, flowers). */
 export function buildVillage(): THREE.Group {
   const village = new THREE.Group();
   village.add(makeGround());
@@ -345,6 +508,16 @@ export function buildVillage(): THREE.Group {
   pot.position.set(0, 0, 0);
   pot.name = 'soupPot';
   village.add(pot);
+
+  // Scatter little flowers around the meadow (away from the central pot).
+  for (let i = 0; i < 22; i++) {
+    const fx = (Math.random() - 0.5) * GROUND * 0.88;
+    const fz = (Math.random() - 0.5) * GROUND * 0.88;
+    if (Math.hypot(fx, fz) < 2.4) continue; // keep the pot area clear
+    const flower = makeFlower(FLOWER_COLORS[i % FLOWER_COLORS.length]);
+    flower.position.set(fx, 0, fz);
+    village.add(flower);
+  }
 
   return village;
 }
