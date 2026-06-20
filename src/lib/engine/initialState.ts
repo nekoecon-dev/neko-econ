@@ -124,4 +124,5 @@ export const INITIAL_STATE: GameState = {
   repayDueTick: REPAY_INTERVAL,
   gameOver: false,
   bubbles: {},
+  roads: [],
 };

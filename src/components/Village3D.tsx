@@ -6,6 +6,7 @@ import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRe
 import type { CatAction, FacilityKind, GameState, PolicyAction, Weather } from '@/types/game';
 import { FACILITY_COST, isFacilityKind } from '@/lib/engine/facilities';
 import { tickInterest } from '@/lib/engine/loan';
+import { roadKey } from '@/lib/engine/roads';
 import {
   buildVillage,
   CAT_STYLES,
@@ -18,10 +19,12 @@ import {
   makeHouse,
   makeLever,
   makePlayerTent,
+  makeRoadTile,
   makeSignpost,
   makeThermometers,
   makeTownHall,
   mapToWorld,
+  TILE,
   worldToMap,
 } from '@/lib/three/builders';
 
@@ -247,12 +250,14 @@ export default function Village3D({
   onOpenLoan,
   pendingFacility,
   onPlaced,
+  roadMode,
 }: {
   state: GameState;
   dispatch: (action: PolicyAction) => void;
   onOpenLoan: () => void;
   pendingFacility: FacilityKind | null;
   onPlaced: () => void;
+  roadMode: boolean;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
@@ -260,6 +265,7 @@ export default function Village3D({
   const onOpenLoanRef = useRef(onOpenLoan);
   const pendingRef = useRef(pendingFacility);
   const onPlacedRef = useRef(onPlaced);
+  const roadModeRef = useRef(roadMode);
 
   // Mirror the latest state/dispatch for the loop + drop handler (the scene is
   // only set up once).
@@ -269,6 +275,7 @@ export default function Village3D({
     onOpenLoanRef.current = onOpenLoan;
     pendingRef.current = pendingFacility;
     onPlacedRef.current = onPlaced;
+    roadModeRef.current = roadMode;
   });
 
   useEffect(() => {
@@ -715,6 +722,11 @@ export default function Village3D({
     scene.add(facilityLayer);
     const placedMeshes = new Map<string, THREE.Group>();
 
+    // Laid road tiles, synced incrementally in the loop.
+    const roadLayer = new THREE.Group();
+    scene.add(roadLayer);
+    const roadMeshes = new Map<string, THREE.Mesh>();
+
     // Dispose every geometry/material under a group.
     const disposeGroup = (g: THREE.Object3D) => {
       g.traverse((o) => {
@@ -805,6 +817,7 @@ export default function Village3D({
     // Click: in placement mode, drop the pending facility where clicked (with a
     // sparkle); otherwise, clicking the banker NPC opens the loan popup.
     const onCanvasClick = (e: MouseEvent) => {
+      if (roadModeRef.current) return; // road mode handles its own press-drag
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -828,6 +841,40 @@ export default function Village3D({
       }
     };
     renderer.domElement.addEventListener('click', onCanvasClick);
+
+    // Road laying: in road mode, press-and-drag over the ground to pave tiles
+    // (snapped to the grid). A per-stroke key guard avoids redundant dispatches.
+    let layingRoad = false;
+    let lastRoadKey = '';
+    const layRoadAt = (clientX: number, clientY: number) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (!raycaster.ray.intersectPlane(groundPlane, hitPoint)) return;
+      const gx = Math.round(hitPoint.x / TILE);
+      const gz = Math.round(hitPoint.z / TILE);
+      const key = roadKey(gx, gz);
+      if (key === lastRoadKey) return;
+      lastRoadKey = key;
+      dispatchRef.current({ type: 'LAY_ROAD', gx, gz });
+    };
+    const onRoadDown = (e: PointerEvent) => {
+      if (!roadModeRef.current) return;
+      layingRoad = true;
+      lastRoadKey = '';
+      layRoadAt(e.clientX, e.clientY);
+    };
+    const onRoadMove = (e: PointerEvent) => {
+      if (!roadModeRef.current || !layingRoad) return;
+      layRoadAt(e.clientX, e.clientY);
+    };
+    const onRoadUp = () => {
+      layingRoad = false;
+    };
+    renderer.domElement.addEventListener('pointerdown', onRoadDown);
+    renderer.domElement.addEventListener('pointermove', onRoadMove);
+    window.addEventListener('pointerup', onRoadUp);
 
     let raf = 0;
     const clock = new THREE.Clock();
@@ -871,6 +918,18 @@ export default function Village3D({
         facility.position.set(w.x, 0, w.z);
         placedMeshes.set(p.id, facility);
         facilityLayer.add(facility);
+      }
+
+      // Sync laid road tiles, and build a lookup of paved cells for the cats.
+      const roadSet = new Set<string>();
+      for (const r of stateRef.current.roads) {
+        const key = roadKey(r.gx, r.gz);
+        roadSet.add(key);
+        if (roadMeshes.has(key)) continue;
+        const tile = makeRoadTile();
+        tile.position.set(r.gx * TILE, 0.05, r.gz * TILE);
+        roadMeshes.set(key, tile);
+        roadLayer.add(tile);
       }
 
       // Rebuild the translucent placement ghost when the pending kind changes.
@@ -1010,8 +1069,10 @@ export default function Village3D({
 
         const prevX = group.position.x;
         const prevZ = group.position.z;
-        // Sleeping cats walk slowly to a stop; others stroll at a normal pace.
-        const moveRate = cat.action === 'sleeping' ? 0.6 : 2;
+        // Sleeping cats walk slowly to a stop; others stroll at a normal pace —
+        // and cats on a road move twice as fast.
+        const onRoad = roadSet.has(roadKey(Math.round(w.x / TILE), Math.round(w.z / TILE)));
+        const moveRate = (cat.action === 'sleeping' ? 0.6 : 2) * (onRoad ? 2 : 1);
         group.position.x += (tx - prevX) * Math.min(1, dt * moveRate);
         group.position.z += (tz - prevZ) * Math.min(1, dt * moveRate);
 
@@ -1140,6 +1201,9 @@ export default function Village3D({
       mount.removeEventListener('drop', onDrop);
       renderer.domElement.removeEventListener('click', onCanvasClick);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerdown', onRoadDown);
+      renderer.domElement.removeEventListener('pointermove', onRoadMove);
+      window.removeEventListener('pointerup', onRoadUp);
       scene.traverse((obj) => {
         if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line) {
           obj.geometry.dispose();

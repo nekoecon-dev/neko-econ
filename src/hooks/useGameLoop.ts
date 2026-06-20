@@ -11,6 +11,7 @@ import { applyLoanInterest, repayLoan } from '@/lib/engine/loan';
 import { updateLoanDeadline } from '@/lib/engine/loanDeadline';
 import { updateMissions } from '@/lib/engine/missions';
 import { resolveBubbles, startBubble } from '@/lib/engine/bubble';
+import { layRoad, updateRoadEconomy } from '@/lib/engine/roads';
 import { updateStrike } from '@/lib/engine/strike';
 import { INITIAL_STATE } from '@/lib/engine/initialState';
 import { clamp, round2 } from '@/lib/engine/math';
@@ -78,6 +79,8 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return executeSell(state, action.catId);
     case 'REPAY_LOAN':
       return repayLoan(state, action.amount);
+    case 'LAY_ROAD':
+      return layRoad(state, action.gx, action.gz);
     case 'PLACE_FACILITY': {
       const cost = FACILITY_COST[action.kind];
       if (state.player.cash < cost) return state; // can't afford
@@ -137,6 +140,7 @@ export function useGameLoop(): {
         const onStrike = prev.strike.active;
         let next = updateAllCats(prev, { hiring, onStrike });
         next = { ...next, tick };
+        next = updateRoadEconomy(next); // road network adds GDP to the village
         next = updateCompanies(next); // found / fail ventures (uses next.tick)
         next = updateEconomy(next, { freezePrice: onStrike }); // strike freezes price
         // Strike bleeds stocks -1%/tick; bubbles inflate them (faster at low rates).

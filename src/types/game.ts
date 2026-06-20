@@ -123,6 +123,12 @@ export interface PlacedFacility {
   y: number; // 0..100 (% vertical position on the map)
 }
 
+/** A laid road tile, identified by its integer grid cell (TILE-sized). */
+export interface RoadTile {
+  gx: number;
+  gz: number;
+}
+
 /**
  * Mission progress. Missions are completed one at a time in order; `index` is
  * the current mission (equal to the mission count once all are done).
@@ -151,6 +157,7 @@ export interface GameState {
   repayDueTick: number; // tick of the next forced loan repayment deadline
   gameOver: boolean; // true once the player is foreclosed on (freezes the sim)
   bubbles: Record<string, BubbleState>; // catId -> active stock bubble
+  roads: RoadTile[]; // laid road tiles (speed cats up + boost GDP)
 }
 
 export type PolicyAction =
@@ -160,4 +167,5 @@ export type PolicyAction =
   | { type: 'BUY_STOCK'; catId: string }
   | { type: 'SELL_STOCK'; catId: string }
   | { type: 'REPAY_LOAN'; amount: number }
-  | { type: 'PLACE_FACILITY'; kind: FacilityKind; x: number; y: number };
+  | { type: 'PLACE_FACILITY'; kind: FacilityKind; x: number; y: number }
+  | { type: 'LAY_ROAD'; gx: number; gz: number };

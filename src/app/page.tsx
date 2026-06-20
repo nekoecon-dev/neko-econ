@@ -20,6 +20,7 @@ export default function Home() {
   const { state, dispatch, reset } = useGameLoop();
   const [loanOpen, setLoanOpen] = useState(false);
   const [pending, setPending] = useState<FacilityKind | null>(null);
+  const [roadMode, setRoadMode] = useState(false);
   const repayRemaining = Math.max(0, state.repayDueTick - state.tick);
 
   return (
@@ -34,6 +35,7 @@ export default function Home() {
           onOpenLoan={() => setLoanOpen(true)}
           pendingFacility={pending}
           onPlaced={() => setPending(null)}
+          roadMode={roadMode}
         />
       </div>
 
@@ -91,7 +93,10 @@ export default function Home() {
           facilities={state.facilities}
           cash={state.player.cash}
           pending={pending}
-          onPick={setPending}
+          onPick={(kind) => {
+            setPending(kind);
+            setRoadMode(false);
+          }}
         />
       </aside>
 
@@ -103,6 +108,29 @@ export default function Home() {
       {/* mission panel + reward popup, left side under the title */}
       <div className="pointer-events-none absolute left-3 top-28">
         <Missions state={state} />
+      </div>
+
+      {/* road-laying button (bottom-left) */}
+      <div className="absolute bottom-20 left-3 z-30 flex flex-col items-start gap-1">
+        {roadMode && (
+          <div className="pointer-events-none rounded-xl border-2 border-amber-700 bg-[#fffdf7]/95 px-3 py-1.5 text-[11px] font-bold text-amber-800 shadow">
+            🖱️ マップをクリック＆ドラッグして道路を敷くニャ（10CC/マス・道路が多いほどGDP↑）
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setRoadMode((m) => !m);
+            setPending(null);
+          }}
+          className={`btn-press rounded-2xl border-2 px-4 py-2 text-sm font-extrabold shadow-md backdrop-blur transition ${
+            roadMode
+              ? 'border-amber-700 bg-amber-500 text-white'
+              : 'border-amber-300 bg-[#fffdf7]/90 text-amber-900 hover:bg-amber-100'
+          }`}
+        >
+          🛤️ 道路を敷く（10CC/マス）{roadMode ? '（ON）' : ''}
+        </button>
       </div>
 
       {/* strike banner, centred */}
