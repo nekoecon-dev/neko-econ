@@ -293,7 +293,12 @@ export default function TutorialOverlay({
         村長！{TUTORIAL_INVEST_COST}CCあれば小さなスープ屋を始められるニャ！
         うまくいったら毎tick配当を払うニャ！
       </SpeechBubble>,
-      <CtaButton onClick={() => dispatch({ type: 'TUTORIAL_INVEST' })}>
+      <CtaButton
+        onClick={() => {
+          dispatch({ type: 'TUTORIAL_INVEST' });
+          setView('m1edu');
+        }}
+      >
         🍲 ミケに{TUTORIAL_INVEST_COST}CC投資する
       </CtaButton>,
     );
@@ -304,7 +309,12 @@ export default function TutorialOverlay({
         スープ屋と鍋が遠くて配達が遅いニャ。
         道路を2マス敷けば猫の足が速くなるニャ！
       </SpeechBubble>,
-      <CtaButton onClick={() => dispatch({ type: 'TUTORIAL_LAY_ROADS' })}>
+      <CtaButton
+        onClick={() => {
+          dispatch({ type: 'TUTORIAL_LAY_ROADS' });
+          setView('m2edu');
+        }}
+      >
         🛤️ 道路を2マス敷く
       </CtaButton>,
     );
@@ -316,7 +326,12 @@ export default function TutorialOverlay({
         金利レバーを少し上げると物価が落ち着くニャ。
         でも…あなたの借金の利息も上がるニャ😈
       </SpeechBubble>,
-      <CtaButton onClick={() => dispatch({ type: 'TUTORIAL_RAISE_RATE' })}>
+      <CtaButton
+        onClick={() => {
+          dispatch({ type: 'TUTORIAL_RAISE_RATE' });
+          setView('m3edu');
+        }}
+      >
         ⚙️ 金利を上げる（+{TUTORIAL_RATE_STEP}%）
       </CtaButton>,
     );
