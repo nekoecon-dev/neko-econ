@@ -7,9 +7,13 @@ import { FACILITY_COST, FACILITY_KINDS, FACILITY_META } from '@/lib/engine/facil
 export default function PublicWorks({
   facilities,
   cash,
+  pending,
+  onPick,
 }: {
   facilities: FacilityState;
   cash: number;
+  pending: FacilityKind | null;
+  onPick: (kind: FacilityKind) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -29,7 +33,7 @@ export default function PublicWorks({
       {open && (
         <div className="mt-3">
           <p className="mb-2 rounded-xl bg-amber-100/70 px-2.5 py-1.5 text-[11px] font-bold text-amber-800">
-            🖱️ 建物をマップへドラッグ＆ドロップして好きな場所に配置するニャ
+            🔨「設置」を押すと建物がカーソルに付くニャ。マップをクリックして置くニャ！
           </p>
           <div className="flex flex-col gap-2">
             {FACILITY_KINDS.map((kind: FacilityKind) => {
@@ -65,9 +69,20 @@ export default function PublicWorks({
                     <span className="text-xs font-bold tabular-nums text-amber-700">{cost} CC</span>
                   </div>
                   <div className="mt-0.5 text-[11px] text-amber-700/80">{meta.effect}</div>
-                  <div className="mt-1 text-[10px] font-bold text-sky-600">
-                    {afford ? '⇡ ドラッグして配置' : '🚫 資金不足'}
-                  </div>
+                  <button
+                    type="button"
+                    disabled={!afford}
+                    onClick={() => onPick(kind)}
+                    className={`btn-press mt-1.5 w-full rounded-xl py-1 text-[11px] font-bold transition ${
+                      pending === kind
+                        ? 'bg-emerald-500 text-white'
+                        : afford
+                          ? 'bg-sky-500 text-white hover:bg-sky-600'
+                          : 'cursor-not-allowed bg-gray-300 text-gray-500'
+                    }`}
+                  >
+                    {pending === kind ? '🖱️ クリックで設置…' : afford ? '🔨 設置する' : '🚫 資金不足'}
+                  </button>
                 </div>
               );
             })}

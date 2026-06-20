@@ -3,8 +3,8 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import type { CatAction, GameState, PolicyAction, Weather } from '@/types/game';
-import { isFacilityKind } from '@/lib/engine/facilities';
+import type { CatAction, FacilityKind, GameState, PolicyAction, Weather } from '@/types/game';
+import { FACILITY_COST, isFacilityKind } from '@/lib/engine/facilities';
 import { tickInterest } from '@/lib/engine/loan';
 import {
   buildVillage,
@@ -70,9 +70,10 @@ interface CatRuntime {
   phase: number;
   zzz: CSS2DObject;
   biz: CSS2DObject;
+  fish: CSS2DObject;
   actionEl: HTMLElement;
   moneyEl: HTMLElement;
-  lastAction: CatAction | null;
+  lastLabel: string;
   lastMoney: number;
 }
 
@@ -240,15 +241,21 @@ export default function Village3D({
   state,
   dispatch,
   onOpenLoan,
+  pendingFacility,
+  onPlaced,
 }: {
   state: GameState;
   dispatch: (action: PolicyAction) => void;
   onOpenLoan: () => void;
+  pendingFacility: FacilityKind | null;
+  onPlaced: () => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
   const dispatchRef = useRef(dispatch);
   const onOpenLoanRef = useRef(onOpenLoan);
+  const pendingRef = useRef(pendingFacility);
+  const onPlacedRef = useRef(onPlaced);
 
   // Mirror the latest state/dispatch for the loop + drop handler (the scene is
   // only set up once).
@@ -256,6 +263,8 @@ export default function Village3D({
     stateRef.current = state;
     dispatchRef.current = dispatch;
     onOpenLoanRef.current = onOpenLoan;
+    pendingRef.current = pendingFacility;
+    onPlacedRef.current = onPlaced;
   });
 
   useEffect(() => {
@@ -621,6 +630,15 @@ export default function Village3D({
       biz.visible = false;
       group.add(biz);
 
+      // A 🎣 shown when this cat is fishing at a nearby pond.
+      const fishEl = document.createElement('div');
+      fishEl.className = 'cat-fish';
+      fishEl.textContent = '🎣';
+      const fish = new CSS2DObject(fishEl);
+      fish.position.set(0.55, 0.9, 0);
+      fish.visible = false;
+      group.add(fish);
+
       catRuntimes.set(cat.id, {
         group,
         rig,
@@ -633,9 +651,10 @@ export default function Village3D({
         phase: i * 1.3,
         zzz,
         biz,
+        fish,
         actionEl,
         moneyEl,
-        lastAction: null,
+        lastLabel: '',
         lastMoney: Number.NaN,
       });
       catLayer.add(group);
@@ -646,6 +665,58 @@ export default function Village3D({
     const facilityLayer = new THREE.Group();
     scene.add(facilityLayer);
     const placedMeshes = new Map<string, THREE.Group>();
+
+    // Dispose every geometry/material under a group.
+    const disposeGroup = (g: THREE.Object3D) => {
+      g.traverse((o) => {
+        if (o instanceof THREE.Mesh || o instanceof THREE.Points) {
+          o.geometry.dispose();
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const m of mats) m.dispose();
+        }
+      });
+    };
+
+    // A short-lived burst of sparkle particles at a placement spot.
+    interface Sparkle {
+      points: THREE.Points;
+      vel: Float32Array;
+      life: number;
+      max: number;
+    }
+    const sparkles: Sparkle[] = [];
+    const spawnSparkle = (x: number, z: number) => {
+      const n = 40;
+      const pos = new Float32Array(n * 3);
+      const vel = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        pos[i * 3] = x;
+        pos[i * 3 + 1] = 0.4;
+        pos[i * 3 + 2] = z;
+        const a = Math.random() * Math.PI * 2;
+        const sp = 1.5 + Math.random() * 2;
+        vel[i * 3] = Math.cos(a) * sp;
+        vel[i * 3 + 1] = 2.5 + Math.random() * 2.5;
+        vel[i * 3 + 2] = Math.sin(a) * sp;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const mat = new THREE.PointsMaterial({
+        color: '#ffe14a',
+        size: 0.35,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const points = new THREE.Points(geo, mat);
+      scene.add(points);
+      sparkles.push({ points, vel, life: 1, max: 1 });
+    };
+
+    // Ghost preview of the facility being placed (follows the cursor).
+    let ghost: THREE.Group | null = null;
+    let ghostKind: FacilityKind | null = null;
+    const pointerNDC = new THREE.Vector2();
 
     // Drag-and-drop: a building card dropped from the panel raycasts the ground
     // to find where it landed, then dispatches PLACE_FACILITY at that map spot.
@@ -669,12 +740,40 @@ export default function Village3D({
     mount.addEventListener('dragover', onDragOver);
     mount.addEventListener('drop', onDrop);
 
-    // Click the banker NPC to open the loan repayment popup.
+    // Move the placement ghost to follow the cursor over the ground.
+    const onPointerMove = (e: MouseEvent) => {
+      if (!ghost) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+      if (raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
+        ghost.position.set(hitPoint.x, 0, hitPoint.z);
+      }
+    };
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+
+    // Click: in placement mode, drop the pending facility where clicked (with a
+    // sparkle); otherwise, clicking the banker NPC opens the loan popup.
     const onCanvasClick = (e: MouseEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
+
+      const pending = pendingRef.current;
+      if (pending) {
+        if (raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
+          const map = worldToMap(hitPoint.x, hitPoint.z);
+          if (stateRef.current.player.cash >= FACILITY_COST[pending]) {
+            dispatchRef.current({ type: 'PLACE_FACILITY', kind: pending, x: map.x, y: map.y });
+            spawnSparkle(hitPoint.x, hitPoint.z);
+          }
+          onPlacedRef.current();
+        }
+        return;
+      }
+
       if (raycaster.intersectObject(banker, true).length > 0) {
         onOpenLoanRef.current();
       }
@@ -724,22 +823,139 @@ export default function Village3D({
         facilityLayer.add(facility);
       }
 
+      // Rebuild the translucent placement ghost when the pending kind changes.
+      const pendingKind = pendingRef.current;
+      if (pendingKind !== ghostKind) {
+        if (ghost) {
+          scene.remove(ghost);
+          disposeGroup(ghost);
+          ghost = null;
+        }
+        if (pendingKind) {
+          ghost = makeFacility(pendingKind);
+          ghost.traverse((o) => {
+            if (o instanceof THREE.Mesh) {
+              const mats = Array.isArray(o.material) ? o.material : [o.material];
+              for (const m of mats) {
+                m.transparent = true;
+                m.opacity = 0.5;
+              }
+            }
+          });
+          scene.add(ghost);
+        }
+        ghostKind = pendingKind;
+      }
+      if (ghost) ghost.scale.setScalar(1 + Math.sin(t * 5) * 0.05);
+
+      // Advance any sparkle bursts (gravity + fade), removing finished ones.
+      for (let i = sparkles.length - 1; i >= 0; i--) {
+        const sp = sparkles[i];
+        sp.life -= dt;
+        const attr = sp.points.geometry.getAttribute('position') as THREE.BufferAttribute;
+        for (let j = 0; j < attr.count; j++) {
+          sp.vel[j * 3 + 1] -= 6 * dt; // gravity
+          attr.setX(j, attr.getX(j) + sp.vel[j * 3] * dt);
+          attr.setY(j, Math.max(0, attr.getY(j) + sp.vel[j * 3 + 1] * dt));
+          attr.setZ(j, attr.getZ(j) + sp.vel[j * 3 + 2] * dt);
+        }
+        attr.needsUpdate = true;
+        (sp.points.material as THREE.PointsMaterial).opacity = Math.max(0, sp.life / sp.max);
+        if (sp.life <= 0) {
+          scene.remove(sp.points);
+          disposeGroup(sp.points);
+          sparkles.splice(i, 1);
+        }
+      }
+
+      // Precompute facility influence on cats: collect facility world positions,
+      // and pick the single nearest cat to each pond (it will go fishing).
+      const REACTION_RADIUS = 4.5;
+      const factories: { x: number; z: number }[] = [];
+      const parks: { x: number; z: number }[] = [];
+      const ponds: { x: number; z: number }[] = [];
+      for (const p of stateRef.current.placements) {
+        const w = mapToWorld(p.x, p.y);
+        if (p.kind === 'soupFactory') factories.push(w);
+        else if (p.kind === 'matatabiPark') parks.push(w);
+        else ponds.push(w);
+      }
+      const fishingCats = new Set<string>();
+      for (const pond of ponds) {
+        let bestId: string | null = null;
+        let bestD = Infinity;
+        for (const c of stateRef.current.cats) {
+          const cw = mapToWorld(c.x, c.y);
+          const d = Math.hypot(cw.x - pond.x, cw.z - pond.z);
+          if (d < bestD) {
+            bestD = d;
+            bestId = c.id;
+          }
+        }
+        if (bestId) fishingCats.add(bestId);
+      }
+
       const shiver = weather === 'depression';
 
       for (const cat of stateRef.current.cats) {
         const rt = catRuntimes.get(cat.id);
         if (!rt) continue;
         const { group, rig, head, tail, phase } = rt;
+        const w = mapToWorld(cat.x, cat.y);
+
+        // Facility reactions: a nearby soup factory puts idle cats to work and
+        // pulls them toward it; a matatabi park makes cats spin happily; the
+        // nearest cat to a pond goes fishing.
+        const fishing = fishingCats.has(cat.id);
+        let factoryPull: { x: number; z: number } | null = null;
+        let happy = false;
+        let labelText = ACTION_LABEL[cat.action];
+        if (fishing) {
+          labelText = '釣りするニャ';
+        } else {
+          let nearType: 'factory' | 'park' | null = null;
+          let nearX = 0;
+          let nearZ = 0;
+          let nearD = REACTION_RADIUS;
+          for (const f of factories) {
+            const d = Math.hypot(w.x - f.x, w.z - f.z);
+            if (d < nearD) {
+              nearD = d;
+              nearType = 'factory';
+              nearX = f.x;
+              nearZ = f.z;
+            }
+          }
+          for (const pk of parks) {
+            const d = Math.hypot(w.x - pk.x, w.z - pk.z);
+            if (d < nearD) {
+              nearD = d;
+              nearType = 'park';
+              nearX = pk.x;
+              nearZ = pk.z;
+            }
+          }
+          if (nearType === 'factory' && cat.action === 'idle') {
+            factoryPull = { x: nearX, z: nearZ };
+            labelText = 'はたらくニャ';
+          } else if (nearType === 'park') {
+            happy = true;
+            labelText = 'しあわせニャ〜';
+          }
+        }
 
         // Target ground position: normally the cat's map spot, but when eating
-        // it walks up to a ring around the central soup pot.
-        const w = mapToWorld(cat.x, cat.y);
+        // it walks up to a ring around the soup pot, and a factory pulls idle
+        // cats toward itself.
         let tx = w.x;
         let tz = w.z;
         if (cat.action === 'eating') {
           const len = Math.hypot(w.x, w.z) || 1;
           tx = (w.x / len) * 2.2;
           tz = (w.z / len) * 2.2;
+        } else if (factoryPull) {
+          tx = factoryPull.x;
+          tz = factoryPull.z;
         }
 
         const prevX = group.position.x;
@@ -791,6 +1007,9 @@ export default function Village3D({
             tailSwing = Math.sin(t * 2.2 + phase) * 0.5;
             headTurn = Math.sin(t * 1.1 + phase) * 0.5;
         }
+        // Fishing: cast the "rod" by pitching up and down.
+        if (fishing) pitchX = Math.sin(t * 6 + phase) * 0.25;
+
         rig.position.y += (breathing + bobY - rig.position.y) * Math.min(1, dt * 6);
         rig.rotation.z += (rollZ - rig.rotation.z) * Math.min(1, dt * 4);
         rig.rotation.x += (pitchX - rig.rotation.x) * Math.min(1, dt * 8);
@@ -798,6 +1017,9 @@ export default function Village3D({
         head.rotation.y += (headTurn - head.rotation.y) * Math.min(1, dt * 4);
         head.position.y += (rt.headBaseY + headDip - head.position.y) * Math.min(1, dt * 8);
         if (rt.mouth) rt.mouth.scale.y += (mouthY - rt.mouth.scale.y) * Math.min(1, dt * 10);
+
+        // Happy at a matatabi park: spin in place.
+        if (happy) group.rotation.y += dt * 3.5;
 
         // Eyes: open normally, crossed (×) while sleeping.
         const asleep = cat.action === 'sleeping';
@@ -807,6 +1029,7 @@ export default function Village3D({
         // Floating status emojis.
         rt.zzz.visible = asleep;
         rt.biz.visible = cat.company !== null;
+        rt.fish.visible = fishing;
 
         // Depression: cats shiver in the cold.
         if (shiver) {
@@ -815,9 +1038,9 @@ export default function Village3D({
         }
 
         // Refresh the label text only when it actually changes.
-        if (rt.lastAction !== cat.action) {
-          rt.actionEl.textContent = ACTION_LABEL[cat.action];
-          rt.lastAction = cat.action;
+        if (rt.lastLabel !== labelText) {
+          rt.actionEl.textContent = labelText;
+          rt.lastLabel = labelText;
         }
         const money = Math.round(cat.money);
         if (rt.lastMoney !== money) {
@@ -852,6 +1075,7 @@ export default function Village3D({
       mount.removeEventListener('dragover', onDragOver);
       mount.removeEventListener('drop', onDrop);
       renderer.domElement.removeEventListener('click', onCanvasClick);
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
       scene.traverse((obj) => {
         if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line) {
           obj.geometry.dispose();

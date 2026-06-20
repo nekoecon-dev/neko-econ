@@ -67,6 +67,20 @@ body {
   font-size: 17px;
   animation: neko-spin 2s linear infinite;
 }
+.cat-fish {
+  pointer-events: none;
+  font-size: 20px;
+  animation: neko-cast 1s ease-in-out infinite;
+}
+@keyframes neko-cast {
+  0%,
+  100% {
+    transform: rotate(-12deg) translateY(0);
+  }
+  50% {
+    transform: rotate(8deg) translateY(-4px);
+  }
+}
 
 /* ---------- 3D spatial-UI panels (signs / levers / NPC) ---------- */
 .v3d-panel {

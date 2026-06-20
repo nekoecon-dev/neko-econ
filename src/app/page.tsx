@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import type { FacilityKind } from '@/types/game';
+import { FACILITY_META } from '@/lib/engine/facilities';
 import { useGameLoop } from '@/hooks/useGameLoop';
 import Village3D from '@/components/Village3D';
 import InflationPanel from '@/components/InflationPanel';
@@ -15,6 +17,7 @@ import Missions from '@/components/Missions';
 export default function Home() {
   const { state, dispatch } = useGameLoop();
   const [loanOpen, setLoanOpen] = useState(false);
+  const [pending, setPending] = useState<FacilityKind | null>(null);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden text-amber-950">
@@ -22,8 +25,32 @@ export default function Home() {
 
       {/* 3D village fills the whole screen as the background */}
       <div className="absolute inset-0">
-        <Village3D state={state} dispatch={dispatch} onOpenLoan={() => setLoanOpen(true)} />
+        <Village3D
+          state={state}
+          dispatch={dispatch}
+          onOpenLoan={() => setLoanOpen(true)}
+          pendingFacility={pending}
+          onPlaced={() => setPending(null)}
+        />
       </div>
+
+      {/* placement-mode banner */}
+      {pending && (
+        <div className="pointer-events-none absolute left-1/2 top-20 z-40 -translate-x-1/2">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border-2 border-sky-300 bg-[#fffdf7]/95 px-4 py-2 text-sm font-bold text-sky-800 shadow-lg backdrop-blur">
+            <span>
+              {FACILITY_META[pending].icon} {FACILITY_META[pending].name}を設置中… マップをクリック！
+            </span>
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              className="btn-press rounded-xl bg-rose-500 px-2.5 py-1 text-xs font-bold text-white hover:bg-rose-600"
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* top bar: title + tick + wallet (non-interactive, floats over the canvas) */}
       <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center justify-between gap-2 p-3">
@@ -57,7 +84,12 @@ export default function Home() {
           player={state.player}
           dispatch={dispatch}
         />
-        <PublicWorks facilities={state.facilities} cash={state.player.cash} />
+        <PublicWorks
+          facilities={state.facilities}
+          cash={state.player.cash}
+          pending={pending}
+          onPick={setPending}
+        />
       </aside>
 
       {/* mission panel + reward popup, left side under the title */}
