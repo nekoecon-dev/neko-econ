@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import type { FacilityKind } from '@/types/game';
 
-// The playable ground is a GROUND x GROUND square centred on the origin. Cat /
-// facility positions arrive as map percentages (0..100); mapToWorld converts
-// them to world coordinates that stay comfortably inside the field.
-export const GROUND = 24;
-export const MAP_HALF = 10;
+// The playable ground is a GROUND x GROUND square centred on the origin (4x the
+// original area). Cat / facility positions arrive as map percentages (0..100);
+// mapToWorld converts them to world coordinates that stay inside the field.
+export const GROUND = 48;
+export const MAP_HALF = 20;
+
+// One road grid tile is TILE world units across; cat/road cells snap to it.
+export const TILE = 2;
 
 /** Convert a 0..100 map percentage (x, y) to world (x, z) coordinates. */
 export function mapToWorld(x: number, y: number): { x: number; z: number } {
@@ -68,7 +71,7 @@ const GRASS = ['#7cc35a', '#74bd52', '#86cb63', '#6db04b', '#8ed06b'].map((c) =>
 function makeGround(): THREE.Group {
   const group = new THREE.Group();
 
-  const seg = 26;
+  const seg = 40;
   const geo = new THREE.PlaneGeometry(GROUND, GROUND, seg, seg);
   const count = geo.attributes.position.count;
   const colors = new Float32Array(count * 3);
@@ -89,7 +92,7 @@ function makeGround(): THREE.Group {
   // Scatter little darker-green grass tufts for texture.
   const tuftGeo = new THREE.ConeGeometry(0.12, 0.4, 4);
   const tuftMat = matte('#5aa53f');
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 180; i++) {
     const tuft = new THREE.Mesh(tuftGeo, tuftMat);
     tuft.position.set((Math.random() - 0.5) * GROUND * 0.92, 0.18, (Math.random() - 0.5) * GROUND * 0.92);
     tuft.rotation.y = Math.random() * Math.PI;
@@ -590,19 +593,27 @@ export function makePlayerTent(): THREE.Group {
 
 /* ----------------------------- facilities ----------------------------- */
 
+// Scenery spread across the larger (48x48) field.
 const TREE_SPOTS: [number, number][] = [
-  [-9, -8],
-  [-7, 6],
-  [9, -7],
-  [8, 7],
-  [-10, 1],
-  [4, -9],
-  [10, 3],
+  [-18, -15],
+  [-14, 10],
+  [16, -14],
+  [15, 13],
+  [-20, 4],
+  [7, -18],
+  [19, 7],
+  [-9, 17],
+  [11, 18],
+  [18, -7],
+  [-16, -7],
+  [6, 14],
+  [-21, 14],
+  [21, -16],
 ];
 const HOUSE_SPOTS: [number, number, THREE.ColorRepresentation][] = [
-  [-6, -6, '#d9534f'],
-  [6, -5, '#4f7fd9'],
-  [-5, 7, '#d99a4f'],
+  [-11, 13, '#d9534f'],
+  [13, -10, '#4f7fd9'],
+  [10, 16, '#d99a4f'],
 ];
 
 /**
@@ -651,6 +662,16 @@ export function makeFacility(kind: FacilityKind): THREE.Group {
   return group;
 }
 
+/** A single brown paved road tile (TILE x TILE), laid flat on the grass. */
+export function makeRoadTile(): THREE.Mesh {
+  const tile = new THREE.Mesh(
+    new THREE.BoxGeometry(TILE, 0.08, TILE),
+    new THREE.MeshStandardMaterial({ color: '#a87c4f', roughness: 1 }),
+  );
+  tile.position.y = 0.05;
+  return tile;
+}
+
 /** A still pond: a flat blue disc resting just above the grass. */
 function makePond(): THREE.Mesh {
   const pond = new THREE.Mesh(
@@ -680,19 +701,29 @@ export function buildVillage(): THREE.Group {
   }
 
   const pond = makePond();
-  pond.position.set(-7, 0.03, -2);
+  pond.position.set(-10, 0.03, -13);
   village.add(pond);
 
+  // Central plaza: a big stone disc under the giant soup pot.
+  const plaza = new THREE.Mesh(
+    new THREE.CircleGeometry(6, 32),
+    new THREE.MeshStandardMaterial({ color: '#d8cdb8', roughness: 1 }),
+  );
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.y = 0.03;
+  village.add(plaza);
+
   const pot = makeSoupPot();
+  pot.scale.setScalar(2.4); // 巨大スープ鍋
   pot.position.set(0, 0, 0);
   pot.name = 'soupPot';
   village.add(pot);
 
-  // Scatter little flowers around the meadow (away from the central pot).
-  for (let i = 0; i < 22; i++) {
-    const fx = (Math.random() - 0.5) * GROUND * 0.88;
-    const fz = (Math.random() - 0.5) * GROUND * 0.88;
-    if (Math.hypot(fx, fz) < 2.4) continue; // keep the pot area clear
+  // Scatter little flowers around the meadow (away from the central plaza).
+  for (let i = 0; i < 64; i++) {
+    const fx = (Math.random() - 0.5) * GROUND * 0.92;
+    const fz = (Math.random() - 0.5) * GROUND * 0.92;
+    if (Math.hypot(fx, fz) < 6.5) continue; // keep the plaza area clear
     const flower = makeFlower(FLOWER_COLORS[i % FLOWER_COLORS.length]);
     flower.position.set(fx, 0, fz);
     village.add(flower);

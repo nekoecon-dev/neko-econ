@@ -133,7 +133,7 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
     sunScale: 1,
     sunVisible: true,
     fog: '#dcefff',
-    fogFar: 60,
+    fogFar: 130,
   },
   boom: {
     skyTop: '#5fb0ff',
@@ -144,7 +144,7 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
     sunScale: 1.4,
     sunVisible: true,
     fog: '#eaf6ff',
-    fogFar: 72,
+    fogFar: 150,
   },
   hyperinflation: {
     skyTop: '#7c1d1d',
@@ -155,7 +155,7 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
     sunScale: 1.6,
     sunVisible: true,
     fog: '#8f2f1e',
-    fogFar: 40,
+    fogFar: 90,
   },
   depression: {
     skyTop: '#59616d',
@@ -166,7 +166,7 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
     sunScale: 1,
     sunVisible: false,
     fog: '#828b98',
-    fogFar: 30,
+    fogFar: 70,
   },
 };
 
@@ -197,7 +197,7 @@ function makeSkyDome(): { mesh: THREE.Mesh; material: THREE.ShaderMaterial } {
       }
     `,
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(90, 24, 16), material);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(160, 24, 16), material);
   return { mesh, material };
 }
 
@@ -284,10 +284,10 @@ export default function Village3D({
     const { mesh: skyDome, material: skyMat } = makeSkyDome();
     scene.add(skyDome);
 
-    // 45° isometric-style look-down camera.
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 200);
-    camera.position.set(13, 13, 13);
-    camera.lookAt(0, 1, 0);
+    // 45° isometric-style look-down camera, zoomed out for the larger map.
+    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 300);
+    camera.position.set(27, 27, 27);
+    camera.lookAt(0, 2, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap for mobile
@@ -316,10 +316,11 @@ export default function Village3D({
       new THREE.SphereGeometry(1.3, 16, 12),
       new THREE.MeshBasicMaterial({ color: '#ffe680' }),
     );
-    sunDisc.position.set(-11, 12, -9);
+    sunDisc.position.set(-22, 26, -18);
+    sunDisc.scale.setScalar(1.8);
     scene.add(sunDisc);
 
-    scene.fog = new THREE.Fog('#cfecff', 12, 60);
+    scene.fog = new THREE.Fog('#cfecff', 30, 130);
 
     // Weather particle clouds (only the active one is shown + animated).
     const confetti = makeParticles(160, '#ffd54a', 0.3, 0.95); // boom
@@ -340,10 +341,10 @@ export default function Village3D({
     // frame by the `updaters` list (they read the latest state via stateRef). ----
     const updaters: Array<() => void> = [];
 
-    // Soup price signboard next to the pot (red when rising, green when falling).
+    // Soup price signboard by the central plaza (red when rising, green falling).
     const soupSign = makeSignpost();
-    soupSign.position.set(2.2, 0, 1.9);
-    soupSign.rotation.y = -0.5;
+    soupSign.position.set(5.5, 0, 5.5);
+    soupSign.rotation.y = -0.7;
     scene.add(soupSign);
     {
       const root = document.createElement('div');
@@ -366,10 +367,10 @@ export default function Village3D({
       });
     }
 
-    // ネコ銀行 building + interest lever.
+    // ネコ銀行 building + interest lever (left edge).
     const bank = makeBankBuilding();
-    bank.position.set(-9.5, 0, 4.2);
-    bank.rotation.y = 0.5;
+    bank.position.set(-20, 0, -4);
+    bank.rotation.y = 0.4;
     scene.add(bank);
     {
       const root = document.createElement('div');
@@ -387,8 +388,8 @@ export default function Village3D({
       bank.add(obj);
 
       const lever = makeLever('#10b981');
-      lever.position.set(-9.3, 0, 6.4);
-      lever.rotation.y = 0.5;
+      lever.position.set(-17.5, 0, -4);
+      lever.rotation.y = 0.4;
       scene.add(lever);
       const handle = lever.getObjectByName('handle') ?? null;
       const ctlRoot = document.createElement('div');
@@ -437,9 +438,9 @@ export default function Village3D({
       });
     }
 
-    // 役場 (town hall) + tax lever + currency-issue button.
+    // 役場 (town hall) + tax lever + currency-issue button (right edge).
     const hall = makeTownHall();
-    hall.position.set(9.5, 0, 4.2);
+    hall.position.set(20, 0, 2);
     hall.rotation.y = -0.5;
     scene.add(hall);
     {
@@ -463,7 +464,7 @@ export default function Village3D({
       hall.add(obj);
 
       const lever = makeLever('#ef4444');
-      lever.position.set(9.3, 0, 6.4);
+      lever.position.set(17.5, 0, 2);
       lever.rotation.y = -0.5;
       scene.add(lever);
       const handle = lever.getObjectByName('handle') ?? null;
@@ -507,7 +508,7 @@ export default function Village3D({
 
     // Inflation/economy "thermometer" gauges at the back of the field.
     const thermo = makeThermometers();
-    thermo.position.set(0, 0, -10);
+    thermo.position.set(0, 0, -21);
     scene.add(thermo);
     {
       const fills = [0, 1, 2].map((i) => thermo.getObjectByName(`fill${i}`) ?? null);
@@ -543,17 +544,17 @@ export default function Village3D({
     // Player's dwelling (tent while in debt, house once paid off) + たぬきち
     // banker NPC that shows the loan balance and opens the repayment popup.
     const tent = makePlayerTent();
-    tent.position.set(-2.6, 0, 8.6);
+    tent.position.set(-20, 0, 8);
     scene.add(tent);
     const playerHouse = makeHouse('#dc2626');
-    playerHouse.scale.setScalar(0.7);
-    playerHouse.position.set(-2.6, 0, 8.6);
+    playerHouse.scale.setScalar(0.8);
+    playerHouse.position.set(-20, 0, 8);
     playerHouse.visible = false;
     scene.add(playerHouse);
 
     const banker = makeBanker();
-    banker.position.set(-0.9, 0, 8.9);
-    banker.rotation.y = 2.6;
+    banker.position.set(-17.4, 0, 8.5);
+    banker.rotation.y = 2.4;
     scene.add(banker);
     {
       const root = document.createElement('div');
