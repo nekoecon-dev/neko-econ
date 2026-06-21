@@ -662,13 +662,41 @@ export function makeFacility(kind: FacilityKind): THREE.Group {
   return group;
 }
 
-/** A single brown paved road tile (TILE x TILE), laid flat on the grass. */
-export function makeRoadTile(): THREE.Mesh {
-  const tile = new THREE.Mesh(
+// Soft warm-grey palette for the cobblestones, so each stone reads slightly
+// differently.
+const COBBLE_COLORS = ['#c8c2b6', '#b9b2a4', '#d2ccc0', '#aea796'];
+
+/**
+ * A single cute 石畳 (cobblestone) road tile (TILE x TILE), laid flat on the
+ * grass: a pale mortar base studded with a 3x3 grid of little rounded stones.
+ */
+export function makeRoadTile(): THREE.Group {
+  const tile = new THREE.Group();
+
+  const base = new THREE.Mesh(
     new THREE.BoxGeometry(TILE, 0.08, TILE),
-    new THREE.MeshStandardMaterial({ color: '#a87c4f', roughness: 1 }),
+    matte('#9a8f7d'), // mortar between the stones
   );
-  tile.position.y = 0.05;
+  base.position.y = 0.04;
+  tile.add(base);
+
+  const stoneGeo = new THREE.SphereGeometry(0.32, 8, 6);
+  const step = TILE / 3;
+  let i = 0;
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const stone = new THREE.Mesh(stoneGeo, matte(COBBLE_COLORS[i % COBBLE_COLORS.length]));
+      stone.position.set(
+        (c - 1) * step + (((r + c) % 2) - 0.5) * 0.06,
+        0.1,
+        (r - 1) * step,
+      );
+      stone.scale.set(1, 0.42, 1); // flattened pebble
+      tile.add(stone);
+      i++;
+    }
+  }
+
   return tile;
 }
 

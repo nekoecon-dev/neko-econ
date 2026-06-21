@@ -606,10 +606,12 @@ export default function Village3D({
     }
 
     // Spawn one cat per id (stable), each with a phase offset (so idle bobbing
-    // isn't synchronised), an HTML name label, and a floating Zzz puff.
+    // isn't synchronised), an HTML name label, and a floating Zzz puff. New cats
+    // that join later (e.g. シロ after the tutorial repayment) are spawned
+    // incrementally by the render loop via this same helper.
     const catLayer = new THREE.Group();
     const catRuntimes = new Map<string, CatRuntime>();
-    stateRef.current.cats.forEach((cat, i) => {
+    const spawnCat = (cat: GameState['cats'][number], i: number) => {
       const group = makeCat(CAT_STYLES[cat.id] ?? DEFAULT_CAT_STYLE);
       const w = mapToWorld(cat.x, cat.y);
       group.position.set(w.x, 0, w.z);
@@ -714,7 +716,8 @@ export default function Village3D({
         lastMoney: Number.NaN,
       });
       catLayer.add(group);
-    });
+    };
+    stateRef.current.cats.forEach((cat, i) => spawnCat(cat, i));
     scene.add(catLayer);
 
     // Placed public-works facilities are synced incrementally in the loop.
@@ -722,10 +725,10 @@ export default function Village3D({
     scene.add(facilityLayer);
     const placedMeshes = new Map<string, THREE.Group>();
 
-    // Laid road tiles, synced incrementally in the loop.
+    // Laid road tiles (cobblestone groups), synced incrementally in the loop.
     const roadLayer = new THREE.Group();
     scene.add(roadLayer);
-    const roadMeshes = new Map<string, THREE.Mesh>();
+    const roadMeshes = new Map<string, THREE.Object3D>();
 
     // Dispose every geometry/material under a group.
     const disposeGroup = (g: THREE.Object3D) => {
@@ -910,6 +913,20 @@ export default function Village3D({
       if (confetti.visible) driftParticles(confetti, -dt * 2.2);
       if (rain.visible) driftParticles(rain, -dt * 9);
       if (embers.visible) driftParticles(embers, dt * 3);
+
+      // Spawn a rig for any cat that has joined the village since setup (e.g.
+      // シロ moving in after the tutorial repayment).
+      for (const cat of stateRef.current.cats) {
+        if (!catRuntimes.has(cat.id)) {
+          spawnCat(cat, catRuntimes.size);
+          const rt = catRuntimes.get(cat.id);
+          if (rt) {
+            const w = mapToWorld(cat.x, cat.y);
+            rt.group.position.set(w.x, 0, w.z);
+            spawnSparkle(w.x, w.z); // little welcome puff
+          }
+        }
+      }
 
       // Add a mesh for any newly placed facility (with a celebratory sparkle).
       for (const p of stateRef.current.placements) {
