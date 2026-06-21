@@ -29,34 +29,16 @@ export default function Missions({ state }: { state: GameState }) {
             🏆 全ミッション達成！立派な村長ニャ！
           </p>
         ) : (
-          <ul className="flex flex-col gap-1.5">
-            {MISSIONS.map((m, i) => {
-              const done = i < index;
-              const current = i === index;
-              return (
-                <li
-                  key={m.id}
-                  className={`rounded-xl border-2 px-2.5 py-1.5 text-xs ${
-                    done
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : current
-                        ? 'border-amber-300 bg-amber-50 text-amber-900'
-                        : 'border-gray-200 bg-gray-50 text-gray-400'
-                  }`}
-                >
-                  <div className="flex items-start gap-1.5 font-bold">
-                    <span>{done ? '✅' : current ? '▶️' : '🔒'}</span>
-                    <span className="leading-snug">{m.title}</span>
-                  </div>
-                  {current && (
-                    <div className="mt-0.5 pl-5 text-[10px] font-medium text-amber-600">
-                      💡 {m.hint}（報酬 +{MISSION_REWARD}CC）
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          // Only ever the single current mission — completed/locked ones stay hidden.
+          <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
+            <div className="flex items-start gap-1.5 font-bold">
+              <span>▶️</span>
+              <span className="leading-snug">{MISSIONS[index].title}</span>
+            </div>
+            <div className="mt-0.5 pl-5 text-[10px] font-medium text-amber-600">
+              💡 {MISSIONS[index].hint}（報酬 +{MISSION_REWARD}CC）
+            </div>
+          </div>
         )}
       </div>
 

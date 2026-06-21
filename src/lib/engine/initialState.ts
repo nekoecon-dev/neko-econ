@@ -1,4 +1,4 @@
-import type { Cat, GameState, RoadTile, StockShare } from '@/types/game';
+import type { Cat, GameState, StockShare } from '@/types/game';
 import { initStock } from './stocks';
 import { INITIAL_LOAN } from './loan';
 import { FORCED_REPAY, REPAY_INTERVAL } from './loanDeadline';
@@ -123,7 +123,7 @@ export const INITIAL_STATE: GameState = {
   missions: { index: 0, lastRewardTick: -1 },
   repayDueTick: REPAY_INTERVAL,
   repayAmount: FORCED_REPAY,
-  villageLevel: 2, // free-play baseline: the whole village is already unlocked
+  villageLevel: 3, // free-play baseline: everything (incl. the stock market) unlocked
   gameOver: false,
   bubbles: {},
   roads: [],
@@ -135,14 +135,14 @@ export const INITIAL_STATE: GameState = {
 // Story tutorial — "火の消えかけたネコ村" -----------------------------------
 //
 // The player is a new villager in debt. The starting village is deliberately
-// small and dense: just two neighbours (ミケ・タマ) clustered around the giant
-// soup pot, with たぬきち running the bank and a few 石畳 already laid. シロ and
-// the rest of the economy unlock once the first 1,000CC repayment is made.
+// small: just two neighbours (ミケ・タマ) around the giant soup pot, with
+// たぬきち at the bank. Time only moves when the player presses 「1日進める」, and
+// each stage unlocks exactly one concept (invest → advance → roads → repay).
 // ---------------------------------------------------------------------------
 
-const TUTORIAL_START_CASH = 606;
-const TUTORIAL_LOAN = 9000;
-const TUTORIAL_REPAY_TICKS = 18;
+const TUTORIAL_START_CASH = 1075;
+const TUTORIAL_LOAN = 8000;
+const TUTORIAL_REPAY_TICKS = 28;
 
 // Only two cats live here at the start (ids reuse the canonical styles so they
 // render with the right coats): ミケ the would-be shopkeeper and タマ the
@@ -180,14 +180,6 @@ export const TUTORIAL_CATS: Cat[] = [
   },
 ];
 
-// A few decorative 石畳 tiles around the east side of the plaza (the mission-2
-// road to ミケのスープ屋 is laid fresh on the south-west side, so no overlap).
-const TUTORIAL_ROADS: RoadTile[] = [
-  { gx: 2, gz: 0 },
-  { gx: 2, gz: 1 },
-  { gx: 1, gz: 2 },
-];
-
 export const TUTORIAL_INITIAL_STATE: GameState = {
   ...INITIAL_STATE,
   cats: TUTORIAL_CATS,
@@ -197,8 +189,8 @@ export const TUTORIAL_INITIAL_STATE: GameState = {
   player: { ...INITIAL_STATE.player, cash: TUTORIAL_START_CASH, loan: TUTORIAL_LOAN },
   repayDueTick: TUTORIAL_REPAY_TICKS,
   repayAmount: FORCED_REPAY,
-  villageLevel: 1, // the village (and the stock market) is still locked
-  roads: TUTORIAL_ROADS,
+  villageLevel: 1, // levers / stocks / news are all still locked
+  roads: [], // no roads yet — the player lays them in stage 3
   market: { soupPrice: 6, supply: 0, demand: 0 },
   economy: {
     soupPrice: 6,

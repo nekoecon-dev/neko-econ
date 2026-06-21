@@ -141,21 +141,23 @@ export interface MissionState {
 }
 
 /**
- * Story-tutorial phase. The guided tutorial walks the new villager from a short
- * intro through three missions (invest → roads → interest) to the first forced
- * loan repayment, pausing the simulation until done. `intro` is the opening
- * card; `repayment` is the たぬきち collection scene; `done` is free play.
+ * Story-tutorial stage. The guided tutorial unlocks one concept at a time and
+ * only advances time when the player presses 「1日進める」 (no realtime auto-run):
+ * `intro` (opening) → `invest` (stage 1: invest in ミケ) → `advance` (stage 2:
+ * learn 「1日進める」) → `roads` (stage 3: connect the 石畳) → `repayWait` (advance
+ * to the deadline) → `repayment` (stage 4: たぬきち collects) → `done` (free play).
  */
 export type TutorialPhase =
   | 'intro'
-  | 'mission1'
-  | 'mission2'
-  | 'mission3'
+  | 'invest'
+  | 'advance'
+  | 'roads'
+  | 'repayWait'
   | 'repayment'
   | 'done';
 
 export interface TutorialState {
-  active: boolean; // true while the guided tutorial runs (freezes the sim)
+  active: boolean; // true while the guided tutorial runs (freezes realtime ticks)
   phase: TutorialPhase;
   dividend: number; // CC/tick the player earns from ミケのスープ屋 (0 until invested)
 }
@@ -192,10 +194,10 @@ export type PolicyAction =
   | { type: 'REPAY_LOAN'; amount: number }
   | { type: 'PLACE_FACILITY'; kind: FacilityKind; x: number; y: number }
   | { type: 'LAY_ROAD'; gx: number; gz: number }
-  | { type: 'TUTORIAL_START' } // intro card -> mission 1
-  | { type: 'TUTORIAL_INVEST' } // mission 1: invest 300CC in ミケ
-  | { type: 'TUTORIAL_LAY_ROADS' } // mission 2: pave the 石畳 to the shop
-  | { type: 'TUTORIAL_RAISE_RATE' } // mission 3: raise the interest rate
-  | { type: 'TUTORIAL_REPAY' } // repayment day: pay たぬきち & unlock the village
+  | { type: 'TUTORIAL_START' } // intro card -> stage 1 (invest)
+  | { type: 'TUTORIAL_INVEST' } // stage 1: invest 300CC in ミケ
+  | { type: 'TUTORIAL_ADVANCE_DAY' } // stage 2+: advance one tick (pays the dividend)
+  | { type: 'TUTORIAL_LAY_ROADS' } // stage 3: connect the 石畳 shop<->pot
+  | { type: 'TUTORIAL_REPAY' } // stage 4: pay たぬきち & unlock the village
   | { type: 'TUTORIAL_FINISH' } // close the completion popup -> free play
   | { type: 'TUTORIAL_SKIP' }; // skip the whole tutorial -> free play

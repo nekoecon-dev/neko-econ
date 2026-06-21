@@ -364,13 +364,17 @@ export default function Village3D({
       soupSign.add(obj);
       let last = -1;
       updaters.push(() => {
-        const e = stateRef.current.economy;
+        const s = stateRef.current;
+        const e = s.economy;
         if (e.soupPrice !== last) {
           val.textContent = `🍲 ${e.soupPrice} CC`;
           last = e.soupPrice;
         }
         val.style.color =
           e.inflationRate > 0 ? '#dc2626' : e.inflationRate < 0 ? '#16a34a' : '#1f2937';
+        // Keep the opening screen minimal: the price label appears after the
+        // tutorial (the physical signpost stays as scenery).
+        obj.visible = !s.tutorial.active;
       });
     }
 
@@ -442,6 +446,12 @@ export default function Village3D({
           loan.textContent = txt;
           lastLoan = txt;
         }
+        // The 金利 lever + rate panel stay hidden until the village unlocks
+        // (level 2, granted at the tutorial's repayment).
+        const unlocked = s.villageLevel >= 2;
+        lever.visible = unlocked;
+        obj.visible = unlocked;
+        ctlObj.visible = unlocked;
       });
     }
 
@@ -503,13 +513,20 @@ export default function Village3D({
 
       let lastTax = -1;
       updaters.push(() => {
-        const r = stateRef.current.policy.taxRate;
+        const s = stateRef.current;
+        const r = s.policy.taxRate;
         if (r !== lastTax) {
           tax.textContent = `税率: ${r}%`;
           popJump(tax);
           if (handle) handle.rotation.z = -0.5 + (r / 50) * 1.0;
           lastTax = r;
         }
+        // The whole 役場 (tax lever + 通貨発行) stays hidden until level 2.
+        const unlocked = s.villageLevel >= 2;
+        hall.visible = unlocked;
+        lever.visible = unlocked;
+        obj.visible = unlocked;
+        ctlObj.visible = unlocked;
       });
     }
 
@@ -519,6 +536,7 @@ export default function Village3D({
     scene.add(thermo);
     {
       const fills = [0, 1, 2].map((i) => thermo.getObjectByName(`fill${i}`) ?? null);
+      const gaugeObjs: CSS2DObject[] = [];
       const makeGauge = (cx: number, title: string): HTMLElement => {
         const root = document.createElement('div');
         root.className = 'v3d-panel';
@@ -531,6 +549,7 @@ export default function Village3D({
         const obj = new CSS2DObject(root);
         obj.position.set(cx, 4.0, 0);
         thermo.add(obj);
+        gaugeObjs.push(obj);
         return v;
       };
       const unV = makeGauge(-1.1, '😿失業');
@@ -538,13 +557,18 @@ export default function Village3D({
       const giV = makeGauge(1.1, '⚖️格差');
       const H = 3;
       updaters.push(() => {
-        const e = stateRef.current.economy;
+        const s = stateRef.current;
+        const e = s.economy;
         if (fills[0]) fills[0].scale.y = clampNum(e.unemploymentRate / 100, 0.02, 1) * H;
         if (fills[1]) fills[1].scale.y = clampNum(e.inflationRate / 30, 0.02, 1) * H;
         if (fills[2]) fills[2].scale.y = clampNum(e.gini, 0.02, 1) * H;
         unV.textContent = `${e.unemploymentRate}%`;
         inV.textContent = `${e.inflationRate >= 0 ? '+' : ''}${e.inflationRate}%`;
         giV.textContent = e.gini.toFixed(2);
+        // The economy gauges (インフレ etc.) are hidden until level 2.
+        const unlocked = s.villageLevel >= 2;
+        thermo.visible = unlocked;
+        for (const g of gaugeObjs) g.visible = unlocked;
       });
     }
 
@@ -602,6 +626,12 @@ export default function Village3D({
           interestEl.style.color = interest > 0 ? '#dc2626' : '#6b4423';
           lastInterest = interest;
         }
+        // During the tutorial the repayment is driven by the guided 返済 step, so
+        // hide the banker's free 返済 button (the 借金残高 still shows on the map).
+        // The 月利 line is also tutorial-noise, so hide it until unlocked.
+        const tut = s.tutorial.active;
+        row.style.display = tut ? 'none' : '';
+        interestEl.style.display = tut ? 'none' : '';
       });
     }
 

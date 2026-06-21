@@ -82,11 +82,11 @@ export default function Home() {
       {/* right-hand overlay: the small inflation graph + stock / works panels
           (the economic dashboard now lives in the 3D world). Hidden during the
           guided tutorial — the new player only sees the simple status HUD. The
-          stock market stays locked until the village reaches level 2. */}
+          stock market stays locked until the village reaches level 3. */}
       {!state.tutorial.active && (
         <aside className="pointer-events-none absolute right-0 top-16 bottom-20 flex w-[88%] max-w-xs flex-col gap-3 overflow-y-auto p-3 [&>*]:pointer-events-auto">
           <InflationPanel economy={state.economy} />
-          {state.villageLevel >= 2 && (
+          {state.villageLevel >= 3 && (
             <StockMarket
               cats={state.cats}
               stocks={state.stocks}
@@ -160,10 +160,12 @@ export default function Home() {
         onClose={() => setLoanOpen(false)}
       />
 
-      {/* news ticker pinned to the bottom */}
-      <footer className="absolute inset-x-0 bottom-0 p-3">
-        <NewsTicker news={state.newsLog} />
-      </footer>
+      {/* news ticker pinned to the bottom — unlocked after the tutorial */}
+      {!state.tutorial.active && (
+        <footer className="absolute inset-x-0 bottom-0 p-3">
+          <NewsTicker news={state.newsLog} />
+        </footer>
+      )}
 
       {/* foreclosure / game over */}
       {state.gameOver && <GameOverScreen onRetry={reset} />}

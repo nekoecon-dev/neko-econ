@@ -37,9 +37,9 @@ export function updateLoanDeadline(state: GameState): GameState {
         cash: round2(state.player.cash - pay),
         loan: remaining,
       },
-      // A villager who pays on time keeps the village unlocked (recovers a
-      // 救済-downgraded level too).
-      villageLevel: Math.max(state.villageLevel, 2),
+      // Paying on time grows the village one level (max 3), so post-tutorial
+      // play unlocks the stock market at level 3.
+      villageLevel: Math.min(3, Math.max(state.villageLevel + 1, 2)),
       repayDueTick: state.repayDueTick + REPAY_INTERVAL,
       newsLog: [news, ...state.newsLog].slice(0, 50),
     };
