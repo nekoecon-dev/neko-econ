@@ -15,11 +15,12 @@ import { layRoad, updateRoadEconomy } from '@/lib/engine/roads';
 import { updateStrike } from '@/lib/engine/strike';
 import {
   applyDividend,
-  tutorialAdvance,
   tutorialFinish,
   tutorialInvest,
   tutorialLayRoads,
   tutorialRaiseRate,
+  tutorialRepay,
+  tutorialStart,
   tutorialSkip,
 } from '@/lib/engine/tutorial';
 import { INITIAL_STATE, TUTORIAL_INITIAL_STATE } from '@/lib/engine/initialState';
@@ -90,14 +91,16 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return repayLoan(state, action.amount);
     case 'LAY_ROAD':
       return layRoad(state, action.gx, action.gz);
-    case 'TUTORIAL_ADVANCE':
-      return tutorialAdvance(state);
+    case 'TUTORIAL_START':
+      return tutorialStart(state);
     case 'TUTORIAL_INVEST':
       return tutorialInvest(state);
     case 'TUTORIAL_LAY_ROADS':
       return tutorialLayRoads(state);
     case 'TUTORIAL_RAISE_RATE':
       return tutorialRaiseRate(state);
+    case 'TUTORIAL_REPAY':
+      return tutorialRepay(state);
     case 'TUTORIAL_FINISH':
       return tutorialFinish(state);
     case 'TUTORIAL_SKIP':
