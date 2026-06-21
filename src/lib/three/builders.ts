@@ -561,6 +561,10 @@ export function makeCat(style: CatStyle): THREE.Group {
   mouth.scale.set(1, 0.5, 0.5);
   head.add(mouth);
 
+  // The cats are the stars: scale the whole visual rig up so colours/patterns
+  // read at a glance. Labels live on the (unscaled) outer group, well above.
+  rig.scale.setScalar(1.5);
+
   return cat;
 }
 

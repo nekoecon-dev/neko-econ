@@ -82,17 +82,18 @@ interface CatRuntime {
   bubbleSecEl: HTMLElement;
   lastBubbleSec: number;
   actionEl: HTMLElement;
-  moneyEl: HTMLElement;
+  detailObj: CSS2DObject; // money/info card, shown only when the cat is clicked
+  detailMoneyEl: HTMLElement;
   lastLabel: string;
   lastMoney: number;
 }
 
-/** Build the floating HTML label (name / action / money) for a cat. */
-function makeCatLabel(name: string): {
-  label: CSS2DObject;
-  actionEl: HTMLElement;
-  moneyEl: HTMLElement;
-} {
+/**
+ * Build the floating name label for a cat (name + a tiny action caption). The
+ * money is intentionally NOT here — it only appears on the click detail card —
+ * and the label sits high above the (now bigger) cat so the body stays clear.
+ */
+function makeCatLabel(name: string): { label: CSS2DObject; actionEl: HTMLElement } {
   const root = document.createElement('div');
   root.className = 'cat-label';
   const nameEl = document.createElement('div');
@@ -100,12 +101,26 @@ function makeCatLabel(name: string): {
   nameEl.textContent = name;
   const actionEl = document.createElement('div');
   actionEl.className = 'cat-label-action';
-  const moneyEl = document.createElement('div');
-  moneyEl.className = 'cat-label-money';
-  root.append(nameEl, document.createElement('br'), actionEl, document.createElement('br'), moneyEl);
+  root.append(nameEl, document.createElement('br'), actionEl);
   const label = new CSS2DObject(root);
-  label.position.set(0, 1.85, 0);
-  return { label, actionEl, moneyEl };
+  label.position.set(0, 2.95, 0); // well above the 1.5x cat (top ≈ 2.5)
+  return { label, actionEl };
+}
+
+/** A small detail card (name + money) shown only when a cat is clicked. */
+function makeCatDetail(name: string): { obj: CSS2DObject; moneyEl: HTMLElement } {
+  const root = document.createElement('div');
+  root.className = 'cat-detail';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'cat-detail-name';
+  nameEl.textContent = name;
+  const moneyEl = document.createElement('div');
+  moneyEl.className = 'cat-detail-money';
+  root.append(nameEl, moneyEl);
+  const obj = new CSS2DObject(root);
+  obj.position.set(0, 3.7, 0); // above the name label
+  obj.visible = false;
+  return { obj, moneyEl };
 }
 
 /** Interpolate an angle toward a target along the shortest arc. */
@@ -640,7 +655,7 @@ export default function Village3D({
       row.append(ctlButton('💰 返済する', 'v3d-btn-loan', () => onOpenLoanRef.current()));
       root.append(title, balance, interestEl, row);
       const obj = new CSS2DObject(root);
-      obj.position.set(0, 2.4, 0);
+      obj.position.set(0, 3.4, 0); // clear of the bigger banker cat
       banker.add(obj);
 
       let lastLoan = -1;
@@ -682,6 +697,7 @@ export default function Village3D({
     // incrementally by the render loop via this same helper.
     const catLayer = new THREE.Group();
     const catRuntimes = new Map<string, CatRuntime>();
+    let selectedCatId: string | null = null; // cat whose detail card is open
     const spawnCat = (cat: GameState['cats'][number], i: number) => {
       const group = makeCat(CAT_STYLES[cat.id] ?? DEFAULT_CAT_STYLE);
       const w = mapToWorld(cat.x, cat.y);
@@ -694,15 +710,22 @@ export default function Village3D({
       const eyesClosed = group.getObjectByName('eyesClosed') ?? null;
       const mouth = group.getObjectByName('mouth') ?? null;
 
-      const { label, actionEl, moneyEl } = makeCatLabel(cat.name);
+      group.userData.catId = cat.id; // for click-to-select (detail card)
+      group.renderOrder = 2; // cats draw over ground-level props
+
+      const { label, actionEl } = makeCatLabel(cat.name);
       group.add(label);
+
+      // Money/info card — hidden until the cat is clicked.
+      const { obj: detailObj, moneyEl: detailMoneyEl } = makeCatDetail(cat.name);
+      group.add(detailObj);
 
       // A 💤 puff shown only while sleeping.
       const zzzEl = document.createElement('div');
       zzzEl.className = 'cat-zzz';
       zzzEl.textContent = '💤';
       const zzz = new CSS2DObject(zzzEl);
-      zzz.position.set(0.4, 1.7, 0);
+      zzz.position.set(0.6, 2.7, 0);
       zzz.visible = false;
       group.add(zzz);
 
@@ -711,7 +734,7 @@ export default function Village3D({
       bizEl.className = 'cat-biz';
       bizEl.textContent = '💼';
       const biz = new CSS2DObject(bizEl);
-      biz.position.set(0, 2.35, 0);
+      biz.position.set(0, 3.3, 0);
       biz.visible = false;
       group.add(biz);
 
@@ -720,7 +743,7 @@ export default function Village3D({
       fishEl.className = 'cat-fish';
       fishEl.textContent = '🎣';
       const fish = new CSS2DObject(fishEl);
-      fish.position.set(0.55, 0.9, 0);
+      fish.position.set(0.7, 1.4, 0);
       fish.visible = false;
       group.add(fish);
 
@@ -760,7 +783,7 @@ export default function Village3D({
       bubbleSecEl.className = 'cat-bubble-sec';
       bubbleRoot.append(bubbleTitle, bubbleSecEl);
       const bubbleObj = new CSS2DObject(bubbleRoot);
-      bubbleObj.position.set(0, 2.7, 0);
+      bubbleObj.position.set(0, 4.2, 0); // top of the stack: bubble → name → cat
       bubbleObj.visible = false;
       group.add(bubbleObj);
 
@@ -782,7 +805,8 @@ export default function Village3D({
         bubbleSecEl,
         lastBubbleSec: -1,
         actionEl,
-        moneyEl,
+        detailObj,
+        detailMoneyEl,
         lastLabel: '',
         lastMoney: Number.NaN,
       });
@@ -921,6 +945,15 @@ export default function Village3D({
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
 
+      // Which cat (if any) was clicked — drives the click-only money detail card.
+      const pickCatId = (): string | null => {
+        const hit = raycaster.intersectObjects(catLayer.children, true)[0];
+        if (!hit) return null;
+        let node: THREE.Object3D | null = hit.object;
+        while (node && node.parent !== catLayer) node = node.parent;
+        return (node?.userData.catId as string | undefined) ?? null;
+      };
+
       // ---- Life mode: gather / talk / place furniture / walk -----------------
       if (stateRef.current.life.active) {
         // 1) pick up a gatherable item
@@ -941,11 +974,19 @@ export default function Village3D({
           return;
         }
         if (raycaster.intersectObject(banker, true).length > 0) {
+          selectedCatId = null;
           onTalkTanukiRef.current();
           return;
         }
-        // 3) ground click: drop the held furniture, else walk the avatar there
+        // 3) click another cat (タマ etc.) to peek at its detail card
+        const lifeCatId = pickCatId();
+        if (lifeCatId) {
+          selectedCatId = selectedCatId === lifeCatId ? null : lifeCatId;
+          return;
+        }
+        // 4) ground click: drop the held furniture, else walk the avatar there
         if (raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
+          selectedCatId = null;
           const map = worldToMap(hitPoint.x, hitPoint.z);
           if (stateRef.current.life.placing) {
             dispatchRef.current({ type: 'LIFE_PLACE_FURNITURE', x: map.x, y: map.y });
@@ -971,8 +1012,14 @@ export default function Village3D({
       }
 
       if (raycaster.intersectObject(banker, true).length > 0) {
+        selectedCatId = null;
         onOpenLoanRef.current();
+        return;
       }
+
+      // Click a cat to open its money detail card (toggle); empty ground closes it.
+      const clickedCatId = pickCatId();
+      selectedCatId = clickedCatId && clickedCatId !== selectedCatId ? clickedCatId : null;
     };
     renderer.domElement.addEventListener('click', onCanvasClick);
 
@@ -1423,10 +1470,16 @@ export default function Village3D({
           rt.actionEl.textContent = labelText;
           rt.lastLabel = labelText;
         }
-        const money = Math.round(cat.money);
-        if (rt.lastMoney !== money) {
-          rt.moneyEl.textContent = `${money} CC`;
-          rt.lastMoney = money;
+
+        // Money detail card: only the clicked cat shows it (refreshed lazily).
+        const selected = selectedCatId === cat.id;
+        if (rt.detailObj.visible !== selected) rt.detailObj.visible = selected;
+        if (selected) {
+          const money = Math.round(cat.money);
+          if (rt.lastMoney !== money) {
+            rt.detailMoneyEl.textContent = `${money} CC`;
+            rt.lastMoney = money;
+          }
         }
       }
 
