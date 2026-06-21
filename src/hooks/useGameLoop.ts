@@ -23,7 +23,23 @@ import {
   tutorialStart,
   tutorialSkip,
 } from '@/lib/engine/tutorial';
-import { INITIAL_STATE, TUTORIAL_INITIAL_STATE } from '@/lib/engine/initialState';
+import {
+  INITIAL_STATE,
+  LIFE_INITIAL_STATE,
+  TUTORIAL_INITIAL_STATE,
+} from '@/lib/engine/initialState';
+import {
+  lifeAdvanceDay,
+  lifeBuyFurniture,
+  lifeCancelPlacing,
+  lifeDismissNotice,
+  lifeGather,
+  lifeGiveSoup,
+  lifeInvest,
+  lifeLevelUp,
+  lifeMove,
+  lifePlaceFurniture,
+} from '@/lib/engine/life';
 import { clamp, round2 } from '@/lib/engine/math';
 import {
   applyStockShock,
@@ -105,6 +121,26 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return tutorialFinish(state);
     case 'TUTORIAL_SKIP':
       return tutorialSkip(state);
+    case 'LIFE_MOVE':
+      return lifeMove(state, action.x, action.y);
+    case 'LIFE_GATHER':
+      return lifeGather(state, action.id);
+    case 'LIFE_GIVE_SOUP':
+      return lifeGiveSoup(state);
+    case 'LIFE_INVEST':
+      return lifeInvest(state);
+    case 'LIFE_BUY_FURNITURE':
+      return lifeBuyFurniture(state, action.kind);
+    case 'LIFE_PLACE_FURNITURE':
+      return lifePlaceFurniture(state, action.x, action.y);
+    case 'LIFE_CANCEL_PLACING':
+      return lifeCancelPlacing(state);
+    case 'LIFE_LEVEL_UP':
+      return lifeLevelUp(state);
+    case 'LIFE_ADVANCE_DAY':
+      return lifeAdvanceDay(state);
+    case 'LIFE_DISMISS_NOTICE':
+      return lifeDismissNotice(state);
     case 'PLACE_FACILITY': {
       const cost = FACILITY_COST[action.kind];
       if (state.player.cash < cost) return state; // can't afford
@@ -137,18 +173,16 @@ export function useGameLoop(): {
   dispatch: (action: PolicyAction) => void;
   reset: () => void;
 } {
-  // Boot into the story tutorial. Automated stress tests (`?turbo=`) skip it and
-  // start from the pristine free-play baseline so the loop runs unimpeded.
-  // (Production has no `turbo` param, so server and client both yield the
-  // tutorial state — the only branch is test-only and resolves on the client.)
+  // Boot into life mode by default (the cosy living-in-the-village prototype).
+  // `?turbo=` -> economy free-play baseline (automated stress tests);
+  // `?mode=tutorial` -> the guided economy tutorial.
   const [state, setState] = useState<GameState>(() => {
-    if (
-      typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).has('turbo')
-    ) {
-      return INITIAL_STATE;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('turbo')) return INITIAL_STATE;
+      if (params.get('mode') === 'tutorial') return TUTORIAL_INITIAL_STATE;
     }
-    return TUTORIAL_INITIAL_STATE;
+    return LIFE_INITIAL_STATE;
   });
 
   // Mirror of the latest state for the event-detection effect.
@@ -171,6 +205,7 @@ export function useGameLoop(): {
       setState((prev) => {
         if (prev.gameOver) return prev; // sim is frozen under the game-over screen
         if (prev.tutorial.active) return prev; // sim is paused during the tutorial
+        if (prev.life.active) return prev; // life mode advances only on 「1日進める」
         const tick = prev.tick + 1;
         // An active venture hires idle cats this tick (lowers unemployment).
         const hiring = prev.cats.some((c) => c.company !== null);
@@ -207,8 +242,9 @@ export function useGameLoop(): {
     const current = stateRef.current;
     if (current.tick === 0 || fetchingRef.current) return;
     // The tutorial advances ticks manually but should stay quiet: no event
-    // detection, news fetches or stock shocks until free play begins.
-    if (current.tutorial.active) return;
+    // detection, news fetches or stock shocks until free play begins. Life mode
+    // is likewise economy-silent.
+    if (current.tutorial.active || current.life.active) return;
 
     const event = detectEvent(current);
     if (!event) return;
