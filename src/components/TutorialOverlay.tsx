@@ -1,50 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import type { GameState, PolicyAction } from '@/types/game';
-import {
-  DIVIDEND_AFTER_INVEST,
-  DIVIDEND_AFTER_ROADS,
-  TUTORIAL_INVEST_COST,
-  TUTORIAL_RATE_STEP,
-  TUTORIAL_REPAY_AMOUNT,
-} from '@/lib/engine/tutorial';
+import type { GameState, PolicyAction, TutorialPhase } from '@/types/game';
+import { TUTORIAL_INVEST_COST, TUTORIAL_REPAY_AMOUNT } from '@/lib/engine/tutorial';
 
-// The overlay drives its own presentation steps; engine `phase` changes happen
-// in lock-step via dispatch so the paused simulation + scripted economy stay in
-// sync with what the player sees.
-type View =
-  | 'intro' // opening card
-  | 'm1' // mission 1 — talk to ミケ
-  | 'm1talk' // mission 1 — ミケ's investment proposal (conversation)
-  | 'm1edu' // mission 1 — 投資 explanation
-  | 'm2' // mission 2 — たぬきち asks for the 石畳
-  | 'm2edu' // mission 2 — 物流 explanation
-  | 'm3' // mission 3 — たぬきち asks to raise the rate
-  | 'm3edu' // mission 3 — 金利 explanation
-  | 'repay' // repayment day — たぬきち collects 1,000CC
-  | 'done'; // all done → free play
+// Modal sub-states layered on top of the phase-driven views (conversation +
+// education popups that aren't tracked by the engine `phase`).
+type Popup = null | 'talk' | 'investEdu' | 'roadEdu';
 
-const viewForPhase: Record<GameState['tutorial']['phase'], View> = {
-  intro: 'intro',
-  mission1: 'm1',
-  mission2: 'm2',
-  mission3: 'm3',
-  repayment: 'repay',
-  done: 'done',
-};
-
-// Short "現在ミッション" caption per view, for the status HUD.
-const MISSION_LABEL: Partial<Record<View, string>> = {
-  intro: '村を救おう',
-  m1: 'ミケに話しかけよう',
-  m1talk: 'ミケに投資しよう',
-  m1edu: 'ミケに投資しよう',
-  m2: '石畳の道を敷こう',
-  m2edu: '石畳の道を敷こう',
-  m3: '金利を調整しよう',
-  m3edu: '金利を調整しよう',
-  repay: '借金を返済しよう',
+// One-line 「現在のミッション」 shown in the status HUD, per stage.
+const MISSION_LABEL: Partial<Record<TutorialPhase, string>> = {
+  invest: 'ミケに話しかけて、お店に投資しよう',
+  advance: '「1日進める」を押して、配当を受け取ろう',
+  roads: 'スープ屋と巨大鍋を石畳でつなごう',
+  repayWait: '返済日まで進めて1,000CCを貯めよう',
+  repayment: 'たぬきちに1,000CC返済しよう',
 };
 
 /** A big, friendly speech bubble with an emoji avatar. */
@@ -65,53 +35,41 @@ function SpeechBubble({
       <span className="text-6xl drop-shadow">{avatar}</span>
       <div className="min-w-0">
         <div className="text-sm font-black text-amber-600">{speaker}</div>
-        <p className="mt-1 text-lg font-black leading-relaxed text-amber-900">{children}</p>
+        <div className="mt-1 text-lg font-black leading-relaxed text-amber-900">{children}</div>
       </div>
     </div>
   );
 }
 
-/** The yellow blinking call-to-action the player must press for each mission. */
+/** The single yellow blinking call-to-action — the one thing to press now. */
 function CtaButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="tutorial-cta btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-amber-400 to-orange-500 px-7 py-3 text-lg font-black text-white shadow-xl transition hover:from-amber-300 hover:to-orange-400"
+      className="tutorial-cta btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-amber-400 to-orange-500 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:from-amber-300 hover:to-orange-400"
     >
       {children}
     </button>
   );
 }
 
-/** A centred "💡 explanation" popup, with a 次へ button. */
+/** A centred "💡 explanation" popup with a 次へ button. */
 function EduPopup({
   title,
   lesson,
-  notes,
   onNext,
 }: {
   title: string;
   lesson: string;
-  notes: string[];
   onNext: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[71] flex items-center justify-center bg-black/45 p-4">
+    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4">
       <div className="animate-pop max-w-md rounded-3xl border-4 border-amber-300 bg-[#fffdf7] p-6 text-center shadow-2xl">
         <div className="text-5xl">💡</div>
         <h3 className="mt-2 text-xl font-black text-amber-900">{title}</h3>
         <p className="mt-2 text-base font-bold leading-relaxed text-amber-800">{lesson}</p>
-        <div className="mt-3 flex flex-col gap-1.5">
-          {notes.map((n) => (
-            <div
-              key={n}
-              className="rounded-xl bg-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700"
-            >
-              {n}
-            </div>
-          ))}
-        </div>
         <button
           type="button"
           onClick={onNext}
@@ -131,52 +89,78 @@ export default function TutorialOverlay({
   state: GameState;
   dispatch: (action: PolicyAction) => void;
 }) {
-  const [view, setView] = useState<View>(() => viewForPhase[state.tutorial.phase]);
+  const [popup, setPopup] = useState<Popup>(null);
 
   // The overlay only exists while the tutorial is running.
   if (!state.tutorial.active) return null;
 
-  const skip = () => dispatch({ type: 'TUTORIAL_SKIP' });
+  const phase = state.tutorial.phase;
   const cash = Math.round(state.player.cash);
   const loan = Math.round(state.player.loan);
   const repayIn = Math.max(0, state.repayDueTick - state.tick);
+  const dividend = state.tutorial.dividend;
+
+  const skip = () => dispatch({ type: 'TUTORIAL_SKIP' });
 
   // Small skip button, top-right, present throughout the tutorial.
   const SkipButton = (
     <button
       type="button"
       onClick={skip}
-      className="btn-press pointer-events-auto absolute right-3 top-3 z-[73] rounded-full border-2 border-white/70 bg-black/40 px-3 py-1 text-xs font-bold text-white/90 backdrop-blur transition hover:bg-black/60"
+      className="btn-press pointer-events-auto absolute right-3 top-3 z-[76] rounded-full border-2 border-white/70 bg-black/40 px-3 py-1 text-xs font-bold text-white/90 backdrop-blur transition hover:bg-black/60"
     >
       スキップ ▶▶
     </button>
   );
 
-  // Always-on status HUD: the only numbers the new player needs to watch
-  // (所持金 / 返済まで / 借金残高 / 現在ミッション).
-  const missionLabel = MISSION_LABEL[view];
+  // ---- Status HUD: the ≤5 numbers the new player needs ----------------------
+  const missionLabel = MISSION_LABEL[phase];
   const StatusHud = missionLabel ? (
-    <div className="pointer-events-none absolute left-3 top-20 z-[72] w-48 rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/95 p-3 text-amber-900 shadow-xl">
+    <div className="pointer-events-none absolute left-3 top-20 z-[72] w-52 rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/95 p-3 text-amber-900 shadow-xl">
       <div className="flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">👛 所持金</span>
         <span className="tabular-nums">{cash.toLocaleString()} CC</span>
+      </div>
+      <div className="mt-1 flex items-center justify-between text-sm font-black">
+        <span className="text-amber-600">🦝 借金残高</span>
+        <span className="tabular-nums">{loan.toLocaleString()} CC</span>
       </div>
       <div className="mt-1 flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">⏰ 返済まで</span>
         <span className="tabular-nums">{repayIn} tick</span>
       </div>
       <div className="mt-1 flex items-center justify-between text-sm font-black">
-        <span className="text-amber-600">🦝 借金</span>
-        <span className="tabular-nums">{loan.toLocaleString()} CC</span>
+        <span className="text-amber-600">💴 次回返済</span>
+        <span className="tabular-nums">{state.repayAmount.toLocaleString()} CC</span>
       </div>
-      <div className="mt-2 rounded-xl bg-amber-100 px-2.5 py-1.5 text-center text-xs font-black text-amber-800">
+      <div className="mt-2 rounded-xl bg-amber-100 px-2.5 py-1.5 text-center text-xs font-black leading-snug text-amber-800">
         🎯 {missionLabel}
       </div>
     </div>
   ) : null;
 
-  // ---- Intro card -----------------------------------------------------------
-  if (view === 'intro') {
+  // ---- Daily 収支レポート (shown once at least one day has been advanced) -----
+  const dayReport =
+    state.tick > 0 && (phase === 'advance' || phase === 'roads' || phase === 'repayWait') ? (
+      <div className="pointer-events-none mb-3 w-60 rounded-2xl border-4 border-emerald-300 bg-[#fffdf7]/95 p-3 text-amber-900 shadow-xl">
+        <div className="text-center text-xs font-black text-emerald-600">📅 {state.tick}日目の収支</div>
+        <div className="mt-1.5 flex items-center justify-between text-sm font-black">
+          <span>今日の配当</span>
+          <span className="tabular-nums text-emerald-600">+{dividend} CC</span>
+        </div>
+        <div className="flex items-center justify-between text-sm font-black">
+          <span>所持金</span>
+          <span className="tabular-nums">{cash.toLocaleString()} CC</span>
+        </div>
+        <div className="flex items-center justify-between text-sm font-black">
+          <span>返済まで</span>
+          <span className="tabular-nums">{repayIn} tick</span>
+        </div>
+      </div>
+    ) : null;
+
+  // ---- Intro (full modal) ---------------------------------------------------
+  if (phase === 'intro') {
     return (
       <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/85 p-4">
         {SkipButton}
@@ -186,20 +170,16 @@ export default function TutorialOverlay({
           <p className="mt-3 text-base font-bold leading-relaxed text-amber-800">
             あなたは借金を抱えた新しい村人ニャ。
             <br />
-            村のシンボル・巨大スープ鍋の火を復活させ、
+            まずは <span className="font-black text-rose-600">28tick以内に1,000CCを返済</span> しよう。
             <br />
-            <span className="font-black text-rose-600">18tick以内にネコ銀行へ1,000CC返済</span>
-            するのが目標ニャ！
+            少しずつ、村のことを覚えていこうニャ！
           </p>
-          <div className="mt-4 flex flex-col gap-1.5 text-sm font-black text-amber-700">
-            <div className="rounded-xl bg-amber-100 px-3 py-1.5">👛 所持金 606CC ／ 🦝 借金 9,000CC</div>
+          <div className="mt-4 rounded-xl bg-amber-100 px-3 py-1.5 text-sm font-black text-amber-700">
+            👛 所持金 1,075CC ／ 🦝 借金 8,000CC
           </div>
           <button
             type="button"
-            onClick={() => {
-              dispatch({ type: 'TUTORIAL_START' });
-              setView('m1');
-            }}
+            onClick={() => dispatch({ type: 'TUTORIAL_START' })}
             className="btn-press mt-6 rounded-2xl bg-amber-400 px-8 py-3 text-lg font-black text-amber-950 shadow-lg transition hover:bg-amber-300"
           >
             ▶ はじめる！
@@ -209,55 +189,8 @@ export default function TutorialOverlay({
     );
   }
 
-  // ---- Education popups ------------------------------------------------------
-  if (view === 'm1edu') {
-    return (
-      <>
-        {SkipButton}
-        <EduPopup
-          title="投資ってなに？"
-          lesson="投資とは、事業の成長を応援してお金を出し、利益を受け取ることニャ。"
-          notes={[
-            '🍲 ミケのスープ屋オープン！タマが雇われた',
-            `💰 毎tick +${DIVIDEND_AFTER_INVEST}CC の配当が入ります`,
-          ]}
-          onNext={() => setView('m2')}
-        />
-      </>
-    );
-  }
-  if (view === 'm2edu') {
-    return (
-      <>
-        {SkipButton}
-        <EduPopup
-          title="物流ってなに？"
-          lesson="物流とは、モノや人の流れをよくして経済を回すことニャ。道がつながると売上が伸びるニャ。"
-          notes={[
-            '🛤️ 石畳が開通！スープの売上が上昇',
-            `💰 配当が +${DIVIDEND_AFTER_INVEST}CC → +${DIVIDEND_AFTER_ROADS}CC に増加`,
-          ]}
-          onNext={() => setView('m3')}
-        />
-      </>
-    );
-  }
-  if (view === 'm3edu') {
-    return (
-      <>
-        {SkipButton}
-        <EduPopup
-          title="金利ってなに？"
-          lesson="金利とは、お金を借りる／預けるコストニャ。上げると物価は落ち着くけど、借金の利息も増えるニャ。"
-          notes={['📉 インフレ率が落ち着きました', '😈 ただしローンの利息は少し増えたニャ']}
-          onNext={() => setView('repay')}
-        />
-      </>
-    );
-  }
-
-  // ---- Completion ------------------------------------------------------------
-  if (view === 'done') {
+  // ---- Completion (full modal) ----------------------------------------------
+  if (phase === 'done') {
     const unlocked = state.villageLevel >= 2;
     return (
       <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 p-4">
@@ -269,13 +202,13 @@ export default function TutorialOverlay({
           </h3>
           {unlocked ? (
             <div className="mt-2 flex flex-col gap-1.5 text-sm font-bold text-emerald-700">
-              <div className="rounded-xl bg-emerald-100 px-3 py-1.5">🏘️ 村レベル2を解放！区画が広がった</div>
-              <div className="rounded-xl bg-emerald-100 px-3 py-1.5">🐱 新住民シロが引っ越してきた</div>
-              <div className="rounded-xl bg-emerald-100 px-3 py-1.5">📈 株式市場がオープン！</div>
+              <div className="rounded-xl bg-emerald-100 px-3 py-1.5">🏘️ 村レベル2を解放！</div>
+              <div className="rounded-xl bg-emerald-100 px-3 py-1.5">⚙️ 金利レバーが使えるようになった</div>
+              <div className="rounded-xl bg-emerald-100 px-3 py-1.5">📰 新聞・ダッシュボードが開いた</div>
             </div>
           ) : (
             <p className="mt-2 text-base font-bold leading-relaxed text-amber-800">
-              たぬきち「今回は待つニャ。でも次は本当に差し押さえるニャ」
+              たぬきち「今回は待つニャ。でも返済が遅れると負担が増えるニャ」
               <br />
               次の返済額が増えたニャ。村を立て直そうニャ！
             </p>
@@ -292,91 +225,116 @@ export default function TutorialOverlay({
     );
   }
 
-  // ---- Mission interaction views (village stays visible behind a soft dim) ---
-  const missionPanel = (bubble: React.ReactNode, cta: React.ReactNode): React.ReactNode => (
-    <div className="fixed inset-0 z-[70] bg-black/35">
-      {SkipButton}
-      {StatusHud}
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 flex flex-col items-center gap-4 px-4">
-        <div className="pointer-events-auto w-full max-w-lg">{bubble}</div>
-        <div className="pointer-events-auto">{cta}</div>
-      </div>
-    </div>
-  );
+  // ---- Education popups (modal over the live map) ----------------------------
+  if (popup === 'investEdu') {
+    return (
+      <>
+        {StatusHud}
+        {SkipButton}
+        <EduPopup
+          title="投資ってなに？"
+          lesson="投資とは、事業にお金を出して、成長した利益の一部を受け取ることニャ。"
+          onNext={() => setPopup(null)}
+        />
+      </>
+    );
+  }
+  if (popup === 'roadEdu') {
+    return (
+      <>
+        {StatusHud}
+        {SkipButton}
+        <EduPopup
+          title="物流ってなに？"
+          lesson="物流が良くなると、商品が早く届いて売上が増えるニャ。配当も増えたニャ！"
+          onNext={() => setPopup(null)}
+        />
+      </>
+    );
+  }
 
-  if (view === 'm1') {
-    return missionPanel(
-      <SpeechBubble avatar="🐱" speaker="ミケ（スープ屋を始めたい）">
-        村長さん、はじめましてニャ。ボロ小屋でくすぶってるけど、夢はあるニャ…！
-      </SpeechBubble>,
-      <CtaButton onClick={() => setView('m1talk')}>🐱 ミケに話しかける</CtaButton>,
+  // ---- Conversation with ミケ (modal over the live map) ----------------------
+  if (popup === 'talk') {
+    return (
+      <div className="fixed inset-0 z-[74] flex items-end justify-center bg-black/40 p-4 pb-24">
+        {SkipButton}
+        {StatusHud}
+        <div className="w-full max-w-lg">
+          <SpeechBubble avatar="🐱" speaker="ミケ">
+            {TUTORIAL_INVEST_COST}CCあれば、小さなスープ屋を始められるニャ。
+            成功したら毎日配当を払うニャ。
+          </SpeechBubble>
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <CtaButton
+              onClick={() => {
+                dispatch({ type: 'TUTORIAL_INVEST' });
+                setPopup('investEdu');
+              }}
+            >
+              🍲 {TUTORIAL_INVEST_COST}CC投資する
+            </CtaButton>
+            <button
+              type="button"
+              onClick={() => setPopup(null)}
+              className="btn-press rounded-2xl border-2 border-amber-300 bg-white/90 px-6 py-2 text-base font-bold text-amber-700 transition hover:bg-amber-50"
+            >
+              まだやめる
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
-  if (view === 'm1talk') {
-    return missionPanel(
-      <SpeechBubble avatar="🐱" speaker="ミケ">
-        {TUTORIAL_INVEST_COST}CCあれば、小さなスープ屋を始められるニャ！
-        そしたら毎tick、村長さんに配当を払うニャ！
-      </SpeechBubble>,
-      <CtaButton
-        onClick={() => {
-          dispatch({ type: 'TUTORIAL_INVEST' });
-          setView('m1edu');
-        }}
-      >
-        🍲 {TUTORIAL_INVEST_COST}CC投資する
-      </CtaButton>,
+
+  // ---- Live-map stages: HUD + a single bottom action (map stays visible) ----
+  // Each stage surfaces exactly one primary button so the next move is obvious.
+  let action: React.ReactNode = null;
+  if (phase === 'invest') {
+    action = <CtaButton onClick={() => setPopup('talk')}>🐱 ミケに話しかける</CtaButton>;
+  } else if (phase === 'advance' || phase === 'repayWait') {
+    action = (
+      <CtaButton onClick={() => dispatch({ type: 'TUTORIAL_ADVANCE_DAY' })}>
+        ☀️ 1日進める
+      </CtaButton>
     );
-  }
-  if (view === 'm2') {
-    return missionPanel(
-      <SpeechBubble avatar="🦝" speaker="たぬきち" tone="sky">
-        スープ屋と鍋が離れてて配達が遅いニャ。
-        間に石畳の道を敷けば、猫の足が速くなって売上も伸びるニャ！
-      </SpeechBubble>,
+  } else if (phase === 'roads') {
+    action = (
       <CtaButton
         onClick={() => {
           dispatch({ type: 'TUTORIAL_LAY_ROADS' });
-          setView('m2edu');
+          setPopup('roadEdu');
         }}
       >
-        🛤️ 石畳の道を敷く
-      </CtaButton>,
+        🛤️ 石畳でつなぐ
+      </CtaButton>
     );
-  }
-  if (view === 'm3') {
-    return missionPanel(
-      <SpeechBubble avatar="🦝" speaker="たぬきち" tone="sky">
-        お金が回り始めてスープの値段が上がってきたニャ（インフレ率5%超え）。
-        金利を上げると物価は落ち着くけど、借金の利息も増えるニャ。
-      </SpeechBubble>,
-      <CtaButton
-        onClick={() => {
-          dispatch({ type: 'TUTORIAL_RAISE_RATE' });
-          setView('m3edu');
-        }}
-      >
-        ⚙️ 金利を上げる（+{TUTORIAL_RATE_STEP}%）
-      </CtaButton>,
-    );
-  }
-  if (view === 'repay') {
-    const canPay = state.player.cash >= Math.min(state.repayAmount, state.player.loan);
-    return missionPanel(
-      <SpeechBubble avatar="🦝" speaker="たぬきち（返済日）" tone="sky">
-        村長さん、約束の返済日ニャ。{TUTORIAL_REPAY_AMOUNT}CCをいただくニャ。
-        {canPay ? '…ちゃんと用意できてるみたいニャ😼' : '足りないと…困るニャ😾'}
-      </SpeechBubble>,
-      <CtaButton
-        onClick={() => {
-          dispatch({ type: 'TUTORIAL_REPAY' });
-          setView('done');
-        }}
-      >
+  } else if (phase === 'repayment') {
+    action = (
+      <CtaButton onClick={() => dispatch({ type: 'TUTORIAL_REPAY' })}>
         💰 {TUTORIAL_REPAY_AMOUNT}CC返済する
-      </CtaButton>,
+      </CtaButton>
     );
   }
 
-  return null;
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[70]">
+      {SkipButton}
+      {StatusHud}
+
+      {/* たぬきち turns up in person on repayment day */}
+      {phase === 'repayment' && (
+        <div className="pointer-events-auto absolute inset-x-0 top-1/3 mx-auto w-full max-w-lg px-4">
+          <SpeechBubble avatar="🦝" speaker="たぬきち（返済日）" tone="sky">
+            約束の返済日ニャ。{TUTORIAL_REPAY_AMOUNT}CC払うニャ。
+          </SpeechBubble>
+        </div>
+      )}
+
+      {/* The one action to take now, pinned bottom-centre with the day report */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-8 flex flex-col items-center">
+        {dayReport}
+        <div className="pointer-events-auto">{action}</div>
+      </div>
+    </div>
+  );
 }
