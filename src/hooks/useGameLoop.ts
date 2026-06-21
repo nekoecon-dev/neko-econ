@@ -15,10 +15,10 @@ import { layRoad, updateRoadEconomy } from '@/lib/engine/roads';
 import { updateStrike } from '@/lib/engine/strike';
 import {
   applyDividend,
+  tutorialAdvanceDay,
   tutorialFinish,
   tutorialInvest,
   tutorialLayRoads,
-  tutorialRaiseRate,
   tutorialRepay,
   tutorialStart,
   tutorialSkip,
@@ -95,10 +95,10 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return tutorialStart(state);
     case 'TUTORIAL_INVEST':
       return tutorialInvest(state);
+    case 'TUTORIAL_ADVANCE_DAY':
+      return tutorialAdvanceDay(state);
     case 'TUTORIAL_LAY_ROADS':
       return tutorialLayRoads(state);
-    case 'TUTORIAL_RAISE_RATE':
-      return tutorialRaiseRate(state);
     case 'TUTORIAL_REPAY':
       return tutorialRepay(state);
     case 'TUTORIAL_FINISH':
@@ -206,6 +206,9 @@ export function useGameLoop(): {
   useEffect(() => {
     const current = stateRef.current;
     if (current.tick === 0 || fetchingRef.current) return;
+    // The tutorial advances ticks manually but should stay quiet: no event
+    // detection, news fetches or stock shocks until free play begins.
+    if (current.tutorial.active) return;
 
     const event = detectEvent(current);
     if (!event) return;
