@@ -19,7 +19,8 @@ const neko = (page: import('@playwright/test').Page) =>
  * whole way through.
  */
 test('stage tutorial runs start to finish without breaking', async ({ page }) => {
-  await page.goto('/');
+  // `/` now boots life mode; the guided economy tutorial lives behind ?mode.
+  await page.goto('/?mode=tutorial');
   await page.waitForFunction(() => window.__neko !== undefined, undefined, { timeout: 30_000 });
 
   // --- Boot: paused at the intro with the stage-1 numbers ---
