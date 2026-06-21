@@ -16,8 +16,11 @@ import {
   makeBankBuilding,
   makeCat,
   makeFacility,
+  makeFurniture,
+  makeGatherable,
   makeHouse,
   makeLever,
+  makePlayerCat,
   makePlayerTent,
   makeRoadTile,
   makeSignpost,
@@ -173,6 +176,30 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
   },
 };
 
+// Life-mode skies: a gentle morning / day / evening cycle plus a grey rainy
+// look. Keyed `rainy` or `sunny-<time>`.
+const LIFE_LOOKS: Record<string, WeatherLook> = {
+  'sunny-morning': {
+    skyTop: '#8fc7ff', skyBottom: '#ffe9d6', hemi: 1.0, sunInt: 1.0,
+    sunColor: '#fff0cf', sunScale: 1.1, sunVisible: true, fog: '#eaf2ff', fogFar: 140,
+  },
+  'sunny-day': {
+    skyTop: '#79b8ff', skyBottom: '#eaf6ff', hemi: 0.95, sunInt: 1.1,
+    sunColor: '#fff4d6', sunScale: 1, sunVisible: true, fog: '#dcefff', fogFar: 140,
+  },
+  'sunny-evening': {
+    skyTop: '#6a4ea0', skyBottom: '#ffb06a', hemi: 0.8, sunInt: 0.9,
+    sunColor: '#ff9e57', sunScale: 1.5, sunVisible: true, fog: '#e7a877', fogFar: 110,
+  },
+  rainy: {
+    skyTop: '#6b7480', skyBottom: '#aeb8c2', hemi: 0.6, sunInt: 0.4,
+    sunColor: '#b9c1cb', sunScale: 1, sunVisible: false, fog: '#9aa4af', fogFar: 90,
+  },
+};
+function lifeLookKey(weather: 'sunny' | 'rainy', time: 'morning' | 'day' | 'evening'): string {
+  return weather === 'rainy' ? 'rainy' : `sunny-${time}`;
+}
+
 /** A big inverted sphere with a vertical gradient shader for the sky. */
 function makeSkyDome(): { mesh: THREE.Mesh; material: THREE.ShaderMaterial } {
   const material = new THREE.ShaderMaterial({
@@ -251,6 +278,8 @@ export default function Village3D({
   pendingFacility,
   onPlaced,
   roadMode,
+  onTalkMike = () => {},
+  onTalkTanuki = () => {},
 }: {
   state: GameState;
   dispatch: (action: PolicyAction) => void;
@@ -258,6 +287,8 @@ export default function Village3D({
   pendingFacility: FacilityKind | null;
   onPlaced: () => void;
   roadMode: boolean;
+  onTalkMike?: () => void; // life mode: clicked ミケ
+  onTalkTanuki?: () => void; // life mode: clicked たぬきち
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
@@ -266,6 +297,8 @@ export default function Village3D({
   const pendingRef = useRef(pendingFacility);
   const onPlacedRef = useRef(onPlaced);
   const roadModeRef = useRef(roadMode);
+  const onTalkMikeRef = useRef(onTalkMike);
+  const onTalkTanukiRef = useRef(onTalkTanuki);
 
   // Mirror the latest state/dispatch for the loop + drop handler (the scene is
   // only set up once).
@@ -276,6 +309,8 @@ export default function Village3D({
     pendingRef.current = pendingFacility;
     onPlacedRef.current = onPlaced;
     roadModeRef.current = roadMode;
+    onTalkMikeRef.current = onTalkMike;
+    onTalkTanukiRef.current = onTalkTanuki;
   });
 
   useEffect(() => {
@@ -343,6 +378,9 @@ export default function Village3D({
 
     const village = buildVillage();
     scene.add(village);
+    // The soup pot + its cooking flame (life mode grows the fire / glows it).
+    const soupPot = village.getObjectByName('soupPot') ?? null;
+    const potFire = village.getObjectByName('potFire') ?? null;
 
     // ---- Spatial UI: info/controls embedded in 3D objects, refreshed each
     // frame by the `updaters` list (they read the latest state via stateRef). ----
@@ -373,8 +411,8 @@ export default function Village3D({
         val.style.color =
           e.inflationRate > 0 ? '#dc2626' : e.inflationRate < 0 ? '#16a34a' : '#1f2937';
         // Keep the opening screen minimal: the price label appears after the
-        // tutorial (the physical signpost stays as scenery).
-        obj.visible = !s.tutorial.active;
+        // tutorial (and never in life mode); the physical signpost stays.
+        obj.visible = !s.tutorial.active && !s.life.active;
       });
     }
 
@@ -611,8 +649,11 @@ export default function Village3D({
         const s = stateRef.current;
         const loanLeft = Math.round(s.player.loan);
         const paid = loanLeft <= 0;
-        tent.visible = !paid;
-        playerHouse.visible = paid;
+        // Life mode: always the cosy tent (where furniture is placed), and the
+        // banker's loan panel is hidden (たぬきち's shop is a React panel instead).
+        tent.visible = s.life.active ? true : !paid;
+        playerHouse.visible = s.life.active ? false : paid;
+        obj.visible = !s.life.active;
         if (loanLeft !== lastLoan) {
           balance.textContent = paid ? '完済！マイホーム🎉' : `借金残高: ${loanLeft} CC`;
           balance.style.color = paid ? '#16a34a' : '#1f2937';
@@ -760,6 +801,30 @@ export default function Village3D({
     scene.add(roadLayer);
     const roadMeshes = new Map<string, THREE.Object3D>();
 
+    // ---- Life mode: player avatar + gatherables + furniture + visitors -------
+    const playerAvatar = makePlayerCat();
+    {
+      const w = mapToWorld(stateRef.current.life.playerX, stateRef.current.life.playerY);
+      playerAvatar.position.set(w.x, 0, w.z);
+    }
+    playerAvatar.visible = stateRef.current.life.active;
+    scene.add(playerAvatar);
+    const playerRig = playerAvatar.getObjectByName('rig') ?? playerAvatar;
+    let playerYaw = 0;
+    let lastLifeFxId = 0; // last life.fx.id we played a one-shot effect for
+
+    const itemLayer = new THREE.Group();
+    scene.add(itemLayer);
+    const itemMeshes = new Map<string, THREE.Group>();
+
+    const furnitureLayer = new THREE.Group();
+    scene.add(furnitureLayer);
+    const furnitureMeshes = new Map<string, THREE.Group>();
+
+    const visitorLayer = new THREE.Group();
+    scene.add(visitorLayer);
+    const visitorMeshes = new Map<string, THREE.Group>();
+
     // Dispose every geometry/material under a group.
     const disposeGroup = (g: THREE.Object3D) => {
       g.traverse((o) => {
@@ -856,6 +921,41 @@ export default function Village3D({
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
 
+      // ---- Life mode: gather / talk / place furniture / walk -----------------
+      if (stateRef.current.life.active) {
+        // 1) pick up a gatherable item
+        const itemHit = raycaster.intersectObjects(itemLayer.children, true)[0];
+        if (itemHit) {
+          let node: THREE.Object3D | null = itemHit.object;
+          while (node && node.parent !== itemLayer) node = node.parent;
+          const id = node?.userData.itemId as string | undefined;
+          if (id) {
+            dispatchRef.current({ type: 'LIFE_GATHER', id });
+            return;
+          }
+        }
+        // 2) talk to ミケ (id '4') or たぬきち (banker)
+        const mike = catRuntimes.get('4')?.group;
+        if (mike && raycaster.intersectObject(mike, true).length > 0) {
+          onTalkMikeRef.current();
+          return;
+        }
+        if (raycaster.intersectObject(banker, true).length > 0) {
+          onTalkTanukiRef.current();
+          return;
+        }
+        // 3) ground click: drop the held furniture, else walk the avatar there
+        if (raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
+          const map = worldToMap(hitPoint.x, hitPoint.z);
+          if (stateRef.current.life.placing) {
+            dispatchRef.current({ type: 'LIFE_PLACE_FURNITURE', x: map.x, y: map.y });
+          } else {
+            dispatchRef.current({ type: 'LIFE_MOVE', x: map.x, y: map.y });
+          }
+        }
+        return;
+      }
+
       const pending = pendingRef.current;
       if (pending) {
         if (raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
@@ -916,10 +1016,14 @@ export default function Village3D({
       const dt = clock.getDelta();
       const t = clock.elapsedTime;
       const nowMs = Date.now();
+      const life = stateRef.current.life;
       const weather = stateRef.current.weather.current;
 
-      // Ease the sky, sun and fog toward the current weather's look.
-      const look = WEATHER_LOOK[weather];
+      // Ease the sky, sun and fog toward the current look — life mode uses its
+      // own morning/day/evening + rain cycle.
+      const look = life.active
+        ? LIFE_LOOKS[lifeLookKey(life.weather, life.time)]
+        : WEATHER_LOOK[weather];
       const k = Math.min(1, dt * 1.6);
       skyMat.uniforms.topColor.value.lerp(skyTopTarget.set(look.skyTop), k);
       skyMat.uniforms.bottomColor.value.lerp(skyBottomTarget.set(look.skyBottom), k);
@@ -936,10 +1040,11 @@ export default function Village3D({
       const scale = sunDisc.scale.x + (look.sunScale - sunDisc.scale.x) * k;
       sunDisc.scale.setScalar(scale);
 
-      // Weather particles: show + animate only the relevant cloud.
-      confetti.visible = weather === 'boom';
-      rain.visible = weather === 'depression';
-      embers.visible = weather === 'hyperinflation';
+      // Weather particles: show + animate only the relevant cloud (life mode
+      // only ever rains).
+      confetti.visible = !life.active && weather === 'boom';
+      rain.visible = life.active ? life.weather === 'rainy' : weather === 'depression';
+      embers.visible = !life.active && weather === 'hyperinflation';
       if (confetti.visible) driftParticles(confetti, -dt * 2.2);
       if (rain.visible) driftParticles(rain, -dt * 9);
       if (embers.visible) driftParticles(embers, dt * 3);
@@ -979,6 +1084,107 @@ export default function Village3D({
         tile.position.set(r.gx * TILE, 0.05, r.gz * TILE);
         roadMeshes.set(key, tile);
         roadLayer.add(tile);
+      }
+
+      // ---- Life mode: avatar + items + furniture + visitors + effects --------
+      playerAvatar.visible = life.active;
+      if (life.active) {
+        // Sync gatherable items; a removed item (picked up) leaves a sparkle.
+        const liveItemIds = new Set(life.items.map((i) => i.id));
+        for (const [id, mesh] of itemMeshes) {
+          if (!liveItemIds.has(id)) {
+            spawnSparkle(mesh.position.x, mesh.position.z);
+            itemLayer.remove(mesh);
+            disposeGroup(mesh);
+            itemMeshes.delete(id);
+          }
+        }
+        for (const item of life.items) {
+          if (itemMeshes.has(item.id)) continue;
+          const mesh = makeGatherable(item.kind);
+          const w = mapToWorld(item.x, item.y);
+          mesh.position.set(w.x, 0, w.z);
+          mesh.userData.itemId = item.id;
+          itemMeshes.set(item.id, mesh);
+          itemLayer.add(mesh);
+        }
+        // Gatherables bob + spin gently so they read as collectable.
+        for (const mesh of itemMeshes.values()) {
+          mesh.rotation.y += dt * 1.2;
+          mesh.position.y = 0.18 + Math.sin(t * 2 + mesh.position.x) * 0.07;
+        }
+
+        // Sync placed furniture.
+        for (const f of life.furniture) {
+          if (furnitureMeshes.has(f.id)) continue;
+          const mesh = makeFurniture(f.kind);
+          const w = mapToWorld(f.x, f.y);
+          mesh.position.set(w.x, 0, w.z);
+          furnitureMeshes.set(f.id, mesh);
+          furnitureLayer.add(mesh);
+          spawnSparkle(w.x, w.z);
+        }
+
+        // Sync visiting cats (simple idle rigs that sway in place).
+        for (const v of life.visitors) {
+          if (visitorMeshes.has(v.id)) continue;
+          const mesh = makeCat(DEFAULT_CAT_STYLE);
+          const w = mapToWorld(v.x, v.y);
+          mesh.position.set(w.x, 0, w.z);
+          visitorMeshes.set(v.id, mesh);
+          visitorLayer.add(mesh);
+          spawnSparkle(w.x, w.z);
+        }
+        for (const mesh of visitorMeshes.values()) {
+          mesh.rotation.y = Math.sin(t * 0.8 + mesh.position.x) * 0.5;
+        }
+
+        // Walk the avatar toward its target map spot, facing the travel dir.
+        const target = mapToWorld(life.playerX, life.playerY);
+        const px = playerAvatar.position.x;
+        const pz = playerAvatar.position.z;
+        const vx = target.x - px;
+        const vz = target.z - pz;
+        const dist = Math.hypot(vx, vz);
+        if (dist > 0.05) {
+          const step = Math.min(1, dt * 2.5);
+          playerAvatar.position.x += vx * step;
+          playerAvatar.position.z += vz * step;
+          playerYaw = approachAngle(playerYaw, Math.atan2(vx, vz), dt * 6);
+          playerRig.position.y = Math.abs(Math.sin(t * 9)) * 0.12; // little trot
+        } else {
+          playerRig.position.y += (0 - playerRig.position.y) * Math.min(1, dt * 6);
+        }
+        playerAvatar.rotation.y = playerYaw;
+
+        // The pot fire grows with the shop / soups made.
+        if (potFire) {
+          const grow = life.shopOpen ? 1 : 0.0;
+          const targetScale = grow * (0.7 + Math.min(life.soupsMade, 4) * 0.12);
+          const flick = 1 + Math.sin(t * 12) * 0.08;
+          const cur = potFire.scale.x;
+          potFire.scale.setScalar(cur + (Math.max(0.001, targetScale * flick) - cur) * Math.min(1, dt * 4));
+        }
+
+        // One-shot celebration effects (soup glow / construction / fireworks).
+        if (life.fx.id !== lastLifeFxId && life.fx.kind) {
+          lastLifeFxId = life.fx.id;
+          const w = mapToWorld(life.fx.x, life.fx.y);
+          if (life.fx.kind === 'soup') {
+            for (let s = 0; s < 3; s++) spawnSparkle(w.x + (Math.random() - 0.5) * 2, w.z + (Math.random() - 0.5) * 2);
+          } else if (life.fx.kind === 'construct') {
+            for (let s = 0; s < 4; s++) spawnSparkle(w.x + (Math.random() - 0.5) * 2.4, w.z + (Math.random() - 0.5) * 2.4);
+          } else {
+            // fireworks: bursts scattered across the plaza
+            for (let s = 0; s < 8; s++) spawnSparkle((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+          }
+        }
+        // Soup pot gently glows/pulses for a moment after a soup effect.
+        if (soupPot) {
+          const since = life.fx.kind === 'soup' ? 1 : 0;
+          const pulse = since ? 1 + Math.sin(t * 8) * 0.04 : 1;
+          soupPot.scale.setScalar(2.4 * pulse); // 2.4 is the village's base pot scale
+        }
       }
 
       // Rebuild the translucent placement ghost when the pending kind changes.

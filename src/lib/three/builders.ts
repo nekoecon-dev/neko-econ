@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { FacilityKind } from '@/types/game';
+import type { FacilityKind, FurnitureKind, GatherKind } from '@/types/game';
 
 // The playable ground is a GROUND x GROUND square centred on the origin (4x the
 // original area). Cat / facility positions arrive as map percentages (0..100);
@@ -188,6 +188,26 @@ export function makeSoupPot(): THREE.Group {
   soup.position.y = 1.05;
   soup.name = 'soup';
   pot.add(soup);
+
+  // A little cooking flame at the pot's base. Its scale is driven by life mode
+  // (the fire grows once the shop opens / soup is made). Named 'potFire'.
+  const fire = new THREE.Group();
+  fire.name = 'potFire';
+  const flameOuter = new THREE.Mesh(
+    new THREE.ConeGeometry(0.28, 0.7, 8),
+    new THREE.MeshBasicMaterial({ color: '#ff7a1a' }),
+  );
+  flameOuter.position.y = 0.35;
+  fire.add(flameOuter);
+  const flameInner = new THREE.Mesh(
+    new THREE.ConeGeometry(0.14, 0.42, 8),
+    new THREE.MeshBasicMaterial({ color: '#ffd23f' }),
+  );
+  flameInner.position.y = 0.28;
+  fire.add(flameInner);
+  fire.position.set(0, 0.05, 0.85);
+  fire.scale.setScalar(0.001); // hidden until life mode grows it
+  pot.add(fire);
 
   return pot;
 }
@@ -698,6 +718,140 @@ export function makeRoadTile(): THREE.Group {
   }
 
   return tile;
+}
+
+/* --------------------------- life-mode props --------------------------- */
+
+/** A gatherable item resting on the ground (mushroom / fish / wood / flower). */
+export function makeGatherable(kind: GatherKind): THREE.Group {
+  const g = new THREE.Group();
+
+  if (kind === 'mushroom') {
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.3, 8), matte('#f3ead2'));
+    stem.position.y = 0.15;
+    g.add(stem);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), matte('#e0463a'));
+    cap.scale.set(1, 0.66, 1);
+    cap.position.y = 0.34;
+    g.add(cap);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), matte('#fff7e6'));
+      dot.position.set(Math.cos(a) * 0.16, 0.4, Math.sin(a) * 0.16);
+      g.add(dot);
+    }
+  } else if (kind === 'fish') {
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), matte('#5fb6e6'));
+    body.scale.set(1.5, 0.7, 0.5);
+    body.position.y = 0.22;
+    g.add(body);
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.3, 4), matte('#4aa0d6'));
+    tail.rotation.z = Math.PI / 2;
+    tail.position.set(-0.4, 0.22, 0);
+    g.add(tail);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), ink());
+    eye.position.set(0.28, 0.27, 0.12);
+    g.add(eye);
+  } else if (kind === 'wood') {
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.7, 10), matte('#9c6b3b'));
+    log.rotation.z = Math.PI / 2;
+    log.position.y = 0.16;
+    g.add(log);
+    for (const ex of [-0.35, 0.35]) {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 10), matte('#c79a5e'));
+      cap.rotation.z = Math.PI / 2;
+      cap.position.set(ex, 0.16, 0);
+      g.add(cap);
+    }
+  } else {
+    g.add(makeFlower(FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)]));
+    g.scale.setScalar(1.6);
+  }
+
+  return g;
+}
+
+/** A piece of furniture the player buys at たぬきち's and places by their tent. */
+export function makeFurniture(kind: FurnitureKind): THREE.Group {
+  const g = new THREE.Group();
+
+  if (kind === 'chair') {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.6), matte('#c77d4a'));
+    seat.position.y = 0.4;
+    g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.12), matte('#b96d3c'));
+    back.position.set(0, 0.65, -0.24);
+    g.add(back);
+    for (const [lx, lz] of [[-0.24, 0.24], [0.24, 0.24], [-0.24, -0.24], [0.24, -0.24]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4, 6), matte('#8a5a2b'));
+      leg.position.set(lx, 0.2, lz);
+      g.add(leg);
+    }
+  } else if (kind === 'lamp') {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.1, 12), matte('#6b4423'));
+    base.position.y = 0.05;
+    g.add(base);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.9, 8), matte('#9c6b3b'));
+    pole.position.y = 0.55;
+    g.add(pole);
+    const shade = new THREE.Mesh(
+      new THREE.SphereGeometry(0.24, 12, 10),
+      new THREE.MeshBasicMaterial({ color: '#ffe9a8' }),
+    );
+    shade.position.y = 1.1;
+    g.add(shade);
+  } else if (kind === 'rug') {
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.04, 0.9), matte('#d96d8a'));
+    rug.position.y = 0.03;
+    g.add(rug);
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.55), matte('#f2c14e'));
+    inner.position.y = 0.05;
+    g.add(inner);
+  } else if (kind === 'plant') {
+    const potMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.34, 10), matte('#c77d4a'));
+    potMesh.position.y = 0.17;
+    g.add(potMesh);
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), matte('#4fb35c'));
+    leaf.position.y = 0.55;
+    g.add(leaf);
+    const leaf2 = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), matte('#5cc169'));
+    leaf2.position.set(0.16, 0.74, 0.06);
+    g.add(leaf2);
+  } else {
+    // statue: a little stone cat on a pedestal
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.5), matte('#b9b2a4'));
+    base.position.y = 0.15;
+    g.add(base);
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), matte('#cfc9bd'));
+    body.scale.set(0.8, 0.9, 0.8);
+    body.position.y = 0.5;
+    g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), matte('#cfc9bd'));
+    head.position.y = 0.85;
+    g.add(head);
+    for (const sx of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), matte('#cfc9bd'));
+      ear.position.set(sx * 0.13, 1.02, 0);
+      g.add(ear);
+    }
+  }
+
+  return g;
+}
+
+/** The player's own avatar: a cat with a jaunty green cap so it stands out. */
+export function makePlayerCat(): THREE.Group {
+  const cat = makeCat({ coat: '#9ad0ff', eye: '#2b6cb0', cheek: '#ffb3c1', pattern: 'plain' });
+  const head = cat.getObjectByName('head');
+  if (head) {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), matte('#2fae6a'));
+    cap.position.y = 0.5;
+    head.add(cap);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.06, 14), matte('#258a55'));
+    brim.position.set(0, 0.5, 0.16);
+    head.add(brim);
+  }
+  return cat;
 }
 
 /** A still pond: a flat blue disc resting just above the grass. */
