@@ -2,6 +2,7 @@ import type { Cat, GameState, StockShare } from '@/types/game';
 import { initStock } from './stocks';
 import { INITIAL_LOAN } from './loan';
 import { FORCED_REPAY, REPAY_INTERVAL } from './loanDeadline';
+import { lifeInactive, lifeInitial } from './life';
 
 const INITIAL_MONEY = 100;
 const INITIAL_PRICE = 10;
@@ -129,6 +130,7 @@ export const INITIAL_STATE: GameState = {
   roads: [],
   // Free-play / automated-test baseline: the tutorial is already finished.
   tutorial: { active: false, phase: 'done', dividend: 0 },
+  life: lifeInactive(),
 };
 
 // ---------------------------------------------------------------------------
@@ -201,4 +203,21 @@ export const TUTORIAL_INITIAL_STATE: GameState = {
     inflationHistory: [-1, -2, -3],
   },
   tutorial: { active: true, phase: 'intro', dividend: 0 },
+};
+
+// ---------------------------------------------------------------------------
+// Life mode — the default boot experience. A cosy two-cat village (ミケ・タマ)
+// with the economy paused and its UI hidden; the player gathers, cooks soup,
+// earns CC, and decorates. No debt to worry about yet.
+// ---------------------------------------------------------------------------
+export const LIFE_INITIAL_STATE: GameState = {
+  ...INITIAL_STATE,
+  cats: TUTORIAL_CATS,
+  stocks: Object.fromEntries(
+    TUTORIAL_CATS.map((c): [string, StockShare] => [c.id, initStock(c.money)]),
+  ),
+  player: { ...INITIAL_STATE.player, cash: 200, loan: 0 },
+  villageLevel: 1,
+  tutorial: { active: false, phase: 'done', dividend: 0 },
+  life: lifeInitial(),
 };

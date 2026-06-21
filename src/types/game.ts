@@ -162,6 +162,71 @@ export interface TutorialState {
   dividend: number; // CC/tick the player earns from ミケのスープ屋 (0 until invested)
 }
 
+// ---------------------------------------------------------------------------
+// Life mode — an Animal-Crossing-style "living in the village" prototype that
+// runs on top of the same 3D scene with the economy UI hidden. Time only moves
+// when the player presses 「1日進める」.
+// ---------------------------------------------------------------------------
+
+export type GatherKind = 'mushroom' | 'fish' | 'wood' | 'flower';
+export type FurnitureKind = 'chair' | 'lamp' | 'rug' | 'plant' | 'statue';
+export type LifeWeather = 'sunny' | 'rainy';
+export type LifeTime = 'morning' | 'day' | 'evening';
+
+/** A gatherable item lying on the ground (click to pick up). */
+export interface GatherItem {
+  id: string;
+  kind: GatherKind;
+  x: number; // 0..100 map %
+  y: number;
+}
+
+/** A piece of furniture the player has placed near their tent. */
+export interface PlacedFurniture {
+  id: string;
+  kind: FurnitureKind;
+  x: number;
+  y: number;
+}
+
+/** A visiting cat that wanders in on 「1日進める」. */
+export interface LifeVisitor {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+}
+
+/** A one-shot visual effect the 3D scene plays whenever `id` changes. */
+export interface LifeFx {
+  id: number; // bump to fire; 0 = nothing pending
+  kind: 'soup' | 'construct' | 'fireworks' | null;
+  x: number; // map % where the effect plays
+  y: number;
+}
+
+export interface LifeState {
+  active: boolean; // life-mode prototype is on (economy UI hidden, sim paused)
+  day: number;
+  time: LifeTime;
+  weather: LifeWeather;
+  level: number; // village level (bumped by the 返済/level-up celebration)
+  sale: boolean; // たぬきち furniture sale (cheaper today)
+  playerX: number; // map % the avatar is walking toward
+  playerY: number;
+  inventory: Record<GatherKind, number>;
+  items: GatherItem[]; // gatherables on the ground
+  furniture: PlacedFurniture[]; // placed furniture
+  visitors: LifeVisitor[]; // visiting cats
+  soupsMade: number;
+  shopOpen: boolean; // ミケのスープ屋 has been built (投資)
+  placing: FurnitureKind | null; // furniture awaiting a drop spot
+  event: string | null; // latest 1日進める event toast
+  notice: string | null; // big celebration notification (soup / shop / level-up)
+  fx: LifeFx; // pending one-shot 3D effect
+  seq: number; // monotonic id source for items / furniture / fx
+}
+
 export interface GameState {
   tick: number;
   cats: Cat[];
@@ -183,6 +248,7 @@ export interface GameState {
   bubbles: Record<string, BubbleState>; // catId -> active stock bubble
   roads: RoadTile[]; // laid road tiles (speed cats up + boost GDP)
   tutorial: TutorialState; // guided story-tutorial progress
+  life: LifeState; // life-mode prototype (parallel to the economy sim)
 }
 
 export type PolicyAction =
@@ -200,4 +266,15 @@ export type PolicyAction =
   | { type: 'TUTORIAL_LAY_ROADS' } // stage 3: connect the 石畳 shop<->pot
   | { type: 'TUTORIAL_REPAY' } // stage 4: pay たぬきち & unlock the village
   | { type: 'TUTORIAL_FINISH' } // close the completion popup -> free play
-  | { type: 'TUTORIAL_SKIP' }; // skip the whole tutorial -> free play
+  | { type: 'TUTORIAL_SKIP' } // skip the whole tutorial -> free play
+  // --- Life mode -----------------------------------------------------------
+  | { type: 'LIFE_MOVE'; x: number; y: number } // walk the avatar toward a spot
+  | { type: 'LIFE_GATHER'; id: string } // pick up a gatherable item
+  | { type: 'LIFE_GIVE_SOUP' } // give ミケ 3 mushrooms -> soup + 100CC
+  | { type: 'LIFE_INVEST' } // invest in ミケ -> build her soup shop
+  | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop
+  | { type: 'LIFE_PLACE_FURNITURE'; x: number; y: number } // drop the held furniture
+  | { type: 'LIFE_CANCEL_PLACING' } // cancel furniture placement
+  | { type: 'LIFE_LEVEL_UP' } // 村レベルアップ celebration (fireworks)
+  | { type: 'LIFE_ADVANCE_DAY' } // advance one day (random visible event)
+  | { type: 'LIFE_DISMISS_NOTICE' }; // close the big celebration popup
