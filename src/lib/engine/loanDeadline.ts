@@ -21,7 +21,7 @@ export function updateLoanDeadline(state: GameState): GameState {
     return { ...state, repayDueTick: state.repayDueTick + REPAY_INTERVAL };
   }
 
-  const pay = Math.min(FORCED_REPAY, state.player.loan);
+  const pay = Math.min(state.repayAmount, state.player.loan);
 
   if (state.player.cash >= pay) {
     const remaining = round2(state.player.loan - pay);
@@ -37,6 +37,9 @@ export function updateLoanDeadline(state: GameState): GameState {
         cash: round2(state.player.cash - pay),
         loan: remaining,
       },
+      // A villager who pays on time keeps the village unlocked (recovers a
+      // 救済-downgraded level too).
+      villageLevel: Math.max(state.villageLevel, 2),
       repayDueTick: state.repayDueTick + REPAY_INTERVAL,
       newsLog: [news, ...state.newsLog].slice(0, 50),
     };
