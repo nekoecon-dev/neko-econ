@@ -79,31 +79,40 @@ export default function Home() {
         </div>
       </header>
 
-      {/* right-hand overlay: only the small inflation graph + stock / works panels
-          (the economic dashboard now lives in the 3D world). */}
-      <aside className="pointer-events-none absolute right-0 top-16 bottom-20 flex w-[88%] max-w-xs flex-col gap-3 overflow-y-auto p-3 [&>*]:pointer-events-auto">
-        <InflationPanel economy={state.economy} />
-        <StockMarket
-          cats={state.cats}
-          stocks={state.stocks}
-          player={state.player}
-          dispatch={dispatch}
-        />
-        <PublicWorks
-          facilities={state.facilities}
-          cash={state.player.cash}
-          pending={pending}
-          onPick={(kind) => {
-            setPending(kind);
-            setRoadMode(false);
-          }}
-        />
-      </aside>
+      {/* right-hand overlay: the small inflation graph + stock / works panels
+          (the economic dashboard now lives in the 3D world). Hidden during the
+          guided tutorial — the new player only sees the simple status HUD. The
+          stock market stays locked until the village reaches level 2. */}
+      {!state.tutorial.active && (
+        <aside className="pointer-events-none absolute right-0 top-16 bottom-20 flex w-[88%] max-w-xs flex-col gap-3 overflow-y-auto p-3 [&>*]:pointer-events-auto">
+          <InflationPanel economy={state.economy} />
+          {state.villageLevel >= 2 && (
+            <StockMarket
+              cats={state.cats}
+              stocks={state.stocks}
+              player={state.player}
+              dispatch={dispatch}
+            />
+          )}
+          <PublicWorks
+            facilities={state.facilities}
+            cash={state.player.cash}
+            pending={pending}
+            onPick={(kind) => {
+              setPending(kind);
+              setRoadMode(false);
+            }}
+          />
+        </aside>
+      )}
 
-      {/* forced-repayment countdown, top centre */}
-      <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2">
-        <RepaymentTimer remaining={repayRemaining} />
-      </div>
+      {/* forced-repayment countdown, top centre (the tutorial HUD owns this while
+          the guided tutorial runs) */}
+      {!state.tutorial.active && (
+        <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2">
+          <RepaymentTimer remaining={repayRemaining} />
+        </div>
+      )}
 
       {/* free-play mission panel (hidden while the guided tutorial runs) */}
       {!state.tutorial.active && (
@@ -112,7 +121,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* road-laying button (bottom-left) */}
+      {/* road-laying button (bottom-left) — hidden during the guided tutorial */}
+      {!state.tutorial.active && (
       <div className="absolute bottom-20 left-3 z-30 flex flex-col items-start gap-1">
         {roadMode && (
           <div className="pointer-events-none rounded-xl border-2 border-amber-700 bg-[#fffdf7]/95 px-3 py-1.5 text-[11px] font-bold text-amber-800 shadow">
@@ -134,6 +144,7 @@ export default function Home() {
           🛤️ 道路を敷く（10CC/マス）{roadMode ? '（ON）' : ''}
         </button>
       </div>
+      )}
 
       {/* strike banner, centred */}
       {state.strike.active && (
