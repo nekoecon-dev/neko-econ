@@ -424,6 +424,12 @@ export function lifeAdvanceDay(state: GameState): GameState {
 
   const day = life.day + 1;
   const cash = round2(state.player.cash + life.dailyIncome);
+
+  // Wake タマ from any previous nap / chat so each day's event reads cleanly.
+  let cats = state.cats.map((c) =>
+    c.id === '3' ? { ...c, action: 'idle' as const, x: 60, y: 58 } : c,
+  );
+
   let next: LifeState = {
     ...life,
     day,
@@ -433,48 +439,55 @@ export function lifeAdvanceDay(state: GameState): GameState {
     event: null,
   };
   let seq = next.seq;
+  const addItem = (k: GatherKind) => {
+    next = { ...next, items: [...next.items, makeItem(seq++, k)] };
+  };
+  const addVisitor = (x: number, y: number) => {
+    next = { ...next, visitors: [...next.visitors, { id: `vis-${seq++}`, name: 'たびねこ', x, y }] };
+  };
 
-  // One guaranteed visible ambient change.
+  // One guaranteed *visible* ambient change every day (never a number-only tweak).
   const roll = Math.floor(Math.random() * 8);
   switch (roll) {
-    case 0:
+    case 0: // 天気変化（空が変わる）
       next = { ...next, weather: life.weather === 'sunny' ? 'rainy' : 'sunny' };
       next.event = next.weather === 'rainy' ? '☔ 雨が降ってきたニャ' : '☀️ いい天気になったニャ';
       break;
-    case 1: {
-      const kinds: GatherKind[] = ['mushroom', 'flower', 'fish'];
-      const added = [0, 1].map(() => makeItem(seq++, kinds[Math.floor(Math.random() * kinds.length)]));
-      next = { ...next, items: [...next.items, ...added] };
+    case 1: // 新しいきのこ・花が生える
+      addItem('mushroom');
+      addItem(Math.random() < 0.5 ? 'flower' : 'fish');
       next.event = '🍄 新しいきのこや花が生えてきたニャ';
       break;
-    }
-    case 2:
-      next.event = '💬 ミケとタマがおしゃべりしているニャ';
+    case 2: // 猫同士の会話（タマがミケのそばへ歩いていく）
+      cats = cats.map((c) => (c.id === '3' ? { ...c, x: 45, y: 57 } : c));
+      next.event = '💬 ミケとタマがおしゃべりを始めたニャ';
       break;
-    case 3: {
-      const v = { id: `vis-${seq++}`, name: 'たびねこ', x: 30 + Math.random() * 36, y: 30 + Math.random() * 32 };
-      next = { ...next, visitors: [...next.visitors, v] };
+    case 3: // 来訪者猫が現れる
+      addVisitor(32 + Math.random() * 30, 30 + Math.random() * 28);
       next.event = '🧳 来訪者ねこが村にやってきたニャ';
       break;
-    }
-    case 4:
-      next.event = next.shopOpen ? '🍲 ミケの屋台に猫の行列ができているニャ' : '🐱 ミケが屋台を開きたがっているニャ';
+    case 4: // ミケの屋台に行列（猫が並ぶ）
+      addVisitor(34, 66);
+      addVisitor(32, 70);
+      next.event = next.shopOpen
+        ? '🍲 ミケの屋台に猫の行列ができたニャ'
+        : '🐱 屋台を待ちきれない猫が集まってきたニャ';
       break;
-    case 5:
-      next.event = '😴 タマが昼寝をしているニャ';
+    case 5: // タマが昼寝する（ごろん＋💤）
+      cats = cats.map((c) => (c.id === '3' ? { ...c, action: 'sleeping' as const } : c));
+      next.event = '😴 タマが昼寝を始めたニャ';
       break;
-    case 6: {
-      const flower = makeItem(seq++, 'flower');
-      next = { ...next, items: [...next.items, flower] };
-      next.event = '🌸 小さな花が咲いたニャ';
+    case 6: // 落とし物イベント（🔔がマップに出現）
+      next = { ...next, items: [...next.items, { id: `item-${seq++}`, kind: 'bell', ...scatterSpot() }] };
+      next.event = '🔔 だれかの落とし物が落ちているニャ';
       break;
-    }
-    default:
+    default: // たぬきちセール（家具半額＋お店に品が増える）
       next = { ...next, sale: true };
+      addItem('wood');
       next.event = '🏷️ たぬきちが家具セールを始めたニャ';
       break;
   }
 
   next = setupDay({ ...next, seq }, day);
-  return { ...state, player: { ...state.player, cash }, life: next };
+  return { ...state, cats, player: { ...state.player, cash }, life: next };
 }
