@@ -760,7 +760,7 @@ export default function Village3D({
         const s = stateRef.current;
         signObj.visible = s.life.active;
         // DAY3 「まずはたぬきちへ」: highlight until the first furniture is placed.
-        const callTanuki = s.life.active && s.life.day === 3 && s.life.furniture.length === 0;
+        const callTanuki = s.life.active && s.life.day === 3 && !s.life.dayDone;
         ring.visible = callTanuki;
         bangObj.visible = callTanuki;
         callObj.visible = callTanuki;
@@ -1046,22 +1046,6 @@ export default function Village3D({
     lostPillar.visible = false;
     scene.add(lostPillar);
 
-    // DAY3 furniture-placement guide ring (near the player's home/tent).
-    const placeCircle = new THREE.Mesh(
-      new THREE.RingGeometry(0.6, 4, 36),
-      new THREE.MeshBasicMaterial({
-        color: '#7ee0a0',
-        transparent: true,
-        opacity: 0.28,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      }),
-    );
-    placeCircle.rotation.x = -Math.PI / 2;
-    placeCircle.position.set(homeX, 0.07, homeZ);
-    placeCircle.visible = false;
-    scene.add(placeCircle);
-
     // Off-screen guide arrow (DOM) pointing toward たぬきち when he's not in view.
     const edgeArrow = document.createElement('div');
     edgeArrow.className = 'edge-arrow';
@@ -1291,21 +1275,23 @@ export default function Village3D({
           onTalkTanukiRef.current(); // たぬきち本人でも、店の入口でも家具UIを開く
           return;
         }
-        // 3) click another cat (タマ etc.) to peek at its detail card
+        // 3) click the tent/home to step inside (tent-interior screen)
+        if (raycaster.intersectObject(tent, true).length > 0) {
+          selectedCatId = null;
+          dispatchRef.current({ type: 'LIFE_ENTER_TENT' });
+          return;
+        }
+        // 4) click another cat (タマ etc.) to peek at its detail card
         const lifeCatId = pickCatId();
         if (lifeCatId) {
           selectedCatId = selectedCatId === lifeCatId ? null : lifeCatId;
           return;
         }
-        // 4) ground click: drop the held furniture, else walk the avatar there
+        // 5) ground click: walk the avatar there
         if (raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
           selectedCatId = null;
           const map = worldToMap(hitPoint.x, hitPoint.z);
-          if (stateRef.current.life.placing) {
-            dispatchRef.current({ type: 'LIFE_PLACE_FURNITURE', x: map.x, y: map.y });
-          } else {
-            dispatchRef.current({ type: 'LIFE_MOVE', x: map.x, y: map.y });
-          }
+          dispatchRef.current({ type: 'LIFE_MOVE', x: map.x, y: map.y });
         }
         return;
       }
@@ -1451,7 +1437,7 @@ export default function Village3D({
       if (life.active) {
         const bell = life.items.find((i) => i.kind === 'bell');
         const day4Searching = life.day === 4 && !!bell && !life.hasLostItem;
-        const day3ToShop = life.day === 3 && life.furniture.length === 0;
+        const day3ToShop = life.day === 3 && !life.dayDone;
 
         // Day transitions: pan to たぬきち on DAY3, stamp the DAY4 search start.
         if (life.day !== lastSeenDay) {
@@ -1481,9 +1467,6 @@ export default function Village3D({
           lastTanukiSparkle = nowMs;
           spawnSparkle(tanukiX + (Math.random() - 0.5) * 2.2, tanukiZ + (Math.random() - 0.5) * 2.2);
         }
-
-        // DAY3 furniture-placement guide ring while carrying a piece.
-        placeCircle.visible = life.placing !== null;
 
         // Off-screen guide arrow: points at たぬきち (DAY3) or the lost item (DAY4).
         let guide: THREE.Vector3 | null = null;

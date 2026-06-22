@@ -60,7 +60,7 @@ export default function LifeOverlay({
 
   // DAY3: nudge the player toward たぬきち if they haven't gone over to him.
   // (たぬきち's life-mode map spot ≈ world (9.5, 0.5).)
-  const goingToTanuki = life.active && life.day === 3 && life.furniture.length === 0;
+  const goingToTanuki = life.active && life.day === 3 && !life.dayDone;
   const nearTanuki = Math.hypot(life.playerX - 74, life.playerY - 51) < 17;
   const needTanukiHint = goingToTanuki && !nearTanuki;
   useEffect(() => {
@@ -181,7 +181,7 @@ export default function LifeOverlay({
       </div>
 
       {/* ---- Bottom-centre: event toast + day-6 road + advance button ---- */}
-      {!life.placing && (
+      {!life.inside && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-2">
           {life.event && (
             <div className="animate-pop rounded-2xl border-4 border-sky-300 bg-white/95 px-4 py-2 text-sm font-black text-sky-800 shadow-lg">
@@ -236,21 +236,8 @@ export default function LifeOverlay({
         </div>
       )}
 
-      {/* ---- Placing furniture banner ---- */}
-      {life.placing && (
-        <div className="pointer-events-auto absolute inset-x-0 bottom-6 flex flex-col items-center gap-2">
-          <div className="rounded-2xl border-4 border-amber-400 bg-[#fffdf7]/95 px-4 py-2 text-sm font-black text-amber-800 shadow-lg">
-            {FURNITURE_META[life.placing].icon} テントの近くに置く場所をクリックしてニャ
-          </div>
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'LIFE_CANCEL_PLACING' })}
-            className="btn-press rounded-2xl border-2 border-rose-300 bg-white/90 px-5 py-1.5 text-sm font-bold text-rose-600"
-          >
-            キャンセル
-          </button>
-        </div>
-      )}
+      {/* ---- Tent interior screen ---- */}
+      {life.inside && <TentInterior life={life} dispatch={dispatch} />}
 
       {/* ---- ミケ ---- */}
       {talking === 'mike' && (
@@ -332,10 +319,10 @@ export default function LifeOverlay({
                       </span>
                       <button
                         type="button"
-                        disabled={cash < price || life.placing !== null}
+                        disabled={cash < price}
                         onClick={() => { dispatch({ type: 'LIFE_BUY_FURNITURE', kind: k }); close(); }}
                         className={`btn-press rounded-lg bg-amber-500 px-3 py-1 text-xs font-black text-white transition enabled:hover:bg-amber-600 disabled:opacity-40 ${
-                          life.day === 3 && life.furniture.length === 0 ? 'tutorial-cta' : ''
+                          life.day === 3 && !life.dayDone ? 'tutorial-cta' : ''
                         }`}
                       >
                         {price}ニャル
@@ -344,14 +331,19 @@ export default function LifeOverlay({
                   );
                 })}
               </div>
+              {life.ownedFurniture.length > 0 && (
+                <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-1.5 text-center text-xs font-black text-emerald-700">
+                  🎒 持ち家具 {life.ownedFurniture.length}個 — テントに入って飾れるニャ
+                </p>
+              )}
             </>
           )}
         </Dialog>
       )}
 
-      {/* ---- Big celebration / story notice ---- */}
+      {/* ---- Big celebration / story notice (above the tent-interior screen) ---- */}
       {life.notice && (
-        <div className="pointer-events-auto absolute inset-0 z-[62] flex items-center justify-center bg-black/45 p-4">
+        <div className="pointer-events-auto absolute inset-0 z-[66] flex items-center justify-center bg-black/45 p-4">
           <div className="animate-pop max-w-sm rounded-3xl border-4 border-amber-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
             <div className="whitespace-pre-line text-lg font-black leading-relaxed text-amber-900">{life.notice}</div>
             <button
@@ -421,5 +413,96 @@ function DialogButton({
     >
       {children}
     </button>
+  );
+}
+
+/** Simplified tent-interior screen: a room you decorate with owned furniture. */
+function TentInterior({
+  life,
+  dispatch,
+}: {
+  life: GameState['life'];
+  dispatch: (action: PolicyAction) => void;
+}) {
+  const [sel, setSel] = useState<FurnitureKind | null>(null);
+  const counts = life.ownedFurniture.reduce<Partial<Record<FurnitureKind, number>>>((m, k) => {
+    m[k] = (m[k] ?? 0) + 1;
+    return m;
+  }, {});
+  const kinds = Object.keys(counts) as FurnitureKind[];
+
+  const place = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!sel) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    dispatch({ type: 'LIFE_PLACE_INTERIOR', kind: sel, x, y });
+    if ((counts[sel] ?? 0) <= 1) setSel(null);
+  };
+
+  return (
+    <div className="pointer-events-auto fixed inset-0 z-[64] flex flex-col bg-[#2f2218] p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-black text-amber-100">🏠 {life.playerName}の部屋</h2>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'LIFE_EXIT_TENT' })}
+          className="btn-press rounded-2xl border-2 border-amber-200 bg-amber-500 px-4 py-2 text-sm font-black text-white transition hover:bg-amber-600"
+        >
+          🚪 外に出る
+        </button>
+      </div>
+
+      {/* Room floor (click to place the selected furniture) */}
+      <div
+        onClick={place}
+        className="relative mt-3 flex-1 cursor-pointer overflow-hidden rounded-2xl border-[10px] border-[#6b4a2b] bg-[#cba87a]"
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-[#a9835a]" /> {/* back wall */}
+        <div className="pointer-events-none absolute bottom-0 left-1/2 h-8 w-24 -translate-x-1/2 rounded-t-lg bg-[#5b3f26] text-center text-[11px] font-black leading-8 text-amber-100">
+          出入口
+        </div>
+        {life.interior.map((p) => (
+          <span
+            key={p.id}
+            style={{ left: `${p.x}%`, top: `${p.y}%` }}
+            className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-4xl drop-shadow"
+          >
+            {FURNITURE_META[p.kind].icon}
+          </span>
+        ))}
+        {sel && (
+          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-xs font-bold text-white">
+            床をクリックして「{FURNITURE_META[sel].name}」を置くニャ
+          </div>
+        )}
+      </div>
+
+      {/* Owned-furniture tray */}
+      <div className="mt-3 rounded-2xl bg-[#fffdf7]/95 p-3">
+        <div className="text-xs font-black text-amber-700">🎒 持っている家具（選んで床をクリック）</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {kinds.length === 0 && (
+            <span className="text-xs font-bold text-amber-500">
+              家具がないニャ。たぬきち商店で買ってこよう
+            </span>
+          )}
+          {kinds.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setSel(k)}
+              className={`btn-press rounded-xl border-2 px-3 py-1.5 text-sm font-black transition ${
+                sel === k
+                  ? 'border-amber-500 bg-amber-100 text-amber-900'
+                  : 'border-amber-200 bg-white text-amber-700'
+              }`}
+            >
+              {FURNITURE_META[k].icon} {FURNITURE_META[k].name} ×{counts[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

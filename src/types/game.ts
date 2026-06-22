@@ -226,7 +226,10 @@ export interface LifeState {
   playerY: number;
   inventory: Record<GatherKind, number>;
   items: GatherItem[]; // gatherables on the ground
-  furniture: PlacedFurniture[]; // placed furniture
+  furniture: PlacedFurniture[]; // (legacy) village-map furniture — unused in the campaign
+  ownedFurniture: FurnitureKind[]; // bought, not yet placed (shown in the tent)
+  interior: PlacedFurniture[]; // furniture placed inside the tent (x,y = room %)
+  inside: boolean; // the player is in the tent-interior screen
   visitors: LifeVisitor[]; // visiting cats
   soupsMade: number;
   shopOpen: boolean; // ミケの屋台 has been built (DAY5)
@@ -238,7 +241,6 @@ export interface LifeState {
   hasLostItem: boolean; // carrying タマ's lost item (DAY4)
   hasMoved: boolean; // the player has walked at least once (DAY1 move hint)
   hintArrow: boolean; // show the 3D arrow pointing at the lost item (DAY4 hint)
-  placing: FurnitureKind | null; // furniture awaiting a drop spot
   event: string | null; // latest 1日進める event toast
   notice: string | null; // big celebration / story-beat notification
   fx: LifeFx; // pending one-shot 3D effect
@@ -295,8 +297,9 @@ export type PolicyAction =
   | { type: 'LIFE_BUILD_STALL' } // 3 wood + 200CC -> ミケの屋台 (DAY5)
   | { type: 'LIFE_CONNECT_ROAD' } // pave 屋台↔鍋 (DAY6)
   | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)
-  | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop
-  | { type: 'LIFE_PLACE_FURNITURE'; x: number; y: number } // drop the held furniture
-  | { type: 'LIFE_CANCEL_PLACING' } // cancel furniture placement
+  | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned
+  | { type: 'LIFE_ENTER_TENT' } // open the tent-interior screen
+  | { type: 'LIFE_EXIT_TENT' } // leave the tent-interior screen
+  | { type: 'LIFE_PLACE_INTERIOR'; kind: FurnitureKind; x: number; y: number } // place inside
   | { type: 'LIFE_ADVANCE_DAY' } // advance one day (random visible event)
   | { type: 'LIFE_DISMISS_NOTICE' }; // close the big celebration popup

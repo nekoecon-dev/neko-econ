@@ -91,6 +91,11 @@ const DAY_INTRO: Record<number, string> = {
 export function lifeObjective(life: LifeState): string {
   if (life.day > 7) return '🌳 のんびり村を育てよう（1日進めると何かが起きる）';
   if (life.dayDone) return '✅ 今日の目的達成！「次の日へ」で進もう';
+  // DAY3 sub-steps: buy at たぬきち → step into the tent → decorate.
+  if (life.day === 3) {
+    if (life.ownedFurniture.length > 0) return '🏠 テントをクリックして入り、家具を飾ろう';
+    return '✨ 光っているたぬきちに話しかけて家具を買おう';
+  }
   return DAY_OBJECTIVE[life.day] ?? '🌳 のんびり村を育てよう';
 }
 
@@ -131,6 +136,9 @@ export function lifeInactive(): LifeState {
     inventory: { mushroom: 0, fish: 0, wood: 0, flower: 0, bell: 0 },
     items: [],
     furniture: [],
+    ownedFurniture: [],
+    interior: [],
+    inside: false,
     visitors: [],
     soupsMade: 0,
     shopOpen: false,
@@ -142,7 +150,6 @@ export function lifeInactive(): LifeState {
     hasLostItem: false,
     hasMoved: false,
     hintArrow: false,
-    placing: null,
     event: null,
     notice: null,
     fx: { id: 0, kind: null, x: 50, y: 50 },
@@ -288,41 +295,50 @@ export function lifeGiveLost(state: GameState): GameState {
   };
 }
 
+/** Buy a piece of furniture — it goes into the owned list, to place inside the tent. */
 export function lifeBuyFurniture(state: GameState, kind: FurnitureKind): GameState {
   const life = state.life;
   if (!life.shopUnlocked) return state;
   if (!SHOP_FURNITURE.includes(kind) && life.level < 2) return state; // extras need level 2
   const cost = Math.round(FURNITURE_COST[kind] * (life.sale ? 0.5 : 1));
-  if (state.player.cash < cost || life.placing) return state;
+  if (state.player.cash < cost) return state;
   return {
     ...state,
     player: { ...state.player, cash: round2(state.player.cash - cost) },
-    life: { ...life, placing: kind },
+    life: { ...life, ownedFurniture: [...life.ownedFurniture, kind] },
   };
 }
 
-export function lifePlaceFurniture(state: GameState, x: number, y: number): GameState {
+/** Enter / leave the tent-interior screen. */
+export function lifeEnterTent(state: GameState): GameState {
+  return { ...state, life: { ...state.life, inside: true } };
+}
+export function lifeExitTent(state: GameState): GameState {
+  return { ...state, life: { ...state.life, inside: false } };
+}
+
+/** Place an owned piece of furniture inside the tent (persists in `interior`). */
+export function lifePlaceInterior(state: GameState, kind: FurnitureKind, x: number, y: number): GameState {
   const life = state.life;
-  if (!life.placing) return state;
-  const piece = { id: `furn-${life.seq + 1}`, kind: life.placing, x, y };
+  const idx = life.ownedFurniture.indexOf(kind);
+  if (idx < 0) return state;
+  const ownedFurniture = life.ownedFurniture.filter((_, i) => i !== idx);
+  const piece = { id: `furn-${life.seq + 1}`, kind, x, y };
   return {
     ...state,
     life: {
       ...life,
       seq: life.seq + 1,
-      furniture: [...life.furniture, piece],
-      placing: null,
+      ownedFurniture,
+      interior: [...life.interior, piece],
+      // DAY3 completes once something is placed inside (commit 5 moves this to 退室時).
       dayDone: life.day === 3 ? true : life.dayDone,
       notice:
-        life.day === 3
+        life.day === 3 && life.interior.length === 0
           ? '🛋️ おうちが少し楽しくなったニャ！\n\n集めて、売って、手に入れたニャルで家具を買えたニャ。お金は貯めるだけじゃなく、暮らしを良くするためにも使えるニャ。'
           : life.notice,
     },
   };
-}
-
-export function lifeCancelPlacing(state: GameState): GameState {
-  return { ...state, life: { ...state.life, placing: null } };
 }
 
 /** DAY4 「ヒントを見る」: reveal a temporary arrow over the lost item. */

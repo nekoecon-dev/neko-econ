@@ -32,14 +32,15 @@ import {
   lifeAdvanceDay,
   lifeBuildStall,
   lifeBuyFurniture,
-  lifeCancelPlacing,
   lifeConnectRoad,
   lifeDismissNotice,
+  lifeEnterTent,
+  lifeExitTent,
   lifeGather,
   lifeGiveLost,
   lifeGiveSoup,
   lifeMove,
-  lifePlaceFurniture,
+  lifePlaceInterior,
   lifeRepay,
   lifeSetName,
   lifeShowHint,
@@ -145,10 +146,12 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeRepay(state);
     case 'LIFE_BUY_FURNITURE':
       return lifeBuyFurniture(state, action.kind);
-    case 'LIFE_PLACE_FURNITURE':
-      return lifePlaceFurniture(state, action.x, action.y);
-    case 'LIFE_CANCEL_PLACING':
-      return lifeCancelPlacing(state);
+    case 'LIFE_ENTER_TENT':
+      return lifeEnterTent(state);
+    case 'LIFE_EXIT_TENT':
+      return lifeExitTent(state);
+    case 'LIFE_PLACE_INTERIOR':
+      return lifePlaceInterior(state, action.kind, action.x, action.y);
     case 'LIFE_ADVANCE_DAY':
       return lifeAdvanceDay(state);
     case 'LIFE_DISMISS_NOTICE':
