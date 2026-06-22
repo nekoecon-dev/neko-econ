@@ -13,7 +13,7 @@ export default function InflationPanel({ economy }: { economy: Economy }) {
 
   return (
     <div className="w-48 rounded-2xl border-2 border-amber-200 bg-[#fffdf7]/90 p-2 shadow-md backdrop-blur">
-      <p className="mb-1 text-[10px] font-bold text-amber-800/80">📈 インフレ率（直近20tick）</p>
+      <p className="mb-1 text-[10px] font-bold text-amber-800/80">📈 インフレ率（直近20日）</p>
       <div className="h-24">
         <InflationChart data={data} />
       </div>

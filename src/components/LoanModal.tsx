@@ -74,7 +74,7 @@ export default function LoanModal({
                 <span className="font-bold tabular-nums">{cash} CC</span>
               </div>
               <div className="flex justify-between">
-                <span>毎tickの利息</span>
+                <span>毎日の利息</span>
                 <span className="font-bold tabular-nums text-orange-600">
                   −{interest} CC（金利 {interestRate}%）
                 </span>

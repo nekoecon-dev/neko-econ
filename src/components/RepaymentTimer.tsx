@@ -15,7 +15,7 @@ export default function RepaymentTimer({ remaining }: { remaining: number }) {
       <div
         className={`text-2xl font-black tabular-nums ${warn ? 'text-red-600' : 'text-amber-900'}`}
       >
-        残り {remaining} tick
+        あと {remaining} 日
       </div>
     </div>
   );

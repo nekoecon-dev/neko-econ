@@ -22,7 +22,7 @@ export default function InflationChart({ data }: { data: InflationPoint[] }) {
         <YAxis tick={{ fontSize: 10 }} stroke="#9ca3af" width={32} />
         <Tooltip
           formatter={(value) => [`${value}%`, 'インフレ率']}
-          labelFormatter={(label) => `tick ${label}`}
+          labelFormatter={(label) => `${label}日目`}
         />
         <Line
           type="monotone"

@@ -78,7 +78,7 @@ export default function Home() {
             </h1>
             <div className="flex items-center gap-2">
               <span className="rounded-full border-2 border-amber-200 bg-[#fffdf7]/90 px-3 py-1.5 text-sm font-bold tabular-nums text-amber-800 shadow-md backdrop-blur">
-                🕒 {state.tick}
+                🕒 {state.tick}日目
               </span>
               <div className="flex items-center gap-2 rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-yellow-100/95 to-amber-100/95 px-3 py-1.5 shadow-md backdrop-blur">
                 <span className="text-xl">👛</span>

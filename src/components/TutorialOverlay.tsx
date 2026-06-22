@@ -127,7 +127,7 @@ export default function TutorialOverlay({
       </div>
       <div className="mt-1 flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">⏰ 返済まで</span>
-        <span className="tabular-nums">{repayIn} tick</span>
+        <span className="tabular-nums">あと {repayIn} 日</span>
       </div>
       <div className="mt-1 flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">💴 次回返済</span>
@@ -154,7 +154,7 @@ export default function TutorialOverlay({
         </div>
         <div className="flex items-center justify-between text-sm font-black">
           <span>返済まで</span>
-          <span className="tabular-nums">{repayIn} tick</span>
+          <span className="tabular-nums">あと {repayIn} 日</span>
         </div>
       </div>
     ) : null;
@@ -170,7 +170,7 @@ export default function TutorialOverlay({
           <p className="mt-3 text-base font-bold leading-relaxed text-amber-800">
             あなたは借金を抱えた新しい村人ニャ。
             <br />
-            まずは <span className="font-black text-rose-600">28tick以内に1,000CCを返済</span> しよう。
+            まずは <span className="font-black text-rose-600">28日以内に1,000CCを返済</span> しよう。
             <br />
             少しずつ、村のことを覚えていこうニャ！
           </p>
