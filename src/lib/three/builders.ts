@@ -934,56 +934,84 @@ export function makeFurniture(kind: FurnitureKind): THREE.Group {
   return g;
 }
 
-/** たぬきち商店: a cosy furniture shop with an awning, flag, lamp and door mat. */
+/**
+ * たぬきち商店: a furniture shop with an unmistakable silhouette — a tall RED
+ * pyramid roof, a big sign board, a striped awning, a flag, a lamp, a door mat
+ * and stacked product crates out front. Stands out at a glance from the cottages.
+ */
 export function makeShop(): THREE.Group {
   const shop = new THREE.Group();
 
-  const walls = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.8, 2.0), matte('#f3d9a8'));
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.8, 2.2), matte('#f3d9a8'));
   walls.position.y = 0.9;
   shop.add(walls);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.3, 2.3), matte('#7c4a23'));
-  roof.position.y = 1.95;
+
+  // Tall red pyramid roof — the standout silhouette cue.
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.5, 4), matte('#e23b3b'));
+  roof.position.y = 2.55;
+  roof.rotation.y = Math.PI / 4;
   shop.add(roof);
+  const finial = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), matte('#ffd23f'));
+  finial.position.y = 3.35;
+  shop.add(finial);
 
   // Striped red awning over the front.
-  const awning = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 0.8), matte('#e0584f'));
-  awning.position.set(0, 1.55, 1.25);
+  const awning = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.12, 0.9), matte('#e0584f'));
+  awning.position.set(0, 1.62, 1.35);
   awning.rotation.x = -0.32;
   shop.add(awning);
 
-  // Sign board (the「たぬきち商店」text is a CSS2D label added in the scene).
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.5, 0.08), matte('#f7ecd2'));
-  sign.position.set(0, 1.32, 1.06);
+  // Big sign board (the「たぬきち商店」text is a CSS2D label added in the scene).
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 0.1), matte('#fff3d6'));
+  sign.position.set(0, 1.45, 1.16);
   sign.name = 'shopSign';
   shop.add(sign);
+  const signFrame = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.88, 0.06), matte('#7c4a23'));
+  signFrame.position.set(0, 1.45, 1.12);
+  shop.add(signFrame);
 
   const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.1), matte('#8a5a2b'));
-  door.position.set(0, 0.5, 1.02);
+  door.position.set(0, 0.5, 1.12);
   shop.add(door);
 
   // Flag on a pole.
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), matte('#6b4423'));
-  pole.position.set(1.25, 2.7, 0.4);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.8, 6), matte('#6b4423'));
+  pole.position.set(1.4, 3.0, 0.4);
   shop.add(pole);
-  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.34, 0.03), matte('#3fae6a'));
-  flag.position.set(1.52, 3.2, 0.4);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.38, 0.03), matte('#3fae6a'));
+  flag.position.set(1.7, 3.6, 0.4);
   shop.add(flag);
 
   // Lamp by the door.
   const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.1, 6), matte('#6b4423'));
-  lampPole.position.set(-1.15, 0.55, 1.05);
+  lampPole.position.set(-1.25, 0.55, 1.15);
   shop.add(lampPole);
   const lampBulb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.18, 12, 10),
+    new THREE.SphereGeometry(0.2, 12, 10),
     new THREE.MeshBasicMaterial({ color: '#ffe08a' }),
   );
-  lampBulb.position.set(-1.15, 1.2, 1.05);
+  lampBulb.position.set(-1.25, 1.2, 1.15);
   shop.add(lampBulb);
 
   // Door mat.
-  const mat = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 0.75), matte('#c2562f'));
-  mat.position.set(0, 0.04, 1.75);
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.8), matte('#c2562f'));
+  mat.position.set(0, 0.04, 1.95);
   shop.add(mat);
+
+  // Product crates stacked out front.
+  const crateColors = ['#caa05a', '#b9823f', '#d9b06a'];
+  const crateGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  const cratePos: [number, number, number][] = [
+    [1.3, 0.25, 1.7],
+    [1.7, 0.25, 1.5],
+    [1.5, 0.72, 1.6],
+  ];
+  cratePos.forEach((p, i) => {
+    const crate = new THREE.Mesh(crateGeo, matte(crateColors[i % crateColors.length]));
+    crate.position.set(...p);
+    crate.rotation.y = 0.3 * i;
+    shop.add(crate);
+  });
 
   shop.scale.setScalar(1.6);
   return shop;

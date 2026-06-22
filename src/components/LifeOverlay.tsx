@@ -46,6 +46,7 @@ export default function LifeOverlay({
   const [invOpen, setInvOpen] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [day4Elapsed, setDay4Elapsed] = useState(0);
+  const [day3Elapsed, setDay3Elapsed] = useState(0);
   const life = state.life;
 
   // DAY4: after ~25s of searching without finding the lost item, nudge harder.
@@ -56,6 +57,18 @@ export default function LifeOverlay({
     const id = setInterval(() => setDay4Elapsed(Date.now() - start), 1000);
     return () => clearInterval(id);
   }, [searching]);
+
+  // DAY3: nudge the player toward たぬきち if they haven't gone over to him.
+  // (たぬきち's life-mode map spot ≈ world (9.5, 0.5).)
+  const goingToTanuki = life.active && life.day === 3 && life.furniture.length === 0;
+  const nearTanuki = Math.hypot(life.playerX - 74, life.playerY - 51) < 17;
+  const needTanukiHint = goingToTanuki && !nearTanuki;
+  useEffect(() => {
+    if (!needTanukiHint) return;
+    const start = Date.now();
+    const id = setInterval(() => setDay3Elapsed(Date.now() - start), 1000);
+    return () => clearInterval(id);
+  }, [needTanukiHint]);
 
   if (!life.active) return null;
 
@@ -174,6 +187,13 @@ export default function LifeOverlay({
           {searching && day4Elapsed > 25000 && (
             <div className="rounded-2xl border-4 border-rose-300 bg-white/95 px-4 py-2 text-sm font-black text-rose-700 shadow-lg">
               🌲 木のそばでキラッと光ってるニャ！
+            </div>
+          )}
+          {needTanukiHint && day3Elapsed > 10000 && (
+            <div className="rounded-2xl border-4 border-amber-300 bg-white/95 px-4 py-2 text-sm font-black text-amber-800 shadow-lg">
+              {day3Elapsed > 20000
+                ? '🔴 赤い屋根のお店の前にいるニャ！'
+                : '✨ 光っているたぬきちのところへ行こう'}
             </div>
           )}
           {searching && (

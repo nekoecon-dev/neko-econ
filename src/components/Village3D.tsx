@@ -672,40 +672,42 @@ export default function Village3D({
       });
     }
 
-    // たぬきち stands somewhere clearly visible in life mode (his economy spot is
-    // off in a corner). His furniture shop sits just behind him.
-    const tanukiX = lifeBoot ? 9 : -17.4;
-    const tanukiZ = lifeBoot ? 6 : 8.5;
+    // たぬきち stands in a clear, uncluttered spot in life mode (his economy spot
+    // is off in a corner), right in front of his shop. The shop is behind him so
+    // the two form one obvious landmark.
+    const tanukiX = lifeBoot ? 9.5 : -17.4;
+    const tanukiZ = lifeBoot ? 0.5 : 8.5;
+    const shopX = lifeBoot ? 12.5 : -20;
+    const shopZ = lifeBoot ? -1.5 : -4;
     const banker = makeBanker();
     banker.position.set(tanukiX, 0, tanukiZ);
-    banker.rotation.y = lifeBoot ? -2.2 : 2.4;
+    banker.rotation.y = lifeBoot ? -1.62 : 2.4;
+    if (lifeBoot) banker.scale.setScalar(1.15 * 1.15); // a touch bigger so he reads
     scene.add(banker);
 
-    // たぬきち商店 building + sign + a glowing 「！」 + bubble that call the player
-    // over on DAY3. The shop is clickable just like たぬきち himself.
+    // たぬきち商店 building + big sign + a glowing 「！」 / ring / bubble that call
+    // the player over on DAY3. Both the shop and たぬきち open the furniture UI.
     const shop = makeShop();
-    const shopX = tanukiX + 3.2;
-    const shopZ = tanukiZ + 2.4;
     shop.position.set(shopX, 0, shopZ);
-    shop.rotation.y = -2.2;
+    shop.rotation.y = -1.45;
     shop.visible = lifeBoot;
     scene.add(shop);
     {
-      // Shop sign label.
+      // Shop sign label, high above the building so it never clips the bottom UI.
       const signEl = document.createElement('div');
       signEl.className = 'shop-sign';
       signEl.textContent = '🏪 たぬきち商店';
       const signObj = new CSS2DObject(signEl);
-      signObj.position.set(shopX, 3.4, shopZ);
+      signObj.position.set(shopX, 6.2, shopZ);
       scene.add(signObj);
 
-      // Glowing ring at たぬきち's feet.
+      // Bright glowing ring at たぬきち's feet.
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(1.0, 1.7, 28),
+        new THREE.RingGeometry(1.3, 2.6, 32),
         new THREE.MeshBasicMaterial({
-          color: '#ffe14a',
+          color: '#ffa726',
           transparent: true,
-          opacity: 0.6,
+          opacity: 0.7,
           side: THREE.DoubleSide,
           depthWrite: false,
         }),
@@ -720,15 +722,15 @@ export default function Village3D({
       bangEl.className = 'tanuki-bang';
       bangEl.textContent = '❗';
       const bangObj = new CSS2DObject(bangEl);
-      bangObj.position.set(tanukiX, 5.2, tanukiZ);
+      bangObj.position.set(tanukiX, 5.6, tanukiZ);
       bangObj.visible = false;
       scene.add(bangObj);
 
       const callEl = document.createElement('div');
       callEl.className = 'tanuki-call';
-      callEl.textContent = 'たぬきちが呼んでいるニャ';
+      callEl.textContent = 'たぬきちが呼んでいるニャ！';
       const callObj = new CSS2DObject(callEl);
-      callObj.position.set(tanukiX, 4.3, tanukiZ);
+      callObj.position.set(tanukiX, 4.6, tanukiZ);
       callObj.visible = false;
       scene.add(callObj);
 
@@ -742,8 +744,8 @@ export default function Village3D({
         callObj.visible = callTanuki;
         if (callTanuki) {
           const tt = Date.now() / 1000;
-          (ring.material as THREE.MeshBasicMaterial).opacity = 0.6 + Math.sin(tt * 4) * 0.25;
-          const sc = 1 + Math.sin(tt * 3) * 0.06;
+          (ring.material as THREE.MeshBasicMaterial).opacity = 0.7 + Math.sin(tt * 4) * 0.25;
+          const sc = 1 + Math.sin(tt * 3) * 0.12;
           ring.scale.set(sc, sc, sc);
         }
       });
@@ -1011,13 +1013,21 @@ export default function Village3D({
     edgeArrow.style.display = 'none';
     mount.appendChild(edgeArrow);
 
-    // Gentle camera pan toward たぬきち at the start of DAY3.
+    // Hover tooltip ("たぬきちの店") shown over the shop / たぬきち in life mode.
+    const hoverTip = document.createElement('div');
+    hoverTip.className = 'hover-tip';
+    hoverTip.textContent = 'たぬきちの店';
+    hoverTip.style.display = 'none';
+    mount.appendChild(hoverTip);
+
+    // Camera pan toward たぬきち at the start of DAY3, plus a sparkle emitter.
     const centerLook = new THREE.Vector3(0, 2, 0);
     const camLook = centerLook.clone();
     const tanukiLook = new THREE.Vector3(tanukiX, 1.5, tanukiZ);
     const panDesired = new THREE.Vector3();
     let lastSeenDay = stateRef.current.life.day;
     let panUntil = 0;
+    let lastTanukiSparkle = 0;
 
     // Dispose every geometry/material under a group.
     const disposeGroup = (g: THREE.Object3D) => {
@@ -1095,6 +1105,23 @@ export default function Village3D({
 
     // Move the placement ghost to follow the cursor over the ground.
     const onPointerMove = (e: MouseEvent) => {
+      // Life mode: show a "たぬきちの店" tooltip when hovering the shop / たぬきち.
+      if (stateRef.current.life.active) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(ndc, camera);
+        const over =
+          (shop.visible && raycaster.intersectObject(shop, true).length > 0) ||
+          raycaster.intersectObject(banker, true).length > 0;
+        if (over) {
+          hoverTip.style.display = 'block';
+          hoverTip.style.left = `${e.clientX - rect.left}px`;
+          hoverTip.style.top = `${e.clientY - rect.top - 34}px`;
+        } else {
+          hoverTip.style.display = 'none';
+        }
+      }
       if (!ghost) return;
       const rect = renderer.domElement.getBoundingClientRect();
       pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1316,15 +1343,22 @@ export default function Village3D({
       // ---- Life mode: avatar + items + furniture + visitors + effects --------
       playerAvatar.visible = life.active;
       if (life.active) {
-        // Gentle camera pan toward たぬきち when DAY3 begins, then ease back.
+        // Camera pan toward たぬきち when DAY3 begins (after the splash), then
+        // ease back — makes "たぬきちはあそこだ" obvious within a couple seconds.
         if (life.day !== lastSeenDay) {
-          if (life.day === 3) panUntil = nowMs + 2800;
+          if (life.day === 3) panUntil = nowMs + 2600;
           lastSeenDay = life.day;
         }
         panDesired.copy(centerLook);
-        if (nowMs < panUntil) panDesired.lerp(tanukiLook, 0.45);
-        camLook.lerp(panDesired, Math.min(1, dt * 1.8));
+        if (nowMs < panUntil) panDesired.lerp(tanukiLook, 0.7);
+        camLook.lerp(panDesired, Math.min(1, dt * 2.2));
         camera.lookAt(camLook);
+
+        // Sparkles around たぬきち during the DAY3 「店へ」 step.
+        if (life.day === 3 && life.furniture.length === 0 && nowMs - lastTanukiSparkle > 380) {
+          lastTanukiSparkle = nowMs;
+          spawnSparkle(tanukiX + (Math.random() - 0.5) * 2.2, tanukiZ + (Math.random() - 0.5) * 2.2);
+        }
 
         // DAY3 furniture-placement guide ring while carrying a piece.
         placeCircle.visible = life.placing !== null;
@@ -1767,6 +1801,9 @@ export default function Village3D({
       }
       if (edgeArrow.parentNode === mount) {
         mount.removeChild(edgeArrow);
+      }
+      if (hoverTip.parentNode === mount) {
+        mount.removeChild(hoverTip);
       }
     };
   }, []);
