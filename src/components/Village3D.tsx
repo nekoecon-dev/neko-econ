@@ -103,7 +103,7 @@ function makeCatLabel(name: string): { label: CSS2DObject; actionEl: HTMLElement
   actionEl.className = 'cat-label-action';
   root.append(nameEl, document.createElement('br'), actionEl);
   const label = new CSS2DObject(root);
-  label.position.set(0, 2.95, 0); // well above the 1.5x cat (top ≈ 2.5)
+  label.position.set(0, 3.7, 0); // well above the 1.9x cat (top ≈ 3.2)
   return { label, actionEl };
 }
 
@@ -118,7 +118,7 @@ function makeCatDetail(name: string): { obj: CSS2DObject; moneyEl: HTMLElement }
   moneyEl.className = 'cat-detail-money';
   root.append(nameEl, moneyEl);
   const obj = new CSS2DObject(root);
-  obj.position.set(0, 3.7, 0); // above the name label
+  obj.position.set(0, 4.5, 0); // above the name label
   obj.visible = false;
   return { obj, moneyEl };
 }
@@ -655,7 +655,7 @@ export default function Village3D({
       row.append(ctlButton('💰 返済する', 'v3d-btn-loan', () => onOpenLoanRef.current()));
       root.append(title, balance, interestEl, row);
       const obj = new CSS2DObject(root);
-      obj.position.set(0, 3.4, 0); // clear of the bigger banker cat
+      obj.position.set(0, 4.6, 0); // clear of the bigger banker cat
       banker.add(obj);
 
       let lastLoan = -1;
@@ -725,7 +725,7 @@ export default function Village3D({
       zzzEl.className = 'cat-zzz';
       zzzEl.textContent = '💤';
       const zzz = new CSS2DObject(zzzEl);
-      zzz.position.set(0.6, 2.7, 0);
+      zzz.position.set(0.7, 3.4, 0);
       zzz.visible = false;
       group.add(zzz);
 
@@ -734,7 +734,7 @@ export default function Village3D({
       bizEl.className = 'cat-biz';
       bizEl.textContent = '💼';
       const biz = new CSS2DObject(bizEl);
-      biz.position.set(0, 3.3, 0);
+      biz.position.set(0, 4.1, 0);
       biz.visible = false;
       group.add(biz);
 
@@ -743,7 +743,7 @@ export default function Village3D({
       fishEl.className = 'cat-fish';
       fishEl.textContent = '🎣';
       const fish = new CSS2DObject(fishEl);
-      fish.position.set(0.7, 1.4, 0);
+      fish.position.set(0.8, 1.9, 0);
       fish.visible = false;
       group.add(fish);
 
@@ -783,7 +783,7 @@ export default function Village3D({
       bubbleSecEl.className = 'cat-bubble-sec';
       bubbleRoot.append(bubbleTitle, bubbleSecEl);
       const bubbleObj = new CSS2DObject(bubbleRoot);
-      bubbleObj.position.set(0, 4.2, 0); // top of the stack: bubble → name → cat
+      bubbleObj.position.set(0, 5.1, 0); // top of the stack: bubble → name → cat
       bubbleObj.visible = false;
       group.add(bubbleObj);
 
@@ -1158,7 +1158,7 @@ export default function Village3D({
         // Gatherables bob + spin gently so they read as collectable.
         for (const mesh of itemMeshes.values()) {
           mesh.rotation.y += dt * 1.2;
-          mesh.position.y = 0.18 + Math.sin(t * 2 + mesh.position.x) * 0.07;
+          mesh.position.y = 0.45 + Math.sin(t * 2 + mesh.position.x) * 0.18;
         }
 
         // Sync placed furniture.

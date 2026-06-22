@@ -119,6 +119,7 @@ export function makeTree(): THREE.Group {
   small.position.set(0.3, 2.05, 0.1);
   tree.add(small);
 
+  tree.scale.setScalar(1.8); // a touch bigger so scenery matches the larger cats
   return tree;
 }
 
@@ -140,6 +141,7 @@ export function makeHouse(roofColor: THREE.ColorRepresentation): THREE.Group {
   door.position.set(0, 0.4, 0.92);
   house.add(door);
 
+  house.scale.setScalar(2.2); // cottages read at a natural size next to the cats
   return house;
 }
 
@@ -164,6 +166,7 @@ function makeFlower(color: THREE.ColorRepresentation): THREE.Group {
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.14, 4), matte('#4f9d4c'));
   stem.position.y = 0.05;
   flower.add(stem);
+  flower.scale.setScalar(1.8);
   return flower;
 }
 
@@ -256,6 +259,7 @@ export function makeBankBuilding(): THREE.Group {
   coin.position.set(0, 1.3, 1.06);
   coin.rotation.x = Math.PI / 2;
   bank.add(coin);
+  bank.scale.setScalar(2.2);
   return bank;
 }
 
@@ -281,6 +285,7 @@ export function makeTownHall(): THREE.Group {
   clock.position.set(0, 2.7, 0.36);
   clock.rotation.x = Math.PI / 2;
   hall.add(clock);
+  hall.scale.setScalar(2.2);
   return hall;
 }
 
@@ -563,7 +568,7 @@ export function makeCat(style: CatStyle): THREE.Group {
 
   // The cats are the stars: scale the whole visual rig up so colours/patterns
   // read at a glance. Labels live on the (unscaled) outer group, well above.
-  rig.scale.setScalar(1.5);
+  rig.scale.setScalar(1.9);
 
   return cat;
 }
@@ -612,6 +617,7 @@ export function makePlayerTent(): THREE.Group {
   const flag = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.02), matte('#ef4444'));
   flag.position.set(0.18, 1.72, 0);
   tent.add(flag);
+  tent.scale.setScalar(1.9);
   return tent;
 }
 
@@ -683,6 +689,7 @@ export function makeFacility(kind: FacilityKind): THREE.Group {
     group.add(dock);
   }
 
+  group.scale.setScalar(2.4); // buildings sit naturally beside the bigger cats
   return group;
 }
 
@@ -725,6 +732,32 @@ export function makeRoadTile(): THREE.Group {
 }
 
 /* --------------------------- life-mode props --------------------------- */
+
+/** A small sparkle ring so gatherables pop and read as collectable. */
+function makeItemSparkle(): THREE.Points {
+  const n = 10;
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const r = 0.45 + Math.random() * 0.18;
+    pos[i * 3] = Math.cos(a) * r;
+    pos[i * 3 + 1] = 0.35 + Math.random() * 0.55;
+    pos[i * 3 + 2] = Math.sin(a) * r;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  return new THREE.Points(
+    geo,
+    new THREE.PointsMaterial({
+      color: '#fff3a8',
+      size: 0.13,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
+  );
+}
 
 /** A gatherable item resting on the ground (mushroom / fish / wood / flower). */
 export function makeGatherable(kind: GatherKind): THREE.Group {
@@ -769,9 +802,10 @@ export function makeGatherable(kind: GatherKind): THREE.Group {
     }
   } else {
     g.add(makeFlower(FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)]));
-    g.scale.setScalar(1.6);
   }
 
+  g.add(makeItemSparkle());
+  g.scale.setScalar(3.2); // oversized so the items are easy to spot + click
   return g;
 }
 
