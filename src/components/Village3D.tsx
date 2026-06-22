@@ -510,9 +510,10 @@ export default function Village3D({
           loan.textContent = txt;
           lastLoan = txt;
         }
-        // The 金利 lever + rate panel stay hidden until the village unlocks
-        // (level 2, granted at the tutorial's repayment).
+        // The whole ネコ銀行 (building + 金利 lever + rate panel) stays hidden
+        // until the village unlocks at level 2 — life mode keeps it out of sight.
         const unlocked = s.villageLevel >= 2;
+        bank.visible = unlocked;
         lever.visible = unlocked;
         obj.visible = unlocked;
         ctlObj.visible = unlocked;
