@@ -29,6 +29,11 @@ const DAY_SUBTITLE: Record<number, string> = {
   7: 'はじめての返済',
 };
 
+// Falling confetti/stars for the 目的達成 celebration.
+const CELEBRATE_BITS = ['🎉', '⭐', '✨', '🎊', '💛', '⭐', '🎉', '✨', '🎊', '💫', '⭐', '✨'].map(
+  (e, i) => ({ e, x: (i * 8.3 + 4) % 100, d: (i % 6) * 0.22 }),
+);
+
 // Sparkle positions (%), scattered around the DAY splash text.
 const SPLASH_SPARKLES = [
   { x: 14, y: 26, d: 0 },
@@ -361,8 +366,42 @@ export default function LifeOverlay({
         </Dialog>
       )}
 
-      {/* ---- Big celebration / story notice (above the tent-interior screen) ---- */}
-      {life.notice && (
+      {/* ---- Objective-complete celebration (dayDone + notice) ---- */}
+      {life.notice && life.dayDone && (
+        <div className="pointer-events-auto absolute inset-0 z-[66] flex items-center justify-center overflow-hidden bg-black/55 p-4">
+          {CELEBRATE_BITS.map((b, i) => (
+            <span
+              key={i}
+              className="confetti-bit absolute text-2xl"
+              style={{ left: `${b.x}%`, animationDelay: `${b.d}s` }}
+            >
+              {b.e}
+            </span>
+          ))}
+          <div className="animate-pop max-w-sm rounded-3xl border-4 border-yellow-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
+            <div className="text-4xl font-black text-amber-600">🎉 目的達成！</div>
+            <div className="mt-2 whitespace-pre-line text-base font-black leading-relaxed text-amber-900">
+              {life.notice}
+            </div>
+            {life.reward > 0 && (
+              <div className="mt-3 inline-block rounded-full bg-amber-100 px-4 py-1.5 text-lg font-black text-amber-700">
+                報酬：{life.reward} ニャル
+              </div>
+            )}
+            <div className="mt-2 text-sm font-bold text-amber-500">🐱🐈 みんなが喜んでいるニャ！</div>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'LIFE_ADVANCE_DAY' })}
+              className="tutorial-cta btn-press mt-5 w-full rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 py-3 text-lg font-black text-white shadow-lg"
+            >
+              ▶ 次の日へ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Plain story notice (intros etc.) ---- */}
+      {life.notice && !life.dayDone && (
         <div className="pointer-events-auto absolute inset-0 z-[66] flex items-center justify-center bg-black/45 p-4">
           <div className="animate-pop max-w-sm rounded-3xl border-4 border-amber-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
             <div className="whitespace-pre-line text-lg font-black leading-relaxed text-amber-900">{life.notice}</div>

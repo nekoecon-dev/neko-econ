@@ -127,6 +127,7 @@ export function lifeInactive(): LifeState {
     playerName: '',
     day: 1,
     dayDone: false,
+    reward: 0,
     time: 'morning',
     weather: 'sunny',
     level: 1,
@@ -241,6 +242,7 @@ export function lifeGather(state: GameState, id: string): GameState {
     next = {
       ...next,
       dayDone: true,
+      reward: DAY1_REWARD,
       notice: `🐱 ミケ「上手にきのこを集めたニャ！おれいに +${DAY1_REWARD}ニャル ニャ」`,
     };
   }
@@ -263,6 +265,7 @@ export function lifeGiveSoup(state: GameState): GameState {
         inventory,
         soupsMade: life.soupsMade + 1,
         dayDone,
+        reward: life.day === 2 ? reward : life.reward,
         notice: `🍲 スープ完成！猫たちが集まってきたニャ +${reward}ニャル`,
       },
       'soup',
@@ -286,6 +289,7 @@ export function lifeGiveLost(state: GameState): GameState {
         inventory,
         tamaIntimacy: life.tamaIntimacy + 2,
         dayDone: life.day === 4 ? true : life.dayDone,
+        reward: life.day === 4 ? DAY4_REWARD : life.reward,
         notice: `🐈 タマ「ありがとうニャ！珍しいお花と +${DAY4_REWARD}ニャル をあげるニャ🌸」（親密度+2）`,
       },
       'soup',
@@ -327,6 +331,7 @@ export function lifeExitTent(state: GameState): GameState {
         ...life,
         inside: false,
         dayDone: true,
+        reward: 0,
         notice:
           '🛋️ おうちが少し楽しくなったニャ！\n\n集めて、売って、手に入れたニャルで家具を買えたニャ。お金は貯めるだけじゃなく、暮らしを良くするためにも使えるニャ。',
       },
@@ -373,6 +378,7 @@ export function lifeBuildStall(state: GameState): GameState {
         shopOpen: true,
         dailyIncome: life.dailyIncome + STALL_INCOME,
         dayDone: life.day === 5 ? true : life.dayDone,
+        reward: life.day === 5 ? 0 : life.reward,
         notice: `🎉 ミケの屋台が完成！木材が積まれ、猫たちが拍手しているニャ（毎日+${STALL_INCOME}ニャル）`,
       },
       'construct',
@@ -402,6 +408,7 @@ export function lifeConnectRoad(state: GameState): GameState {
       roadDone: true,
       dailyIncome: life.dailyIncome + ROAD_INCOME,
       dayDone: life.day === 6 ? true : life.dayDone,
+      reward: life.day === 6 ? 0 : life.reward,
       notice: `🛤️ 道が開通！猫の足が速くなり、屋台の売上も増えたニャ（毎日+${ROAD_INCOME}ニャル）`,
     },
   };
@@ -434,6 +441,7 @@ export function lifeRepay(state: GameState): GameState {
         level: 2,
         loanUnlocked: true,
         dayDone: true,
+        reward: 0,
         notice: '🎆 NekoEcon村 レベル2！花火が上がり、新住民シロが引っ越してきたニャ',
       },
       'fireworks',

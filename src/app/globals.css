@@ -616,6 +616,27 @@ body {
   filter: drop-shadow(0 0 6px rgba(255, 240, 150, 0.9));
 }
 
+/* Celebration confetti/stars falling down the 目的達成 overlay */
+@keyframes neko-confetti-fall {
+  0% {
+    top: -8%;
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    top: 108%;
+    opacity: 0.9;
+    transform: rotate(320deg);
+  }
+}
+.confetti-bit {
+  top: -8%;
+  animation: neko-confetti-fall 2.6s linear infinite;
+}
+
 /* Tutorial: yellow blinking ring on the UI element the player should press */
 @keyframes neko-tutorial-pulse {
   0%,

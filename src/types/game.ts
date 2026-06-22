@@ -218,6 +218,7 @@ export interface LifeState {
   playerName: string; // the hero's name ('' until entered → defaults to ニャオ)
   day: number; // DAY 1..7 is the guided campaign; 8+ is free play
   dayDone: boolean; // today's objective is complete (gates 「次の日へ」)
+  reward: number; // CC earned for today's objective (shown in the 目的達成 celebration)
   time: LifeTime;
   weather: LifeWeather;
   level: number; // village level (DAY7 festival bumps it to 2)
