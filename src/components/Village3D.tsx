@@ -297,6 +297,7 @@ export default function Village3D({
   roadMode,
   onTalkMike = () => {},
   onTalkTanuki = () => {},
+  onTalkTama = () => {},
 }: {
   state: GameState;
   dispatch: (action: PolicyAction) => void;
@@ -306,6 +307,7 @@ export default function Village3D({
   roadMode: boolean;
   onTalkMike?: () => void; // life mode: clicked ミケ
   onTalkTanuki?: () => void; // life mode: clicked たぬきち
+  onTalkTama?: () => void; // life mode: clicked タマ
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
@@ -316,6 +318,7 @@ export default function Village3D({
   const roadModeRef = useRef(roadMode);
   const onTalkMikeRef = useRef(onTalkMike);
   const onTalkTanukiRef = useRef(onTalkTanuki);
+  const onTalkTamaRef = useRef(onTalkTama);
 
   // Mirror the latest state/dispatch for the loop + drop handler (the scene is
   // only set up once).
@@ -328,6 +331,7 @@ export default function Village3D({
     roadModeRef.current = roadMode;
     onTalkMikeRef.current = onTalkMike;
     onTalkTanukiRef.current = onTalkTanuki;
+    onTalkTamaRef.current = onTalkTama;
   });
 
   useEffect(() => {
@@ -974,10 +978,17 @@ export default function Village3D({
             return;
           }
         }
-        // 2) talk to ミケ (id '4') or たぬきち (banker)
+        // 2) talk to ミケ (id '4'), タマ (id '3') or たぬきち (banker)
         const mike = catRuntimes.get('4')?.group;
         if (mike && raycaster.intersectObject(mike, true).length > 0) {
+          selectedCatId = null;
           onTalkMikeRef.current();
+          return;
+        }
+        const tama = catRuntimes.get('3')?.group;
+        if (tama && raycaster.intersectObject(tama, true).length > 0) {
+          selectedCatId = null;
+          onTalkTamaRef.current();
           return;
         }
         if (raycaster.intersectObject(banker, true).length > 0) {

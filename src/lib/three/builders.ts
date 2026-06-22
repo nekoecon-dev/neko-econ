@@ -800,6 +800,18 @@ export function makeGatherable(kind: GatherKind): THREE.Group {
       cap.position.set(ex, 0.16, 0);
       g.add(cap);
     }
+  } else if (kind === 'bell') {
+    // タマの落とし物: a little golden bell.
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 12), matte('#f2c14e'));
+    body.scale.set(1, 0.9, 1);
+    body.position.y = 0.3;
+    g.add(body);
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.03, 6, 12), matte('#caa23a'));
+    loop.position.y = 0.56;
+    g.add(loop);
+    const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), ink());
+    clapper.position.y = 0.08;
+    g.add(clapper);
   } else {
     g.add(makeFlower(FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)]));
   }
@@ -855,6 +867,35 @@ export function makeFurniture(kind: FurnitureKind): THREE.Group {
     const leaf2 = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), matte('#5cc169'));
     leaf2.position.set(0.16, 0.74, 0.06);
     g.add(leaf2);
+  } else if (kind === 'table') {
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16), matte('#c79a5e'));
+    top.position.y = 0.55;
+    g.add(top);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.55, 8), matte('#8a5a2b'));
+    stem.position.y = 0.27;
+    g.add(stem);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 12), matte('#8a5a2b'));
+    foot.position.y = 0.03;
+    g.add(foot);
+  } else if (kind === 'bed') {
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.2, 0.6), matte('#e88aa6'));
+    mattress.position.y = 0.2;
+    g.add(mattress);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.5), matte('#fff3e0'));
+    pillow.position.set(-0.26, 0.34, 0);
+    g.add(pillow);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.7), matte('#9c6b3b'));
+    frame.position.y = 0.06;
+    g.add(frame);
+  } else if (kind === 'planter') {
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 0.4), matte('#a9743f'));
+    box.position.y = 0.15;
+    g.add(box);
+    [-0.3, 0, 0.3].forEach((fx, i) => {
+      const flower = makeFlower(FLOWER_COLORS[i % FLOWER_COLORS.length]);
+      flower.position.set(fx, 0.3, 0);
+      g.add(flower);
+    });
   } else {
     // statue: a little stone cat on a pedestal
     const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.5), matte('#b9b2a4'));

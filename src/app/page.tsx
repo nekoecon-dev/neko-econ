@@ -39,6 +39,7 @@ export default function Home() {
           roadMode={roadMode}
           onTalkMike={() => setTalking('mike')}
           onTalkTanuki={() => setTalking('tanuki')}
+          onTalkTama={() => setTalking('tama')}
         />
       </div>
 

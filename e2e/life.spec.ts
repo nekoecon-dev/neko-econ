@@ -11,41 +11,39 @@ const neko = (page: import('@playwright/test').Page) =>
   page.evaluate(() => window.__neko) as Promise<GameState>;
 
 /**
- * Smoke-test the life-mode prototype: `/` boots a cosy village with only the
- * four life-HUD items, the economy UI fully hidden, a working inventory toggle,
- * and a 「1日進める」 button that visibly changes the day.
+ * Smoke-test the life-mode DAY1 boot: `/` opens the cosy village on DAY1 with
+ * the minimal HUD (cash / day / single objective / inventory), the welcome
+ * story beat, a working inventory, the economy UI fully hidden, and the
+ * advance button gated until the day's objective is met.
  */
-test('life mode boots with a minimal HUD and a working day loop', async ({ page }) => {
+test('life mode boots into the DAY1 campaign with a minimal HUD', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__neko !== undefined, undefined, { timeout: 30_000 });
 
   const boot = await neko(page);
   expect(boot.life.active).toBe(true);
   expect(boot.life.day).toBe(1);
-  expect(boot.life.items.length).toBeGreaterThan(0); // gatherables on the map
+  expect(boot.life.level).toBe(1);
+  expect(boot.life.items.length).toBeGreaterThan(0); // big mushrooms to find
 
-  // The four life HUD items are present...
-  await expect(page.getByText('今日の目的')).toBeVisible();
-  await expect(page.getByText(/1日目/)).toBeVisible();
-  await expect(page.getByText(/CC/).first()).toBeVisible();
-  await expect(page.getByRole('button', { name: /インベントリ/ })).toBeVisible();
+  // Welcome story beat → dismiss it.
+  await expect(page.getByText(/ようこそNekoEcon村へ/)).toBeVisible();
+  await page.getByRole('button', { name: /わかった/ }).click();
 
-  // ...and the economy UI is fully hidden.
-  await expect(page.getByText('NekoEcon')).toHaveCount(0); // economy header gone
-  await expect(page.getByRole('button', { name: '買う' })).toHaveCount(0); // no stock market
-  await expect(page.getByText('⚙️ 金利レバー')).toBeHidden(); // no interest lever
-  await expect(page.getByText('⚙️ 税率レバー')).toBeHidden(); // no tax lever
+  // Minimal HUD: day + the single objective.
+  await expect(page.getByText('DAY1')).toBeVisible();
+  await expect(page.getByText(/きのこを3つ集めよう/)).toBeVisible();
 
-  // Inventory toggles open and lists the gatherables (count entries).
+  // Economy UI is fully hidden.
+  await expect(page.getByText('NekoEcon')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '買う' })).toHaveCount(0);
+  await expect(page.getByText('⚙️ 金利レバー')).toBeHidden();
+  await expect(page.getByText('⚙️ 税率レバー')).toBeHidden();
+
+  // The advance button is gated until the day's objective is done.
+  await expect(page.getByRole('button', { name: /目的をクリア/ })).toBeDisabled();
+
+  // Inventory toggles open and lists the gatherables.
   await page.getByRole('button', { name: /インベントリ/ }).click();
   await expect(page.getByText(/きのこ ×/)).toBeVisible();
-
-  // 「1日進める」 advances the day and fires a visible event toast.
-  await page.getByRole('button', { name: /1日進める/ }).click();
-  await page.waitForFunction(() => (window.__neko?.life.day ?? 0) >= 2, undefined, {
-    timeout: 10_000,
-  });
-  const after = await neko(page);
-  expect(after.life.day).toBe(2);
-  expect(after.life.event).not.toBeNull();
 });

@@ -1,4 +1,5 @@
 import type {
+  Cat,
   FurnitureKind,
   GameState,
   GatherItem,
@@ -6,25 +7,44 @@ import type {
   LifeFx,
   LifeState,
   LifeTime,
+  StockShare,
 } from '@/types/game';
 import { round2 } from './math';
+import { initStock } from './stocks';
 
 // --- Tuning -----------------------------------------------------------------
 export const SOUP_NEED = 3; // mushrooms ミケ wants for a pot of soup
-export const SOUP_REWARD = 100; // CC the player earns per soup
-export const INVEST_COST = 100; // CC to build ミケのスープ屋
+export const SOUP_REWARD = 100; // CC per soup in free play
+export const STALL_WOOD = 3; // wood needed to build the DAY5 stall
+export const STALL_COST = 200; // CC to build the DAY5 stall
+export const DAY7_REPAY = 300; // CC たぬきち collects on DAY7
+
+// Per-day cash rewards / income.
+const DAY1_REWARD = 50;
+const DAY2_SOUP_REWARD = 150;
+const DAY4_REWARD = 150;
+const STALL_INCOME = 20; // CC/day once the stall opens
+const ROAD_INCOME = 10; // extra CC/day once the road connects
 
 export const FURNITURE_COST: Record<FurnitureKind, number> = {
+  // DAY3 starter set (cheap so the campaign budget works out)
+  lamp: 50,
+  table: 55,
+  bed: 60,
+  planter: 45,
+  // free-play extras
   chair: 60,
-  lamp: 80,
   rug: 100,
   plant: 50,
   statue: 200,
 };
 
 export const FURNITURE_META: Record<FurnitureKind, { icon: string; name: string }> = {
-  chair: { icon: '🪑', name: 'いす' },
   lamp: { icon: '💡', name: 'ランプ' },
+  table: { icon: '🪵', name: 'テーブル' },
+  bed: { icon: '🛏️', name: 'ねこベッド' },
+  planter: { icon: '🌷', name: '花壇' },
+  chair: { icon: '🪑', name: 'いす' },
   rug: { icon: '🟫', name: 'ラグ' },
   plant: { icon: '🪴', name: '観葉植物' },
   statue: { icon: '🗿', name: 'ねこ像' },
@@ -35,6 +55,7 @@ const GATHER_META: Record<GatherKind, { icon: string; name: string }> = {
   fish: { icon: '🐟', name: 'さかな' },
   wood: { icon: '🪵', name: '木材' },
   flower: { icon: '🌸', name: 'はな' },
+  bell: { icon: '🔔', name: '落とし物' },
 };
 
 export function gatherIcon(kind: GatherKind): string {
@@ -44,45 +65,80 @@ export function gatherName(kind: GatherKind): string {
   return GATHER_META[kind].name;
 }
 
-// A small clear box around the central plaza (map %) we keep items out of.
+// The DAY3 furniture shop (and the extras unlocked at level 2).
+export const SHOP_FURNITURE: FurnitureKind[] = ['lamp', 'table', 'bed', 'planter'];
+
+// --- objective + story text -------------------------------------------------
+const DAY_OBJECTIVE: Record<number, string> = {
+  1: '🍄 きのこを3つ集めよう（マップのきのこをクリック）',
+  2: '🐱 ミケに話しかけてスープを作ろう',
+  3: '🛋️ たぬきちの店で家具を買って、テントに飾ろう',
+  4: '🔔 タマの落とし物を見つけて、タマに渡そう',
+  5: '🪵 木材3個と200CCで、ミケの屋台を建てよう',
+  6: '🛤️ ミケの屋台とスープ鍋を道でつなごう',
+  7: '💰 たぬきちに300CC返済しよう',
+};
+
+const DAY_INTRO: Record<number, string> = {
+  2: '🐱 ミケ「昨日のきのこでスープを作るニャ！」',
+  3: '🦝 たぬきち「家具店を開けたニャ。テントを飾るといいニャ」',
+  4: '🐈 タマ「落とし物をしたニャ…探すの手伝ってほしいニャ」',
+  5: '🐱 ミケ「スープ屋を開きたいけど、木材とお金が足りないニャ」',
+  6: '🐱 ミケ「屋台とスープ鍋を道でつなぐと、もっと売れるニャ」',
+  7: '🦝 たぬきち「そろそろテント代を少し返してほしいニャ」',
+};
+
+export function lifeObjective(life: LifeState): string {
+  if (life.day > 7) return '🌳 のんびり村を育てよう（1日進めると何かが起きる）';
+  if (life.dayDone) return '✅ 今日の目的達成！「次の日へ」で進もう';
+  return DAY_OBJECTIVE[life.day] ?? '🌳 のんびり村を育てよう';
+}
+
+// --- item placement ---------------------------------------------------------
 const PLAZA = { x0: 40, x1: 60, y0: 40, y1: 60 };
 
-/** A random map spot out on the field but clear of the central plaza. */
+/** A random spot in the (zoomed-in) central area, clear of the plaza. */
 function scatterSpot(): { x: number; y: number } {
   for (let tries = 0; tries < 12; tries++) {
-    const x = 12 + Math.random() * 76;
-    const y = 12 + Math.random() * 72;
+    const x = 26 + Math.random() * 48;
+    const y = 26 + Math.random() * 44;
     if (x > PLAZA.x0 && x < PLAZA.x1 && y > PLAZA.y0 && y < PLAZA.y1) continue;
     return { x, y };
   }
-  return { x: 20, y: 20 };
+  return { x: 30, y: 30 };
 }
 
-/** Build one gatherable item near a sensible home (fish by the pond, etc.). */
 function makeItem(seq: number, kind: GatherKind): GatherItem {
   let spot = scatterSpot();
-  if (kind === 'fish') spot = { x: 24 + Math.random() * 6, y: 16 + Math.random() * 6 }; // by the pond
-  if (kind === 'wood') spot = { x: 66 + Math.random() * 8, y: 26 + Math.random() * 8 }; // by the trees
+  if (kind === 'fish') spot = { x: 30 + Math.random() * 6, y: 24 + Math.random() * 6 };
+  if (kind === 'wood') spot = { x: 60 + Math.random() * 8, y: 30 + Math.random() * 8 };
   return { id: `item-${seq}`, kind, x: spot.x, y: spot.y };
 }
 
-/** The dormant life state carried by non-life GameStates. */
+// --- initial states ---------------------------------------------------------
 export function lifeInactive(): LifeState {
   return {
     active: false,
     day: 1,
+    dayDone: false,
     time: 'morning',
     weather: 'sunny',
     level: 1,
     sale: false,
     playerX: 50,
     playerY: 50,
-    inventory: { mushroom: 0, fish: 0, wood: 0, flower: 0 },
+    inventory: { mushroom: 0, fish: 0, wood: 0, flower: 0, bell: 0 },
     items: [],
     furniture: [],
     visitors: [],
     soupsMade: 0,
     shopOpen: false,
+    shopUnlocked: false,
+    roadDone: false,
+    dailyIncome: 0,
+    loanUnlocked: false,
+    tamaIntimacy: 0,
+    hasLostItem: false,
     placing: null,
     event: null,
     notice: null,
@@ -91,30 +147,19 @@ export function lifeInactive(): LifeState {
   };
 }
 
-/** A fresh life game: a few mushrooms to find, plus a fish and some wood. */
+/** DAY1: a welcome message and a few big mushrooms to find. */
 export function lifeInitial(): LifeState {
   const base = lifeInactive();
   let seq = 0;
-  const kinds: GatherKind[] = ['mushroom', 'mushroom', 'mushroom', 'mushroom', 'fish', 'wood'];
+  const kinds: GatherKind[] = ['mushroom', 'mushroom', 'mushroom', 'mushroom', 'wood'];
   const items = kinds.map((k) => makeItem(seq++, k));
-  return { ...base, active: true, items, seq };
-}
-
-/** The 今日の目的 line, derived from progress (no extra state to keep in sync). */
-export function lifeObjective(life: LifeState): string {
-  if (life.soupsMade === 0 && life.inventory.mushroom < SOUP_NEED) {
-    return '🍄 きのこを3つ集めよう（マップのきのこをクリック）';
-  }
-  if (life.soupsMade === 0) {
-    return '🐱 ミケに話しかけてスープを作ってもらおう';
-  }
-  if (!life.shopOpen) {
-    return '💰 ミケに投資して、スープ屋を建てよう';
-  }
-  if (life.furniture.length === 0) {
-    return '🛋️ たぬきちの店で家具を買って、テントを飾ろう';
-  }
-  return '🌳 のんびり村で暮らそう（1日進めると何かが起きる）';
+  return {
+    ...base,
+    active: true,
+    items,
+    seq,
+    notice: '🦝 たぬきち「ようこそNekoEcon村へ！まずは村を歩いて、きのこを3つ集めるニャ」',
+  };
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -123,39 +168,78 @@ function fire(life: LifeState, kind: LifeFx['kind'], x: number, y: number): Life
   return { ...life, seq, fx: { id: seq, kind, x, y } };
 }
 
-// --- reducers (each takes & returns the whole GameState) ---------------------
+function makeShiro(): { cat: Cat; stock: StockShare } {
+  const cat: Cat = {
+    id: '1',
+    name: 'シロ',
+    personality: 'aggressive',
+    job: 'investor',
+    money: 80,
+    hunger: 30,
+    energy: 90,
+    inventory: 0,
+    action: 'idle',
+    x: 30,
+    y: 40,
+    ambition: 0.8,
+    company: null,
+  };
+  return { cat, stock: initStock(cat.money) };
+}
 
+// --- reducers ---------------------------------------------------------------
 export function lifeMove(state: GameState, x: number, y: number): GameState {
   return { ...state, life: { ...state.life, playerX: x, playerY: y } };
 }
 
 export function lifeGather(state: GameState, id: string): GameState {
-  const item = state.life.items.find((i) => i.id === id);
+  const life = state.life;
+  const item = life.items.find((i) => i.id === id);
   if (!item) return state;
-  const inventory = { ...state.life.inventory, [item.kind]: state.life.inventory[item.kind] + 1 };
-  return {
-    ...state,
-    life: {
-      ...state.life,
-      items: state.life.items.filter((i) => i.id !== id),
-      inventory,
-      // walk the avatar over to where the item was
-      playerX: item.x,
-      playerY: item.y,
-    },
-  };
+  const items = life.items.filter((i) => i.id !== id);
+
+  // タマ's lost item (DAY4) is carried, not stashed in the inventory.
+  if (item.kind === 'bell') {
+    return {
+      ...state,
+      life: { ...life, items, hasLostItem: true, playerX: item.x, playerY: item.y },
+    };
+  }
+
+  const inventory = { ...life.inventory, [item.kind]: life.inventory[item.kind] + 1 };
+  let next: LifeState = { ...life, items, inventory, playerX: item.x, playerY: item.y };
+  let cash = state.player.cash;
+
+  // DAY1 completes once 3 mushrooms are in the basket.
+  if (life.day === 1 && !life.dayDone && inventory.mushroom >= SOUP_NEED) {
+    cash = round2(cash + DAY1_REWARD);
+    next = {
+      ...next,
+      dayDone: true,
+      notice: `🐱 ミケ「上手にきのこを集めたニャ！おれいに +${DAY1_REWARD}CC ニャ」`,
+    };
+  }
+
+  return { ...state, player: { ...state.player, cash }, life: next };
 }
 
 export function lifeGiveSoup(state: GameState): GameState {
   const life = state.life;
   if (life.inventory.mushroom < SOUP_NEED) return state;
   const inventory = { ...life.inventory, mushroom: life.inventory.mushroom - SOUP_NEED };
-  const soupsMade = life.soupsMade + 1;
+  const reward = life.day === 2 ? DAY2_SOUP_REWARD : SOUP_REWARD;
+  const dayDone = life.day === 2 ? true : life.dayDone;
   return {
     ...state,
-    player: { ...state.player, cash: round2(state.player.cash + SOUP_REWARD) },
+    player: { ...state.player, cash: round2(state.player.cash + reward) },
     life: fire(
-      { ...life, inventory, soupsMade, notice: `🍲 スープ完成！ +${SOUP_REWARD}CC` },
+      {
+        ...life,
+        inventory,
+        soupsMade: life.soupsMade + 1,
+        dayDone,
+        notice: `🍲 スープ完成！猫たちが集まってきたニャ +${reward}CC`,
+      },
       'soup',
       50,
       50,
@@ -163,28 +247,33 @@ export function lifeGiveSoup(state: GameState): GameState {
   };
 }
 
-export function lifeInvest(state: GameState): GameState {
+export function lifeGiveLost(state: GameState): GameState {
   const life = state.life;
-  if (life.shopOpen || state.player.cash < INVEST_COST) return state;
-  // The shop renders through the existing facility layer (a soupFactory).
-  const shop = { id: 'life-soup-shop', kind: 'soupFactory' as const, x: 38, y: 62 };
+  if (!life.hasLostItem) return state;
+  const inventory = { ...life.inventory, flower: life.inventory.flower + 1 };
   return {
     ...state,
-    player: { ...state.player, cash: round2(state.player.cash - INVEST_COST) },
-    facilities: { ...state.facilities, soupFactory: state.facilities.soupFactory + 1 },
-    placements: [...state.placements, shop],
+    player: { ...state.player, cash: round2(state.player.cash + DAY4_REWARD) },
     life: fire(
-      { ...life, shopOpen: true, notice: '🎉 ミケのスープ屋が開店した！' },
-      'construct',
-      shop.x,
-      shop.y,
+      {
+        ...life,
+        hasLostItem: false,
+        inventory,
+        tamaIntimacy: life.tamaIntimacy + 2,
+        dayDone: life.day === 4 ? true : life.dayDone,
+        notice: `🐈 タマ「ありがとうニャ！珍しいお花と +${DAY4_REWARD}CC をあげるニャ🌸」（親密度+2）`,
+      },
+      'soup',
+      60,
+      58,
     ),
   };
 }
 
 export function lifeBuyFurniture(state: GameState, kind: FurnitureKind): GameState {
   const life = state.life;
-  if (kind === 'statue' && life.level < 2) return state; // unlocked at the level-up
+  if (!life.shopUnlocked) return state;
+  if (!SHOP_FURNITURE.includes(kind) && life.level < 2) return state; // extras need level 2
   const cost = Math.round(FURNITURE_COST[kind] * (life.sale ? 0.5 : 1));
   if (state.player.cash < cost || life.placing) return state;
   return {
@@ -200,7 +289,14 @@ export function lifePlaceFurniture(state: GameState, x: number, y: number): Game
   const piece = { id: `furn-${life.seq + 1}`, kind: life.placing, x, y };
   return {
     ...state,
-    life: { ...life, seq: life.seq + 1, furniture: [...life.furniture, piece], placing: null },
+    life: {
+      ...life,
+      seq: life.seq + 1,
+      furniture: [...life.furniture, piece],
+      placing: null,
+      dayDone: life.day === 3 ? true : life.dayDone,
+      notice: life.day === 3 ? '🛋️ テントが可愛くなったニャ！' : life.notice,
+    },
   };
 }
 
@@ -208,12 +304,87 @@ export function lifeCancelPlacing(state: GameState): GameState {
   return { ...state, life: { ...state.life, placing: null } };
 }
 
-export function lifeLevelUp(state: GameState): GameState {
+export function lifeBuildStall(state: GameState): GameState {
   const life = state.life;
+  if (life.shopOpen) return state;
+  if (life.inventory.wood < STALL_WOOD || state.player.cash < STALL_COST) return state;
+  const inventory = { ...life.inventory, wood: life.inventory.wood - STALL_WOOD };
+  const shop = { id: 'life-soup-shop', kind: 'soupFactory' as const, x: 38, y: 62 };
   return {
     ...state,
+    player: { ...state.player, cash: round2(state.player.cash - STALL_COST) },
+    facilities: { ...state.facilities, soupFactory: state.facilities.soupFactory + 1 },
+    placements: [...state.placements, shop],
     life: fire(
-      { ...life, level: life.level + 1, notice: `🎆 村レベル${life.level + 1}！新しい家具を解放したニャ` },
+      {
+        ...life,
+        inventory,
+        shopOpen: true,
+        dailyIncome: life.dailyIncome + STALL_INCOME,
+        dayDone: life.day === 5 ? true : life.dayDone,
+        notice: `🎉 ミケの屋台が完成！木材が積まれ、猫たちが拍手しているニャ（毎日+${STALL_INCOME}CC）`,
+      },
+      'construct',
+      shop.x,
+      shop.y,
+    ),
+  };
+}
+
+export function lifeConnectRoad(state: GameState): GameState {
+  const life = state.life;
+  if (life.roadDone) return state;
+  // Cobblestones from the central pot (grid 0,0) toward the stall.
+  const fresh = [
+    { gx: 0, gz: 1 },
+    { gx: -1, gz: 1 },
+    { gx: -1, gz: 2 },
+    { gx: -2, gz: 2 },
+  ];
+  const existing = new Set(state.roads.map((r) => `${r.gx},${r.gz}`));
+  const roads = [...state.roads, ...fresh.filter((r) => !existing.has(`${r.gx},${r.gz}`))];
+  return {
+    ...state,
+    roads,
+    life: {
+      ...life,
+      roadDone: true,
+      dailyIncome: life.dailyIncome + ROAD_INCOME,
+      dayDone: life.day === 6 ? true : life.dayDone,
+      notice: `🛤️ 道が開通！猫の足が速くなり、屋台の売上も増えたニャ（毎日+${ROAD_INCOME}CC）`,
+    },
+  };
+}
+
+export function lifeRepay(state: GameState): GameState {
+  const life = state.life;
+  if (state.player.cash < DAY7_REPAY) return state;
+  const pay = Math.min(DAY7_REPAY, state.player.loan);
+  const { cat: shiro, stock } = makeShiro();
+  // 新区画の採集アイテムをまく
+  let seq = life.seq;
+  const newItems = (['fish', 'fish', 'flower', 'mushroom', 'wood'] as GatherKind[]).map((k) =>
+    makeItem(seq++, k),
+  );
+  return {
+    ...state,
+    player: {
+      ...state.player,
+      cash: round2(state.player.cash - DAY7_REPAY),
+      loan: round2(state.player.loan - pay),
+    },
+    cats: state.cats.some((c) => c.name === 'シロ') ? state.cats : [...state.cats, shiro],
+    stocks: state.stocks['1'] ? state.stocks : { ...state.stocks, [shiro.id]: stock },
+    life: fire(
+      {
+        ...life,
+        seq,
+        items: [...life.items, ...newItems],
+        level: 2,
+        loanUnlocked: true,
+        dayDone: true,
+        notice: '🎆 NekoEcon村 レベル2！花火が上がり、新住民シロが引っ越してきたニャ',
+      },
       'fireworks',
       50,
       50,
@@ -227,54 +398,71 @@ export function lifeDismissNotice(state: GameState): GameState {
 
 const NEXT_TIME: Record<LifeTime, LifeTime> = { morning: 'day', day: 'evening', evening: 'morning' };
 
+/** Spawn the gatherables / set the story beat for the day just entered. */
+function setupDay(life: LifeState, day: number): LifeState {
+  let seq = life.seq;
+  let items = life.items;
+  const shopUnlocked = life.shopUnlocked || day >= 3; // たぬきちの家具店 opens on DAY3
+  if (day === 4) {
+    const spot = scatterSpot();
+    items = [...items, { id: `item-${seq++}`, kind: 'bell', x: spot.x, y: spot.y }];
+  } else if (day === 5) {
+    const wood = [0, 1, 2].map(() => makeItem(seq++, 'wood'));
+    items = [...items, ...wood];
+  }
+  return { ...life, seq, items, shopUnlocked, notice: DAY_INTRO[day] ?? life.notice };
+}
+
 /**
- * Advance one day. Every press visibly changes the village: the clock rolls,
- * and one random event fires (new items, a visitor, a sale, blossoms, …).
+ * Advance one day. During the DAY1–7 campaign this is gated until the day's
+ * objective is done; it then pays daily income, fires a random *visible* event,
+ * and sets up the next day's story beat. (Event variety lives in commit 6.)
  */
 export function lifeAdvanceDay(state: GameState): GameState {
   const life = state.life;
+  if (life.day <= 7 && !life.dayDone) return state; // finish today first
+
+  const day = life.day + 1;
+  const cash = round2(state.player.cash + life.dailyIncome);
   let next: LifeState = {
     ...life,
-    day: life.day + 1,
+    day,
+    dayDone: false,
     time: NEXT_TIME[life.time],
     sale: false,
+    event: null,
   };
   let seq = next.seq;
 
+  // One guaranteed visible ambient change.
   const roll = Math.floor(Math.random() * 8);
   switch (roll) {
-    case 0: {
+    case 0:
       next = { ...next, weather: life.weather === 'sunny' ? 'rainy' : 'sunny' };
       next.event = next.weather === 'rainy' ? '☔ 雨が降ってきたニャ' : '☀️ いい天気になったニャ';
       break;
-    }
     case 1: {
-      const kinds: GatherKind[] = ['mushroom', 'mushroom', 'fish', 'wood'];
-      const added = [0, 1, 2].map(() => makeItem(seq++, kinds[Math.floor(Math.random() * kinds.length)]));
+      const kinds: GatherKind[] = ['mushroom', 'flower', 'fish'];
+      const added = [0, 1].map(() => makeItem(seq++, kinds[Math.floor(Math.random() * kinds.length)]));
       next = { ...next, items: [...next.items, ...added] };
-      next.event = '🍄 新しい採集アイテムが出現したニャ';
+      next.event = '🍄 新しいきのこや花が生えてきたニャ';
       break;
     }
     case 2:
       next.event = '💬 ミケとタマがおしゃべりしているニャ';
       break;
     case 3: {
-      const v = { id: `vis-${seq++}`, name: 'たびねこ', x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 };
+      const v = { id: `vis-${seq++}`, name: 'たびねこ', x: 30 + Math.random() * 36, y: 30 + Math.random() * 32 };
       next = { ...next, visitors: [...next.visitors, v] };
-      next.event = '🧳 来訪者ねこが村に来たニャ';
+      next.event = '🧳 来訪者ねこが村にやってきたニャ';
       break;
     }
     case 4:
-      next.event = next.shopOpen
-        ? '🍲 ミケのスープ屋に行列ができているニャ'
-        : '🐱 ミケがスープ屋を開きたがっているニャ';
+      next.event = next.shopOpen ? '🍲 ミケの屋台に猫の行列ができているニャ' : '🐱 ミケが屋台を開きたがっているニャ';
       break;
-    case 5: {
-      const drop = makeItem(seq++, 'wood');
-      next = { ...next, items: [...next.items, { ...drop, x: 58, y: 60 }] };
-      next.event = '🪵 タマが落とし物をしたニャ';
+    case 5:
+      next.event = '😴 タマが昼寝をしているニャ';
       break;
-    }
     case 6: {
       const flower = makeItem(seq++, 'flower');
       next = { ...next, items: [...next.items, flower] };
@@ -287,5 +475,6 @@ export function lifeAdvanceDay(state: GameState): GameState {
       break;
   }
 
-  return { ...state, life: { ...next, seq } };
+  next = setupDay({ ...next, seq }, day);
+  return { ...state, player: { ...state.player, cash }, life: next };
 }

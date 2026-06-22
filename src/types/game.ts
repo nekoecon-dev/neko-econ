@@ -168,8 +168,16 @@ export interface TutorialState {
 // when the player presses 「1日進める」.
 // ---------------------------------------------------------------------------
 
-export type GatherKind = 'mushroom' | 'fish' | 'wood' | 'flower';
-export type FurnitureKind = 'chair' | 'lamp' | 'rug' | 'plant' | 'statue';
+export type GatherKind = 'mushroom' | 'fish' | 'wood' | 'flower' | 'bell';
+export type FurnitureKind =
+  | 'chair'
+  | 'lamp'
+  | 'rug'
+  | 'plant'
+  | 'statue'
+  | 'table'
+  | 'bed'
+  | 'planter';
 export type LifeWeather = 'sunny' | 'rainy';
 export type LifeTime = 'morning' | 'day' | 'evening';
 
@@ -207,10 +215,11 @@ export interface LifeFx {
 
 export interface LifeState {
   active: boolean; // life-mode prototype is on (economy UI hidden, sim paused)
-  day: number;
+  day: number; // DAY 1..7 is the guided campaign; 8+ is free play
+  dayDone: boolean; // today's objective is complete (gates 「次の日へ」)
   time: LifeTime;
   weather: LifeWeather;
-  level: number; // village level (bumped by the 返済/level-up celebration)
+  level: number; // village level (DAY7 festival bumps it to 2)
   sale: boolean; // たぬきち furniture sale (cheaper today)
   playerX: number; // map % the avatar is walking toward
   playerY: number;
@@ -219,10 +228,16 @@ export interface LifeState {
   furniture: PlacedFurniture[]; // placed furniture
   visitors: LifeVisitor[]; // visiting cats
   soupsMade: number;
-  shopOpen: boolean; // ミケのスープ屋 has been built (投資)
+  shopOpen: boolean; // ミケの屋台 has been built (DAY5)
+  shopUnlocked: boolean; // たぬきちの家具店 is open (DAY3)
+  roadDone: boolean; // 屋台↔鍋 road connected (DAY6)
+  dailyIncome: number; // CC paid each 「1日進める」 (stall / road)
+  loanUnlocked: boolean; // loan-repayment UI revealed (DAY7)
+  tamaIntimacy: number; // タマ親密度 (DAY4)
+  hasLostItem: boolean; // carrying タマ's lost item (DAY4)
   placing: FurnitureKind | null; // furniture awaiting a drop spot
   event: string | null; // latest 1日進める event toast
-  notice: string | null; // big celebration notification (soup / shop / level-up)
+  notice: string | null; // big celebration / story-beat notification
   fx: LifeFx; // pending one-shot 3D effect
   seq: number; // monotonic id source for items / furniture / fx
 }
@@ -270,11 +285,13 @@ export type PolicyAction =
   // --- Life mode -----------------------------------------------------------
   | { type: 'LIFE_MOVE'; x: number; y: number } // walk the avatar toward a spot
   | { type: 'LIFE_GATHER'; id: string } // pick up a gatherable item
-  | { type: 'LIFE_GIVE_SOUP' } // give ミケ 3 mushrooms -> soup + 100CC
-  | { type: 'LIFE_INVEST' } // invest in ミケ -> build her soup shop
+  | { type: 'LIFE_GIVE_SOUP' } // give ミケ 3 mushrooms -> soup (DAY2 / free play)
+  | { type: 'LIFE_GIVE_LOST' } // return タマ's lost item (DAY4)
+  | { type: 'LIFE_BUILD_STALL' } // 3 wood + 200CC -> ミケの屋台 (DAY5)
+  | { type: 'LIFE_CONNECT_ROAD' } // pave 屋台↔鍋 (DAY6)
+  | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop
   | { type: 'LIFE_PLACE_FURNITURE'; x: number; y: number } // drop the held furniture
   | { type: 'LIFE_CANCEL_PLACING' } // cancel furniture placement
-  | { type: 'LIFE_LEVEL_UP' } // 村レベルアップ celebration (fireworks)
   | { type: 'LIFE_ADVANCE_DAY' } // advance one day (random visible event)
   | { type: 'LIFE_DISMISS_NOTICE' }; // close the big celebration popup

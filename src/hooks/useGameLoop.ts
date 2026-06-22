@@ -30,15 +30,17 @@ import {
 } from '@/lib/engine/initialState';
 import {
   lifeAdvanceDay,
+  lifeBuildStall,
   lifeBuyFurniture,
   lifeCancelPlacing,
+  lifeConnectRoad,
   lifeDismissNotice,
   lifeGather,
+  lifeGiveLost,
   lifeGiveSoup,
-  lifeInvest,
-  lifeLevelUp,
   lifeMove,
   lifePlaceFurniture,
+  lifeRepay,
 } from '@/lib/engine/life';
 import { clamp, round2 } from '@/lib/engine/math';
 import {
@@ -127,16 +129,20 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeGather(state, action.id);
     case 'LIFE_GIVE_SOUP':
       return lifeGiveSoup(state);
-    case 'LIFE_INVEST':
-      return lifeInvest(state);
+    case 'LIFE_GIVE_LOST':
+      return lifeGiveLost(state);
+    case 'LIFE_BUILD_STALL':
+      return lifeBuildStall(state);
+    case 'LIFE_CONNECT_ROAD':
+      return lifeConnectRoad(state);
+    case 'LIFE_REPAY':
+      return lifeRepay(state);
     case 'LIFE_BUY_FURNITURE':
       return lifeBuyFurniture(state, action.kind);
     case 'LIFE_PLACE_FURNITURE':
       return lifePlaceFurniture(state, action.x, action.y);
     case 'LIFE_CANCEL_PLACING':
       return lifeCancelPlacing(state);
-    case 'LIFE_LEVEL_UP':
-      return lifeLevelUp(state);
     case 'LIFE_ADVANCE_DAY':
       return lifeAdvanceDay(state);
     case 'LIFE_DISMISS_NOTICE':

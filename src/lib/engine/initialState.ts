@@ -216,7 +216,7 @@ export const LIFE_INITIAL_STATE: GameState = {
   stocks: Object.fromEntries(
     TUTORIAL_CATS.map((c): [string, StockShare] => [c.id, initStock(c.money)]),
   ),
-  player: { ...INITIAL_STATE.player, cash: 200, loan: 0 },
+  player: { ...INITIAL_STATE.player, cash: 250, loan: 1000 }, // テント代1,000CC
   villageLevel: 1,
   tutorial: { active: false, phase: 'done', dividend: 0 },
   life: lifeInitial(),
