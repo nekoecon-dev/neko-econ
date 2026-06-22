@@ -644,12 +644,32 @@ export default function Village3D({
     const homeZ = lifeBoot ? 9 : 8;
     const tent = makePlayerTent();
     tent.position.set(homeX, 0, homeZ);
+    // The hero's home stands out: bigger than the other cottages in life mode.
+    tent.scale.setScalar(lifeBoot ? 3 : 1.9);
     scene.add(tent);
     const playerHouse = makeHouse('#dc2626');
     playerHouse.scale.setScalar(0.8);
     playerHouse.position.set(homeX, 0, homeZ);
     playerHouse.visible = false;
     scene.add(playerHouse);
+
+    // 表札: a nameplate above the home showing the hero's name (life mode only).
+    {
+      const root = document.createElement('div');
+      root.className = 'home-sign';
+      const obj = new CSS2DObject(root);
+      obj.position.set(homeX, 5.4, homeZ);
+      scene.add(obj);
+      let lastName = '';
+      updaters.push(() => {
+        const s = stateRef.current;
+        obj.visible = s.life.active && s.life.playerName !== '';
+        if (obj.visible && s.life.playerName !== lastName) {
+          root.textContent = `🏠 ${s.life.playerName}の家`;
+          lastName = s.life.playerName;
+        }
+      });
+    }
 
     const banker = makeBanker();
     banker.position.set(-17.4, 0, 8.5);
@@ -1189,15 +1209,22 @@ export default function Village3D({
           mesh.position.y = 0.45 + Math.sin(t * 2 + mesh.position.x) * 0.18;
         }
 
-        // Sync placed furniture.
+        // Sync placed furniture (oversized; pops in with a sparkle glow).
+        const FURN_SCALE = 2.1;
         for (const f of life.furniture) {
           if (furnitureMeshes.has(f.id)) continue;
           const mesh = makeFurniture(f.kind);
           const w = mapToWorld(f.x, f.y);
           mesh.position.set(w.x, 0, w.z);
+          mesh.scale.setScalar(0.01); // ポンっ: grows to full in the loop below
           furnitureMeshes.set(f.id, mesh);
           furnitureLayer.add(mesh);
           spawnSparkle(w.x, w.z);
+        }
+        for (const mesh of furnitureMeshes.values()) {
+          if (mesh.scale.x < FURN_SCALE) {
+            mesh.scale.setScalar(Math.min(FURN_SCALE, mesh.scale.x + dt * 7));
+          }
         }
 
         // Sync visiting cats (simple idle rigs that sway in place).
@@ -1258,7 +1285,7 @@ export default function Village3D({
         if (soupPot) {
           const since = life.fx.kind === 'soup' ? 1 : 0;
           const pulse = since ? 1 + Math.sin(t * 8) * 0.04 : 1;
-          soupPot.scale.setScalar(2.4 * pulse); // 2.4 is the village's base pot scale
+          soupPot.scale.setScalar(1.9 * pulse); // 1.9 is the village's base pot scale
         }
       }
 

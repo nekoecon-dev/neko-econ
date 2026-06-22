@@ -975,7 +975,7 @@ export function buildVillage(): THREE.Group {
   village.add(plaza);
 
   const pot = makeSoupPot();
-  pot.scale.setScalar(2.4); // 巨大スープ鍋
+  pot.scale.setScalar(1.9); // スープ鍋（少し小さめに調整）
   pot.position.set(0, 0, 0);
   pot.name = 'soupPot';
   village.add(pot);
