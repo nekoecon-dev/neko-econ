@@ -52,6 +52,22 @@ body {
   display: inline-block;
 }
 
+/* The player's own name label — same shape as the cats', green-trimmed for "you" */
+.player-label {
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  display: inline-block;
+  border-radius: 9999px;
+  border: 2px solid #bbf7d0;
+  background: rgba(22, 101, 52, 0.92);
+  padding: 1px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
 /* たぬきち商店 signboard */
 .shop-sign {
   pointer-events: none;

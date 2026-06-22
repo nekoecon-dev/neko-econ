@@ -971,6 +971,24 @@ export default function Village3D({
     }
     playerAvatar.visible = stateRef.current.life.active;
     scene.add(playerAvatar);
+    {
+      // The hero's name floats above the avatar — NPC-style, but green-trimmed so
+      // it's clearly "you". Offset high enough to clear the (bigger) cat body.
+      const nameEl = document.createElement('div');
+      nameEl.className = 'player-label';
+      const nameObj = new CSS2DObject(nameEl);
+      nameObj.position.set(0, 3.7, 0);
+      playerAvatar.add(nameObj);
+      let lastName = '';
+      updaters.push(() => {
+        const s = stateRef.current;
+        nameObj.visible = s.life.active && s.life.playerName !== '';
+        if (nameObj.visible && s.life.playerName !== lastName) {
+          nameEl.textContent = `⭐ ${s.life.playerName}`;
+          lastName = s.life.playerName;
+        }
+      });
+    }
     const playerRig = playerAvatar.getObjectByName('rig') ?? playerAvatar;
     let playerYaw = 0;
     let lastLifeFxId = 0; // last life.fx.id we played a one-shot effect for
