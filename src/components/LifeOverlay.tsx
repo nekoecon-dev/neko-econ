@@ -120,6 +120,15 @@ export default function LifeOverlay({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] select-none">
+      {/* ---- Camera-control help (bottom-right) ---- */}
+      <div className="absolute bottom-3 right-3 rounded-xl border-2 border-amber-200 bg-[#fffdf7]/85 px-2.5 py-1.5 text-[10px] font-bold leading-relaxed text-amber-700 shadow">
+        🖱 ホイール: ズーム
+        <br />
+        Q / E ・ 右ドラッグ: 回転
+        <br />
+        C: 主人公中心にもどす
+      </div>
+
       {/* ---- Big "DAY N" splash (fade-in + sparkle, CSS auto-dismiss). Keyed by
               the day so it replays once whenever the campaign day changes. ---- */}
       {life.day <= 7 && (

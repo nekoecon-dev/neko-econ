@@ -352,9 +352,31 @@ export default function Village3D({
     // village centre fills the frame; economy mode stays pulled back.
     const lifeBoot = stateRef.current.life.active;
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 300);
-    const camDist = lifeBoot ? 19 : 27;
-    camera.position.set(camDist, camDist, camDist);
-    camera.lookAt(0, 2, 0);
+
+    // Orbit-camera state (player-controllable in life mode via wheel / Q,E /
+    // right-drag / C). Elevation is fixed so the look-down angle is preserved and
+    // the camera never dips below the ground; distance is clamped so it can't fly
+    // off. The defaults reproduce the original (19,19,19) / (27,27,27) framings.
+    const CAM_ELEV = 0.58; // fixed look-down angle (radians)
+    const CAM_AZ_DEFAULT = Math.PI / 4;
+    const CAM_DIST_DEFAULT = lifeBoot ? 31.8 : 45.6;
+    const CAM_DIST_MIN = lifeBoot ? 15 : 24;
+    const CAM_DIST_MAX = lifeBoot ? 52 : 80;
+    let camAz = CAM_AZ_DEFAULT;
+    let camAzGoal = CAM_AZ_DEFAULT;
+    let camDist = CAM_DIST_DEFAULT;
+    const orbitTarget = new THREE.Vector3(0, 2, 0);
+    const userGoal = new THREE.Vector3(0, 2, 0); // where C / default look
+    const applyCamera = () => {
+      const h = Math.cos(CAM_ELEV) * camDist;
+      camera.position.set(
+        orbitTarget.x + h * Math.sin(camAz),
+        orbitTarget.y + Math.sin(CAM_ELEV) * camDist,
+        orbitTarget.z + h * Math.cos(camAz),
+      );
+      camera.lookAt(orbitTarget);
+    };
+    applyCamera();
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap for mobile
@@ -1021,13 +1043,59 @@ export default function Village3D({
     mount.appendChild(hoverTip);
 
     // Camera pan toward たぬきち at the start of DAY3, plus a sparkle emitter.
-    const centerLook = new THREE.Vector3(0, 2, 0);
-    const camLook = centerLook.clone();
     const tanukiLook = new THREE.Vector3(tanukiX, 1.5, tanukiZ);
-    const panDesired = new THREE.Vector3();
+    const effTarget = new THREE.Vector3();
     let lastSeenDay = stateRef.current.life.day;
     let panUntil = 0;
     let lastTanukiSparkle = 0;
+
+    // ---- Camera controls (life mode only) ----
+    const onWheel = (e: WheelEvent) => {
+      if (!stateRef.current.life.active) return;
+      e.preventDefault();
+      camDist = clampNum(camDist + (e.deltaY > 0 ? 3 : -3), CAM_DIST_MIN, CAM_DIST_MAX);
+    };
+    renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+
+    const onCamKey = (e: KeyboardEvent) => {
+      if (!stateRef.current.life.active) return;
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return; // don't hijack typing
+      const k = e.key.toLowerCase();
+      if (k === 'q') camAzGoal -= Math.PI / 4;
+      else if (k === 'e') camAzGoal += Math.PI / 4;
+      else if (k === 'c') {
+        camAzGoal = CAM_AZ_DEFAULT;
+        camDist = CAM_DIST_DEFAULT;
+        const w = mapToWorld(stateRef.current.life.playerX, stateRef.current.life.playerY);
+        userGoal.set(w.x, 2, w.z); // recentre on the hero
+      }
+    };
+    window.addEventListener('keydown', onCamKey);
+
+    // Right-drag to rotate.
+    let dragging = false;
+    let dragX = 0;
+    const onCamDown = (e: PointerEvent) => {
+      if (e.button !== 2 || !stateRef.current.life.active) return;
+      dragging = true;
+      dragX = e.clientX;
+    };
+    const onCamMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      camAzGoal += (e.clientX - dragX) * 0.012;
+      dragX = e.clientX;
+    };
+    const onCamUp = () => {
+      dragging = false;
+    };
+    const onCamMenu = (e: Event) => {
+      if (stateRef.current.life.active) e.preventDefault(); // allow right-drag without a menu
+    };
+    renderer.domElement.addEventListener('pointerdown', onCamDown);
+    window.addEventListener('pointermove', onCamMove);
+    window.addEventListener('pointerup', onCamUp);
+    renderer.domElement.addEventListener('contextmenu', onCamMenu);
 
     // Dispose every geometry/material under a group.
     const disposeGroup = (g: THREE.Object3D) => {
@@ -1349,10 +1417,11 @@ export default function Village3D({
           if (life.day === 3) panUntil = nowMs + 2600;
           lastSeenDay = life.day;
         }
-        panDesired.copy(centerLook);
-        if (nowMs < panUntil) panDesired.lerp(tanukiLook, 0.7);
-        camLook.lerp(panDesired, Math.min(1, dt * 2.2));
-        camera.lookAt(camLook);
+        effTarget.copy(userGoal);
+        if (nowMs < panUntil) effTarget.lerp(tanukiLook, 0.7);
+        orbitTarget.lerp(effTarget, Math.min(1, dt * 2.2));
+        camAz += (camAzGoal - camAz) * Math.min(1, dt * 6); // ease Q/E/drag rotation
+        applyCamera();
 
         // Sparkles around たぬきち during the DAY3 「店へ」 step.
         if (life.day === 3 && life.furniture.length === 0 && nowMs - lastTanukiSparkle > 380) {
@@ -1785,6 +1854,12 @@ export default function Village3D({
       renderer.domElement.removeEventListener('pointerdown', onRoadDown);
       renderer.domElement.removeEventListener('pointermove', onRoadMove);
       window.removeEventListener('pointerup', onRoadUp);
+      renderer.domElement.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onCamKey);
+      renderer.domElement.removeEventListener('pointerdown', onCamDown);
+      window.removeEventListener('pointermove', onCamMove);
+      window.removeEventListener('pointerup', onCamUp);
+      renderer.domElement.removeEventListener('contextmenu', onCamMenu);
       scene.traverse((obj) => {
         if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line) {
           obj.geometry.dispose();
