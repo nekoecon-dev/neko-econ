@@ -594,24 +594,40 @@ body {
   animation: neko-quake 0.28s linear infinite;
 }
 
-/* DAY-start splash: fade/zoom in, hold, then fade out */
-@keyframes neko-day-splash {
+/* DAY-start splash: the whole screen fades in, holds ~2.5s, then eases out
+   gently (≈4s total) — long enough to read, soft enough not to jar. */
+@keyframes neko-day-screen {
   0% {
     opacity: 0;
-    transform: scale(0.7);
   }
-  18%,
+  10% {
+    opacity: 1;
+  }
   72% {
     opacity: 1;
-    transform: scale(1);
   }
   100% {
     opacity: 0;
-    transform: scale(1.08);
+  }
+}
+.day-splash-screen {
+  animation: neko-day-screen 4s ease-in-out forwards;
+}
+/* Subtle title pop on entry (opacity is handled by the screen fade) */
+@keyframes neko-day-pop {
+  0% {
+    transform: scale(0.82);
+  }
+  22% {
+    transform: scale(1.06);
+  }
+  45%,
+  100% {
+    transform: scale(1);
   }
 }
 .day-splash {
-  animation: neko-day-splash 2.6s ease-in-out forwards;
+  animation: neko-day-pop 1.1s ease-out;
 }
 /* Twinkling sparkles scattered around the DAY splash */
 @keyframes neko-splash-sparkle {
@@ -620,14 +636,14 @@ body {
     opacity: 0;
     transform: scale(0.5) rotate(0deg);
   }
-  35%,
-  65% {
+  30%,
+  70% {
     opacity: 1;
     transform: scale(1.25) rotate(25deg);
   }
 }
 .splash-sparkle {
-  animation: neko-splash-sparkle 2.4s ease-in-out forwards;
+  animation: neko-splash-sparkle 3.6s ease-in-out infinite;
   filter: drop-shadow(0 0 6px rgba(255, 240, 150, 0.9));
 }
 

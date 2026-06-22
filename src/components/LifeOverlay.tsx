@@ -144,13 +144,15 @@ export default function LifeOverlay({
         C: 主人公中心にもどす
       </div>
 
-      {/* ---- Big "DAY N" splash (fade-in + sparkle, CSS auto-dismiss). Keyed by
-              the day so it replays once whenever the campaign day changes. ---- */}
+      {/* ---- Big "DAY N" splash. Sits ABOVE the day-intro/celebration notices
+              (z-66) with its own fading backdrop so it's always visible, then
+              fades to reveal the notice. Keyed by day so it replays each day. ---- */}
       {life.day <= 7 && (
         <div
           key={life.day}
-          className="pointer-events-none absolute inset-0 z-[63] flex items-center justify-center overflow-hidden"
+          className="day-splash-screen pointer-events-none absolute inset-0 z-[69] flex items-center justify-center overflow-hidden"
         >
+          <div className="absolute inset-0 bg-black/45" />
           {/* twinkling sparkles around the title */}
           {SPLASH_SPARKLES.map((s, i) => (
             <span
@@ -161,7 +163,7 @@ export default function LifeOverlay({
               ✨
             </span>
           ))}
-          <div className="day-splash text-center">
+          <div className="day-splash relative text-center">
             <div className="text-7xl font-black tracking-wider text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.65)]">
               ✨ DAY {life.day} ✨
             </div>
