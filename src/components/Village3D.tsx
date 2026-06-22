@@ -431,7 +431,7 @@ export default function Village3D({
         const s = stateRef.current;
         const e = s.economy;
         if (e.soupPrice !== last) {
-          val.textContent = `🍲 ${e.soupPrice} CC`;
+          val.textContent = `🍲 ${e.soupPrice} ニャル`;
           last = e.soupPrice;
         }
         val.style.color =
@@ -536,7 +536,7 @@ export default function Village3D({
       const row = document.createElement('div');
       row.className = 'v3d-btnrow';
       row.append(
-        ctlButton('💴 +100CC', 'v3d-btn-cash', () =>
+        ctlButton('💴 +100ニャル', 'v3d-btn-cash', () =>
           dispatchRef.current({ type: 'ISSUE_CURRENCY', amount: 100 }),
         ),
       );
@@ -682,13 +682,13 @@ export default function Village3D({
         playerHouse.visible = s.life.active ? false : paid;
         obj.visible = !s.life.active;
         if (loanLeft !== lastLoan) {
-          balance.textContent = paid ? '完済！マイホーム🎉' : `借金残高: ${loanLeft} CC`;
+          balance.textContent = paid ? '完済！マイホーム🎉' : `借金残高: ${loanLeft} ニャル`;
           balance.style.color = paid ? '#16a34a' : '#1f2937';
           lastLoan = loanLeft;
         }
         const interest = tickInterest(s.player.loan, s.policy.interestRate);
         if (interest !== lastInterest) {
-          interestEl.textContent = paid ? '' : `月利: ${interest} CC`;
+          interestEl.textContent = paid ? '' : `月利: ${interest} ニャル`;
           // Jump + flash red when the interest climbs (e.g. the rate lever rises).
           if (interest > lastInterest && lastInterest >= 0) popJump(interestEl);
           interestEl.style.color = interest > 0 ? '#dc2626' : '#6b4423';
@@ -1496,7 +1496,7 @@ export default function Village3D({
         if (selected) {
           const money = Math.round(cat.money);
           if (rt.lastMoney !== money) {
-            rt.detailMoneyEl.textContent = `${money} CC`;
+            rt.detailMoneyEl.textContent = `${money} ニャル`;
             rt.lastMoney = money;
           }
         }

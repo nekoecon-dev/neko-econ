@@ -24,15 +24,23 @@ test('life mode boots into the DAY1 campaign with a minimal HUD', async ({ page 
   expect(boot.life.active).toBe(true);
   expect(boot.life.day).toBe(1);
   expect(boot.life.level).toBe(1);
+  expect(boot.life.playerName).toBe(''); // name not entered yet
   expect(boot.life.items.length).toBeGreaterThan(0); // big mushrooms to find
 
-  // Welcome story beat → dismiss it.
-  await expect(page.getByText(/ようこそNekoEcon村へ/)).toBeVisible();
+  // Name entry → confirm.
+  await expect(page.getByText('きみの名前を教えてニャ')).toBeVisible();
+  await page.getByPlaceholder('ニャオ').fill('テストにゃん');
+  await page.getByRole('button', { name: 'けってい' }).click();
+  expect((await neko(page)).life.playerName).toBe('テストにゃん');
+
+  // Welcome story beat (uses the name) → dismiss it.
+  await expect(page.getByText(/ようこそ、テストにゃんさん/)).toBeVisible();
   await page.getByRole('button', { name: /わかった/ }).click();
 
-  // Minimal HUD: day + the single objective.
+  // Minimal HUD: day + the single objective, currency shown as ニャル.
   await expect(page.getByText('DAY1')).toBeVisible();
   await expect(page.getByText(/きのこを3つ集めよう/)).toBeVisible();
+  await expect(page.getByText(/ニャル/).first()).toBeVisible();
 
   // Economy UI is fully hidden.
   await expect(page.getByText('NekoEcon')).toHaveCount(0);

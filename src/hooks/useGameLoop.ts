@@ -41,6 +41,7 @@ import {
   lifeMove,
   lifePlaceFurniture,
   lifeRepay,
+  lifeSetName,
 } from '@/lib/engine/life';
 import { clamp, round2 } from '@/lib/engine/math';
 import {
@@ -123,6 +124,8 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return tutorialFinish(state);
     case 'TUTORIAL_SKIP':
       return tutorialSkip(state);
+    case 'LIFE_SET_NAME':
+      return lifeSetName(state, action.name);
     case 'LIFE_MOVE':
       return lifeMove(state, action.x, action.y);
     case 'LIFE_GATHER':

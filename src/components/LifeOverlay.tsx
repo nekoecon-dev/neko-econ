@@ -33,8 +33,41 @@ export default function LifeOverlay({
   setTalking: (t: LifeTalking) => void;
 }) {
   const [invOpen, setInvOpen] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   const life = state.life;
   if (!life.active) return null;
+
+  // ---- Opening name-entry screen ----
+  if (life.playerName === '') {
+    const confirm = () => dispatch({ type: 'LIFE_SET_NAME', name: nameInput });
+    return (
+      <div className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-black/85 p-4">
+        <div className="animate-pop w-full max-w-sm rounded-3xl border-4 border-amber-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
+          <div className="text-6xl">🐱</div>
+          <h2 className="mt-3 text-2xl font-black text-amber-900">きみの名前を教えてニャ</h2>
+          <input
+            type="text"
+            value={nameInput}
+            maxLength={8}
+            placeholder="ニャオ"
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') confirm();
+            }}
+            className="mt-5 w-full rounded-2xl border-4 border-amber-300 bg-white px-4 py-3 text-center text-xl font-black text-amber-900 outline-none focus:border-amber-500"
+          />
+          <p className="mt-2 text-xs font-bold text-amber-600">未入力なら「ニャオ」になるニャ</p>
+          <button
+            type="button"
+            onClick={confirm}
+            className="btn-press mt-5 w-full rounded-2xl bg-amber-500 py-3 text-lg font-black text-white transition hover:bg-amber-600"
+          >
+            けってい
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const cash = Math.round(state.player.cash);
   const close = () => setTalking(null);
@@ -57,7 +90,7 @@ export default function LifeOverlay({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-b from-yellow-100 to-amber-100 px-2.5 py-1">
             <span className="text-xl">👛</span>
-            <span className="text-lg font-black tabular-nums text-amber-900">{cash.toLocaleString()} CC</span>
+            <span className="text-lg font-black tabular-nums text-amber-900">{cash.toLocaleString()} ニャル</span>
           </div>
           <div className="rounded-2xl bg-sky-100 px-2.5 py-1 text-sm font-black text-sky-800">
             {TIME_EMOJI[life.time]} {campaign ? `DAY${life.day}` : `${life.day}日目`}
@@ -136,13 +169,13 @@ export default function LifeOverlay({
             <p>まずはマップのきのこを3つ集めてくるニャ！</p>
           ) : life.day === 5 && !life.shopOpen ? (
             <>
-              <p>スープ屋を開きたいニャ！木材{STALL_WOOD}個と{STALL_COST}CCで屋台を建てるニャ。</p>
-              <p className="mt-1 text-sm text-amber-600">木材 {life.inventory.wood}/{STALL_WOOD} ・ 所持金 {cash}CC</p>
+              <p>スープ屋を開きたいニャ！木材{STALL_WOOD}個と{STALL_COST}ニャルで屋台を建てるニャ。</p>
+              <p className="mt-1 text-sm text-amber-600">木材 {life.inventory.wood}/{STALL_WOOD} ・ 所持金 {cash}ニャル</p>
               <DialogButton
                 disabled={life.inventory.wood < STALL_WOOD || cash < STALL_COST}
                 onClick={() => { dispatch({ type: 'LIFE_BUILD_STALL' }); close(); }}
               >
-                🔨 木材{STALL_WOOD}個と{STALL_COST}CCで屋台を建てる
+                🔨 木材{STALL_WOOD}個と{STALL_COST}ニャルで屋台を建てる
               </DialogButton>
             </>
           ) : (
@@ -185,19 +218,19 @@ export default function LifeOverlay({
             <p>家具店はDAY3で開くニャ。それまで待っててほしいニャ。</p>
           ) : life.day === 7 && !life.dayDone ? (
             <>
-              <p>そろそろテント代を少し返してほしいニャ。{DAY7_REPAY}CCで大丈夫ニャ。</p>
+              <p>そろそろテント代を少し返してほしいニャ。{DAY7_REPAY}ニャルで大丈夫ニャ。</p>
               <DialogButton
                 disabled={cash < DAY7_REPAY}
                 onClick={() => { dispatch({ type: 'LIFE_REPAY' }); close(); }}
               >
-                💰 {DAY7_REPAY}CC返済する
+                💰 {DAY7_REPAY}ニャル返済する
               </DialogButton>
             </>
           ) : (
             <>
               {life.sale && <p className="font-black text-rose-600">🏷️ 本日セール！全品はんがくニャ</p>}
               {life.loanUnlocked && (
-                <p className="mb-1 text-sm font-bold text-amber-700">🏠 のこりテント代：{Math.round(state.player.loan)}CC</p>
+                <p className="mb-1 text-sm font-bold text-amber-700">🏠 のこりテント代：{Math.round(state.player.loan)}ニャル</p>
               )}
               <div className="flex flex-col gap-1.5">
                 {shopItems.map((k) => {
@@ -213,7 +246,7 @@ export default function LifeOverlay({
                         onClick={() => { dispatch({ type: 'LIFE_BUY_FURNITURE', kind: k }); close(); }}
                         className="btn-press rounded-lg bg-amber-500 px-3 py-1 text-xs font-black text-white transition enabled:hover:bg-amber-600 disabled:opacity-40"
                       >
-                        {price}CC
+                        {price}ニャル
                       </button>
                     </div>
                   );

@@ -18,12 +18,12 @@ export function buildNewsPrompt(
   return [
     `【速報イベント】${eventName}`,
     catName ? `対象の猫: ${catName}` : '',
-    `スープ価格: ${economy.soupPrice} CC`,
+    `スープ価格: ${economy.soupPrice} ニャル`,
     `インフレ率: ${economy.inflationRate}%`,
     `失業率: ${economy.unemploymentRate}%`,
     `格差指数: ${economy.gini}`,
-    `村の総通貨量: ${economy.totalMoney} CC`,
-    richest ? `一番のお金持ち: ${richest.name}（${richest.money} CC）` : '',
+    `村の総通貨量: ${economy.totalMoney} ニャル`,
+    richest ? `一番のお金持ち: ${richest.name}（${richest.money} ニャル）` : '',
     'この出来事をニュース速報として読み上げてニャ。',
   ]
     .filter(Boolean)
@@ -43,7 +43,7 @@ export function buildFallbackNews(eventName: string, economy: Economy, catName?:
     case 'デフレ不況':
       return `大変ニャ…物価が下がり続けてインフレ率${economy.inflationRate}%、村は不況ニャ。`;
     case '食料危機':
-      return `スープが1杯${economy.soupPrice}CCまで値上がり、食料危機が迫っているニャ！`;
+      return `スープが1杯${economy.soupPrice}ニャルまで値上がり、食料危機が迫っているニャ！`;
     case '大量失業':
       return `働く猫が減って失業率${economy.unemploymentRate}%、村に失業の波ニャ…`;
     case '格差社会':
@@ -51,6 +51,6 @@ export function buildFallbackNews(eventName: string, economy: Economy, catName?:
     case '好景気':
       return `好景気ニャ！インフレ率${economy.inflationRate}%で村の経済は絶好調ニャ！`;
     default:
-      return `村で動きがあったニャ。スープ価格は${economy.soupPrice}CCニャ。`;
+      return `村で動きがあったニャ。スープ価格は${economy.soupPrice}ニャルニャ。`;
   }
 }

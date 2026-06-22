@@ -67,16 +67,16 @@ export default function LoanModal({
             <div className="mt-4 space-y-1 text-sm text-amber-900">
               <div className="flex justify-between">
                 <span>残りの借金</span>
-                <span className="font-bold tabular-nums text-red-600">{loan} CC</span>
+                <span className="font-bold tabular-nums text-red-600">{loan} ニャル</span>
               </div>
               <div className="flex justify-between">
                 <span>あなたの所持金</span>
-                <span className="font-bold tabular-nums">{cash} CC</span>
+                <span className="font-bold tabular-nums">{cash} ニャル</span>
               </div>
               <div className="flex justify-between">
                 <span>毎日の利息</span>
                 <span className="font-bold tabular-nums text-orange-600">
-                  −{interest} CC（金利 {interestRate}%）
+                  −{interest} ニャル（金利 {interestRate}%）
                 </span>
               </div>
             </div>
@@ -92,7 +92,7 @@ export default function LoanModal({
                 disabled={cash <= 0}
                 className="btn-press rounded-2xl bg-amber-400 py-2 text-sm font-bold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
-                100 CC
+                100 ニャル
               </button>
               <button
                 type="button"
@@ -100,7 +100,7 @@ export default function LoanModal({
                 disabled={cash <= 0}
                 className="btn-press rounded-2xl bg-amber-500 py-2 text-sm font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
-                1,000 CC
+                1,000 ニャル
               </button>
               <button
                 type="button"

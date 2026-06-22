@@ -16,7 +16,7 @@ export default function StrikeBanner({
         <div className="mt-1 text-[11px] leading-relaxed">
           解除条件：税率を30%以上に（現在 {taxRate}% {taxOk ? '✅' : '❌'}）
           <br />
-          または +100CC配布 あと {reliefLeft} 回
+          または +100ニャル配布 あと {reliefLeft} 回
         </div>
       </div>
     </div>

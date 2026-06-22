@@ -36,7 +36,7 @@ export default function Missions({ state }: { state: GameState }) {
               <span className="leading-snug">{MISSIONS[index].title}</span>
             </div>
             <div className="mt-0.5 pl-5 text-[10px] font-medium text-amber-600">
-              💡 {MISSIONS[index].hint}（報酬 +{MISSION_REWARD}CC）
+              💡 {MISSIONS[index].hint}（報酬 +{MISSION_REWARD}ニャル）
             </div>
           </div>
         )}
@@ -50,7 +50,7 @@ export default function Missions({ state }: { state: GameState }) {
         >
           <div className="text-2xl font-black text-emerald-600">🎉 ミッション達成！</div>
           <div className="mt-1 text-sm font-bold text-amber-800">{justCleared.title}</div>
-          <div className="mt-1 text-lg font-black text-emerald-700">+{MISSION_REWARD} CC</div>
+          <div className="mt-1 text-lg font-black text-emerald-700">+{MISSION_REWARD} ニャル</div>
         </div>
       )}
     </>

@@ -14,17 +14,17 @@ import { initStock } from './stocks';
 
 // --- Tuning -----------------------------------------------------------------
 export const SOUP_NEED = 3; // mushrooms ミケ wants for a pot of soup
-export const SOUP_REWARD = 100; // CC per soup in free play
+export const SOUP_REWARD = 100; // ニャル per soup in free play
 export const STALL_WOOD = 3; // wood needed to build the DAY5 stall
-export const STALL_COST = 200; // CC to build the DAY5 stall
-export const DAY7_REPAY = 300; // CC たぬきち collects on DAY7
+export const STALL_COST = 200; // ニャル to build the DAY5 stall
+export const DAY7_REPAY = 300; // ニャル たぬきち collects on DAY7
 
 // Per-day cash rewards / income.
 const DAY1_REWARD = 50;
 const DAY2_SOUP_REWARD = 150;
 const DAY4_REWARD = 150;
-const STALL_INCOME = 20; // CC/day once the stall opens
-const ROAD_INCOME = 10; // extra CC/day once the road connects
+const STALL_INCOME = 20; // ニャル/day once the stall opens
+const ROAD_INCOME = 10; // extra ニャル/day once the road connects
 
 export const FURNITURE_COST: Record<FurnitureKind, number> = {
   // DAY3 starter set (cheap so the campaign budget works out)
@@ -74,9 +74,9 @@ const DAY_OBJECTIVE: Record<number, string> = {
   2: '🐱 ミケに話しかけてスープを作ろう',
   3: '🛋️ たぬきちの店で家具を買って、テントに飾ろう',
   4: '🔔 タマの落とし物を見つけて、タマに渡そう',
-  5: '🪵 木材3個と200CCで、ミケの屋台を建てよう',
+  5: '🪵 木材3個と200ニャルで、ミケの屋台を建てよう',
   6: '🛤️ ミケの屋台とスープ鍋を道でつなごう',
-  7: '💰 たぬきちに300CC返済しよう',
+  7: '💰 たぬきちに300ニャル返済しよう',
 };
 
 const DAY_INTRO: Record<number, string> = {
@@ -119,6 +119,7 @@ function makeItem(seq: number, kind: GatherKind): GatherItem {
 export function lifeInactive(): LifeState {
   return {
     active: false,
+    playerName: '',
     day: 1,
     dayDone: false,
     time: 'morning',
@@ -147,18 +148,25 @@ export function lifeInactive(): LifeState {
   };
 }
 
-/** DAY1: a welcome message and a few big mushrooms to find. */
+/** DAY1: a few big mushrooms to find (the welcome shows once the name is set). */
 export function lifeInitial(): LifeState {
   const base = lifeInactive();
   let seq = 0;
   const kinds: GatherKind[] = ['mushroom', 'mushroom', 'mushroom', 'mushroom', 'wood'];
   const items = kinds.map((k) => makeItem(seq++, k));
+  return { ...base, active: true, items, seq };
+}
+
+/** Confirm the hero's name (defaults to ニャオ), then show たぬきち's welcome. */
+export function lifeSetName(state: GameState, name: string): GameState {
+  const playerName = name.trim().slice(0, 8) || 'ニャオ';
   return {
-    ...base,
-    active: true,
-    items,
-    seq,
-    notice: '🦝 たぬきち「ようこそNekoEcon村へ！まずは村を歩いて、きのこを3つ集めるニャ」',
+    ...state,
+    life: {
+      ...state.life,
+      playerName,
+      notice: `🦝 たぬきち「ようこそ、${playerName}さん。今日からNekoEcon村で暮らすニャ。まずは村を歩いて、きのこを3つ集めるニャ」`,
+    },
   };
 }
 
@@ -216,7 +224,7 @@ export function lifeGather(state: GameState, id: string): GameState {
     next = {
       ...next,
       dayDone: true,
-      notice: `🐱 ミケ「上手にきのこを集めたニャ！おれいに +${DAY1_REWARD}CC ニャ」`,
+      notice: `🐱 ミケ「上手にきのこを集めたニャ！おれいに +${DAY1_REWARD}ニャル ニャ」`,
     };
   }
 
@@ -238,7 +246,7 @@ export function lifeGiveSoup(state: GameState): GameState {
         inventory,
         soupsMade: life.soupsMade + 1,
         dayDone,
-        notice: `🍲 スープ完成！猫たちが集まってきたニャ +${reward}CC`,
+        notice: `🍲 スープ完成！猫たちが集まってきたニャ +${reward}ニャル`,
       },
       'soup',
       50,
@@ -261,7 +269,7 @@ export function lifeGiveLost(state: GameState): GameState {
         inventory,
         tamaIntimacy: life.tamaIntimacy + 2,
         dayDone: life.day === 4 ? true : life.dayDone,
-        notice: `🐈 タマ「ありがとうニャ！珍しいお花と +${DAY4_REWARD}CC をあげるニャ🌸」（親密度+2）`,
+        notice: `🐈 タマ「ありがとうニャ！珍しいお花と +${DAY4_REWARD}ニャル をあげるニャ🌸」（親密度+2）`,
       },
       'soup',
       60,
@@ -322,7 +330,7 @@ export function lifeBuildStall(state: GameState): GameState {
         shopOpen: true,
         dailyIncome: life.dailyIncome + STALL_INCOME,
         dayDone: life.day === 5 ? true : life.dayDone,
-        notice: `🎉 ミケの屋台が完成！木材が積まれ、猫たちが拍手しているニャ（毎日+${STALL_INCOME}CC）`,
+        notice: `🎉 ミケの屋台が完成！木材が積まれ、猫たちが拍手しているニャ（毎日+${STALL_INCOME}ニャル）`,
       },
       'construct',
       shop.x,
@@ -351,7 +359,7 @@ export function lifeConnectRoad(state: GameState): GameState {
       roadDone: true,
       dailyIncome: life.dailyIncome + ROAD_INCOME,
       dayDone: life.day === 6 ? true : life.dayDone,
-      notice: `🛤️ 道が開通！猫の足が速くなり、屋台の売上も増えたニャ（毎日+${ROAD_INCOME}CC）`,
+      notice: `🛤️ 道が開通！猫の足が速くなり、屋台の売上も増えたニャ（毎日+${ROAD_INCOME}ニャル）`,
     },
   };
 }

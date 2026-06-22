@@ -2,7 +2,7 @@ import type { GameState, NewsItem } from '@/types/game';
 import { round2 } from './math';
 
 export const REPAY_INTERVAL = 50; // ticks between forced repayment deadlines
-export const FORCED_REPAY = 1000; // CC drawn at each deadline
+export const FORCED_REPAY = 1000; // ニャル drawn at each deadline
 export const REPAY_WARN_TICKS = 10; // countdown turns red within this many ticks
 
 /**
@@ -28,7 +28,7 @@ export function updateLoanDeadline(state: GameState): GameState {
     const news: NewsItem = {
       tick: state.tick,
       event: '返済日',
-      text: `【返済日】たぬきちに${pay}CC返済しました。残り借金 ${Math.round(remaining)}CC ニャ`,
+      text: `【返済日】たぬきちに${pay}ニャル返済しました。残り借金 ${Math.round(remaining)}ニャル ニャ`,
     };
     return {
       ...state,

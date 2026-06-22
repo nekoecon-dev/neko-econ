@@ -13,8 +13,8 @@ const MISSION_LABEL: Partial<Record<TutorialPhase, string>> = {
   invest: 'ミケに話しかけて、お店に投資しよう',
   advance: '「1日進める」を押して、配当を受け取ろう',
   roads: 'スープ屋と巨大鍋を石畳でつなごう',
-  repayWait: '返済日まで進めて1,000CCを貯めよう',
-  repayment: 'たぬきちに1,000CC返済しよう',
+  repayWait: '返済日まで進めて1,000ニャルを貯めよう',
+  repayment: 'たぬきちに1,000ニャル返済しよう',
 };
 
 /** A big, friendly speech bubble with an emoji avatar. */
@@ -119,11 +119,11 @@ export default function TutorialOverlay({
     <div className="pointer-events-none absolute left-3 top-20 z-[72] w-52 rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/95 p-3 text-amber-900 shadow-xl">
       <div className="flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">👛 所持金</span>
-        <span className="tabular-nums">{cash.toLocaleString()} CC</span>
+        <span className="tabular-nums">{cash.toLocaleString()} ニャル</span>
       </div>
       <div className="mt-1 flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">🦝 借金残高</span>
-        <span className="tabular-nums">{loan.toLocaleString()} CC</span>
+        <span className="tabular-nums">{loan.toLocaleString()} ニャル</span>
       </div>
       <div className="mt-1 flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">⏰ 返済まで</span>
@@ -131,7 +131,7 @@ export default function TutorialOverlay({
       </div>
       <div className="mt-1 flex items-center justify-between text-sm font-black">
         <span className="text-amber-600">💴 次回返済</span>
-        <span className="tabular-nums">{state.repayAmount.toLocaleString()} CC</span>
+        <span className="tabular-nums">{state.repayAmount.toLocaleString()} ニャル</span>
       </div>
       <div className="mt-2 rounded-xl bg-amber-100 px-2.5 py-1.5 text-center text-xs font-black leading-snug text-amber-800">
         🎯 {missionLabel}
@@ -146,11 +146,11 @@ export default function TutorialOverlay({
         <div className="text-center text-xs font-black text-emerald-600">📅 {state.tick}日目の収支</div>
         <div className="mt-1.5 flex items-center justify-between text-sm font-black">
           <span>今日の配当</span>
-          <span className="tabular-nums text-emerald-600">+{dividend} CC</span>
+          <span className="tabular-nums text-emerald-600">+{dividend} ニャル</span>
         </div>
         <div className="flex items-center justify-between text-sm font-black">
           <span>所持金</span>
-          <span className="tabular-nums">{cash.toLocaleString()} CC</span>
+          <span className="tabular-nums">{cash.toLocaleString()} ニャル</span>
         </div>
         <div className="flex items-center justify-between text-sm font-black">
           <span>返済まで</span>
@@ -170,12 +170,12 @@ export default function TutorialOverlay({
           <p className="mt-3 text-base font-bold leading-relaxed text-amber-800">
             あなたは借金を抱えた新しい村人ニャ。
             <br />
-            まずは <span className="font-black text-rose-600">28日以内に1,000CCを返済</span> しよう。
+            まずは <span className="font-black text-rose-600">28日以内に1,000ニャルを返済</span> しよう。
             <br />
             少しずつ、村のことを覚えていこうニャ！
           </p>
           <div className="mt-4 rounded-xl bg-amber-100 px-3 py-1.5 text-sm font-black text-amber-700">
-            👛 所持金 1,075CC ／ 🦝 借金 8,000CC
+            👛 所持金 1,075ニャル ／ 🦝 借金 8,000ニャル
           </div>
           <button
             type="button"
@@ -261,7 +261,7 @@ export default function TutorialOverlay({
         {StatusHud}
         <div className="w-full max-w-lg">
           <SpeechBubble avatar="🐱" speaker="ミケ">
-            {TUTORIAL_INVEST_COST}CCあれば、小さなスープ屋を始められるニャ。
+            {TUTORIAL_INVEST_COST}ニャルあれば、小さなスープ屋を始められるニャ。
             成功したら毎日配当を払うニャ。
           </SpeechBubble>
           <div className="mt-4 flex flex-col items-center gap-2">
@@ -271,7 +271,7 @@ export default function TutorialOverlay({
                 setPopup('investEdu');
               }}
             >
-              🍲 {TUTORIAL_INVEST_COST}CC投資する
+              🍲 {TUTORIAL_INVEST_COST}ニャル投資する
             </CtaButton>
             <button
               type="button"
@@ -311,7 +311,7 @@ export default function TutorialOverlay({
   } else if (phase === 'repayment') {
     action = (
       <CtaButton onClick={() => dispatch({ type: 'TUTORIAL_REPAY' })}>
-        💰 {TUTORIAL_REPAY_AMOUNT}CC返済する
+        💰 {TUTORIAL_REPAY_AMOUNT}ニャル返済する
       </CtaButton>
     );
   }
@@ -325,7 +325,7 @@ export default function TutorialOverlay({
       {phase === 'repayment' && (
         <div className="pointer-events-auto absolute inset-x-0 top-1/3 mx-auto w-full max-w-lg px-4">
           <SpeechBubble avatar="🦝" speaker="たぬきち（返済日）" tone="sky">
-            約束の返済日ニャ。{TUTORIAL_REPAY_AMOUNT}CC払うニャ。
+            約束の返済日ニャ。{TUTORIAL_REPAY_AMOUNT}ニャル払うニャ。
           </SpeechBubble>
         </div>
       )}

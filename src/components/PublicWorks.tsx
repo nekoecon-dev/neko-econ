@@ -66,7 +66,7 @@ export default function PublicWorks({
                         </span>
                       )}
                     </span>
-                    <span className="text-xs font-bold tabular-nums text-amber-700">{cost} CC</span>
+                    <span className="text-xs font-bold tabular-nums text-amber-700">{cost} ニャル</span>
                   </div>
                   <div className="mt-0.5 text-[11px] text-amber-700/80">{meta.effect}</div>
                   <button

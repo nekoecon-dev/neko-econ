@@ -86,7 +86,7 @@ export default function Home() {
                 <div className="leading-tight">
                   <div className="text-[9px] font-bold text-amber-700/70">所持金</div>
                   <div className="text-lg font-black tabular-nums text-amber-900">
-                    {Math.round(state.player.cash).toLocaleString()} CC
+                    {Math.round(state.player.cash).toLocaleString()} ニャル
                   </div>
                 </div>
               </div>
@@ -137,7 +137,7 @@ export default function Home() {
             <div className="absolute bottom-20 left-3 z-30 flex flex-col items-start gap-1">
               {roadMode && (
                 <div className="pointer-events-none rounded-xl border-2 border-amber-700 bg-[#fffdf7]/95 px-3 py-1.5 text-[11px] font-bold text-amber-800 shadow">
-                  🖱️ マップをクリック＆ドラッグして道路を敷くニャ（10CC/マス・道路が多いほどGDP↑）
+                  🖱️ マップをクリック＆ドラッグして道路を敷くニャ（10ニャル/マス・道路が多いほどGDP↑）
                 </div>
               )}
               <button
@@ -152,7 +152,7 @@ export default function Home() {
                     : 'border-amber-300 bg-[#fffdf7]/90 text-amber-900 hover:bg-amber-100'
                 }`}
               >
-                🛤️ 道路を敷く（10CC/マス）{roadMode ? '（ON）' : ''}
+                🛤️ 道路を敷く（10ニャル/マス）{roadMode ? '（ON）' : ''}
               </button>
             </div>
           )}

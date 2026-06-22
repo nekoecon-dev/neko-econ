@@ -1,7 +1,7 @@
 import type { GameState, NewsItem } from '@/types/game';
 import { round2 } from './math';
 
-export const MISSION_REWARD = 500; // CC granted on each completion
+export const MISSION_REWARD = 500; // ニャル granted on each completion
 export const MISSION_START_TICK = 10; // let the sim settle before evaluating
 export const MISSION_POPUP_TICKS = 6; // how long the reward popup lingers (~3s)
 
@@ -28,7 +28,7 @@ export const MISSIONS: Mission[] = [
   },
   {
     id: 3,
-    title: '借金を半分返済しよう（残り5,000CC以下）',
+    title: '借金を半分返済しよう（残り5,000ニャル以下）',
     hint: 'テントをクリックして返済ニャ',
     test: (s) => s.player.loan <= 5000,
   },
@@ -51,7 +51,7 @@ export function updateMissions(state: GameState): GameState {
   const news: NewsItem = {
     tick: state.tick,
     event: 'ミッション',
-    text: `【ミッション達成】${mission.title}！ ごほうび +${MISSION_REWARD}CC ニャ！`,
+    text: `【ミッション達成】${mission.title}！ ごほうび +${MISSION_REWARD}ニャル ニャ！`,
   };
   return {
     ...state,

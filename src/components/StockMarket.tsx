@@ -54,7 +54,7 @@ function StockRow({
           {cat.name}
           <ShockBadge shock={stock.shock} />
         </span>
-        <span className="tabular-nums font-extrabold text-amber-900">{price} CC</span>
+        <span className="tabular-nums font-extrabold text-amber-900">{price} ニャル</span>
       </div>
 
       <div className="mt-1 flex items-center justify-between text-[11px] text-amber-800/80">
@@ -64,7 +64,7 @@ function StockRow({
         <span>
           含み損益{' '}
           <span className={`font-bold tabular-nums ${pnlTone}`}>
-            {shares > 0 ? `${pnl >= 0 ? '+' : ''}${pnl} CC` : '—'}
+            {shares > 0 ? `${pnl >= 0 ? '+' : ''}${pnl} ニャル` : '—'}
           </span>
         </span>
       </div>
@@ -123,7 +123,7 @@ export default function StockMarket({
           if (!stock) return null;
           const shares = player.holdings[cat.id] ?? 0;
           const basis = player.costBasis[cat.id] ?? 0;
-          // Buy is gated ONLY on affordability (cash >= price) — the 9999 CC
+          // Buy is gated ONLY on affordability (cash >= price) — the 9999 ニャル
           // price cap never disables buying.
           const canBuy = player.cash >= stock.price;
           return (

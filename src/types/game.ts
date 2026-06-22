@@ -215,6 +215,7 @@ export interface LifeFx {
 
 export interface LifeState {
   active: boolean; // life-mode prototype is on (economy UI hidden, sim paused)
+  playerName: string; // the hero's name ('' until entered → defaults to ニャオ)
   day: number; // DAY 1..7 is the guided campaign; 8+ is free play
   dayDone: boolean; // today's objective is complete (gates 「次の日へ」)
   time: LifeTime;
@@ -283,6 +284,7 @@ export type PolicyAction =
   | { type: 'TUTORIAL_FINISH' } // close the completion popup -> free play
   | { type: 'TUTORIAL_SKIP' } // skip the whole tutorial -> free play
   // --- Life mode -----------------------------------------------------------
+  | { type: 'LIFE_SET_NAME'; name: string } // confirm the hero's name
   | { type: 'LIFE_MOVE'; x: number; y: number } // walk the avatar toward a spot
   | { type: 'LIFE_GATHER'; id: string } // pick up a gatherable item
   | { type: 'LIFE_GIVE_SOUP' } // give ミケ 3 mushrooms -> soup (DAY2 / free play)
