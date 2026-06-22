@@ -68,6 +68,55 @@ body {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
 }
 
+/* ---------- Tent interior room ---------- */
+.room-wall {
+  background: linear-gradient(#d3bd9b, #c6ab83);
+  border-bottom: 5px solid #6b4a2b;
+}
+/* Brown wood-plank floor (horizontal plank seams) */
+.room-floor {
+  background-color: #c89b66;
+  background-image: repeating-linear-gradient(0deg, #c89b66 0, #c89b66 30px, #b98a52 30px, #b98a52 33px);
+}
+.room-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.room-cell-grid {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+.room-cell-ok {
+  background-color: rgba(74, 222, 128, 0.32);
+}
+.room-cell-no {
+  background-color: rgba(244, 90, 90, 0.34);
+}
+.room-cell-sel {
+  box-shadow: inset 0 0 0 3px #ffd23f;
+}
+.room-furn {
+  font-size: clamp(28px, 6.6vmin, 50px);
+  line-height: 1;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
+}
+/* Furniture pops in with a light flash when placed/moved */
+@keyframes neko-furn-pop {
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.furn-pop {
+  animation: neko-furn-pop 0.4s ease-out;
+}
+
 /* たぬきち商店 signboard */
 .shop-sign {
   pointer-events: none;

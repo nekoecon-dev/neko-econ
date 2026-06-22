@@ -477,7 +477,37 @@ function DialogButton({
   );
 }
 
-/** Simplified tent-interior screen: a room you decorate with owned furniture. */
+/** A small toolbar button for the tent-interior controls. */
+function ToolBtn({
+  children,
+  onClick,
+  disabled,
+  active,
+  highlight,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`btn-press rounded-xl border-2 px-3 py-1.5 text-xs font-black transition disabled:opacity-40 ${
+        highlight ? 'tutorial-cta ' : ''
+      }${active ? 'border-amber-500 bg-amber-400 text-white' : 'border-amber-300 bg-[#fffdf7] text-amber-800'}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+const ROOM_GRID = 7; // 7×7 room
+
+/** Tent-interior screen: a small decorated room you furnish on a grid. */
 function TentInterior({
   life,
   dispatch,
@@ -485,75 +515,144 @@ function TentInterior({
   life: GameState['life'];
   dispatch: (action: PolicyAction) => void;
 }) {
-  const [sel, setSel] = useState<FurnitureKind | null>(null);
+  const [selKind, setSelKind] = useState<FurnitureKind | null>(null); // owned piece to place
+  const [selId, setSelId] = useState<string | null>(null); // placed piece selected
+  const [placeRot, setPlaceRot] = useState(0);
+
   const counts = life.ownedFurniture.reduce<Partial<Record<FurnitureKind, number>>>((m, k) => {
     m[k] = (m[k] ?? 0) + 1;
     return m;
   }, {});
   const kinds = Object.keys(counts) as FurnitureKind[];
+  const itemAt = (gx: number, gy: number) => life.interior.find((it) => it.gx === gx && it.gy === gy);
+  const placing = selKind !== null;
+  const gridActive = placing || selId !== null;
+  const selName = selKind ? FURNITURE_META[selKind].name : '';
 
-  const place = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!sel) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    dispatch({ type: 'LIFE_PLACE_INTERIOR', kind: sel, x, y });
-    if ((counts[sel] ?? 0) <= 1) setSel(null);
+  // R key rotates the selected (or to-be-placed) furniture.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'r') return;
+      if (selId) dispatch({ type: 'LIFE_ROTATE_INTERIOR', id: selId });
+      else if (selKind) setPlaceRot((r) => (r + 90) % 360);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selId, selKind, dispatch]);
+
+  const rotate = () => {
+    if (selId) dispatch({ type: 'LIFE_ROTATE_INTERIOR', id: selId });
+    else if (selKind) setPlaceRot((r) => (r + 90) % 360);
+  };
+  const removeSel = () => {
+    if (selId) {
+      dispatch({ type: 'LIFE_REMOVE_INTERIOR', id: selId });
+      setSelId(null);
+    }
+  };
+  const onCell = (gx: number, gy: number) => {
+    const it = itemAt(gx, gy);
+    if (it) {
+      setSelId(it.id);
+      setSelKind(null);
+      return;
+    }
+    if (selKind) {
+      dispatch({ type: 'LIFE_PLACE_INTERIOR', kind: selKind, gx, gy, rot: placeRot });
+      if ((counts[selKind] ?? 0) <= 1) setSelKind(null);
+      return;
+    }
+    if (selId) dispatch({ type: 'LIFE_MOVE_INTERIOR', id: selId, gx, gy });
   };
 
-  return (
-    <div className="pointer-events-auto fixed inset-0 z-[64] flex flex-col bg-[#2f2218] p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black text-amber-100">🏠 {life.playerName}の部屋</h2>
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'LIFE_EXIT_TENT' })}
-          className={`btn-press rounded-2xl border-2 border-amber-200 bg-amber-500 px-4 py-2 text-sm font-black text-white transition hover:bg-amber-600 ${
-            life.day === 3 && !life.dayDone && life.interior.length > 0 ? 'tutorial-cta' : ''
-          }`}
-        >
-          🚪 外に出る
-        </button>
-      </div>
-      {life.day === 3 && !life.dayDone && (
-        <div className="mt-2 rounded-xl bg-amber-100/90 px-3 py-1.5 text-center text-xs font-black text-amber-800">
-          {life.interior.length > 0
-            ? '✅ 家具を置けたニャ！「外に出る」で確認しよう'
-            : '🪑 持っている家具を選んで、床に置いてみよう'}
-        </div>
-      )}
+  const cells: { gx: number; gy: number }[] = [];
+  for (let gy = 0; gy < ROOM_GRID; gy++) for (let gx = 0; gx < ROOM_GRID; gx++) cells.push({ gx, gy });
 
-      {/* Room floor (click to place the selected furniture) */}
-      <div
-        onClick={place}
-        className="relative mt-3 flex-1 cursor-pointer overflow-hidden rounded-2xl border-[10px] border-[#6b4a2b] bg-[#cba87a]"
-      >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-[#a9835a]" /> {/* back wall */}
-        <div className="pointer-events-none absolute bottom-0 left-1/2 h-8 w-24 -translate-x-1/2 rounded-t-lg bg-[#5b3f26] text-center text-[11px] font-black leading-8 text-amber-100">
-          出入口
-        </div>
-        {life.interior.map((p) => (
-          <span
-            key={p.id}
-            style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-4xl drop-shadow"
+  return (
+    <div className="pointer-events-auto fixed inset-0 z-[64] flex flex-col items-center overflow-auto bg-[#241a12] p-3">
+      {/* Header + toolbar */}
+      <div className="flex w-[min(86vw,520px)] items-center justify-between gap-2">
+        <h2 className="text-lg font-black text-amber-100">🏠 {life.playerName}の部屋</h2>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <ToolBtn active={placing} disabled={kinds.length === 0} onClick={() => { setSelKind(kinds[0] ?? null); setSelId(null); }}>
+            🪑 配置する
+          </ToolBtn>
+          <ToolBtn disabled={!gridActive} onClick={rotate}>🔄 回転(R)</ToolBtn>
+          <ToolBtn disabled={!selId} onClick={removeSel}>📦 しまう</ToolBtn>
+          <ToolBtn
+            highlight={life.day === 3 && !life.dayDone && life.interior.length > 0}
+            onClick={() => dispatch({ type: 'LIFE_EXIT_TENT' })}
           >
-            {FURNITURE_META[p.kind].icon}
-          </span>
-        ))}
-        {sel && (
-          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-xs font-bold text-white">
-            床をクリックして「{FURNITURE_META[sel].name}」を置くニャ
+            🚪 外に出る
+          </ToolBtn>
+        </div>
+      </div>
+
+      {/* Status hint */}
+      <div className="mt-1 text-center text-xs font-bold text-amber-200/90">
+        {placing
+          ? `🟩 緑のマスをクリックして「${selName}」を配置（🔄 で回転）`
+          : selId
+            ? '✋ 移動は別のマスをクリック ／ 🔄 回転 ／ 📦 しまう'
+            : life.day === 3 && !life.dayDone && life.interior.length === 0
+              ? '🪑「配置する」か、持ち家具を選んで飾ろう'
+              : '🛋️ 家具を選んで飾ろう。置いた家具はクリックで選べるニャ'}
+      </div>
+
+      {/* Room: back wall (window/curtain/shelf/lamp/door) + wood-plank floor grid */}
+      <div className="relative mt-2 w-[min(86vw,520px)] overflow-hidden rounded-2xl border-4 border-[#5b3f26] shadow-2xl">
+        <div className="room-wall relative h-20">
+          <div className="absolute left-6 top-3 h-12 w-20 rounded-md border-[3px] border-white bg-gradient-to-b from-[#bfe3ff] to-[#eaf6ff]">
+            <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white" />
+            <div className="absolute left-0 top-1/2 h-[2px] w-full -translate-y-1/2 bg-white" />
           </div>
-        )}
+          <div className="absolute left-3 top-2 h-14 w-2.5 rounded bg-[#d98aa6]" /> {/* curtain */}
+          <div className="absolute left-[100px] top-2 h-14 w-2.5 rounded bg-[#d98aa6] " />
+          <div className="absolute left-1/2 top-8 flex h-2.5 w-24 items-end justify-around rounded-sm bg-[#8a5a2b]">
+            <span className="-mt-4 text-sm leading-none">🪴</span>
+            <span className="-mt-4 text-sm leading-none">📚</span>
+            <span className="-mt-4 text-sm leading-none">⏰</span>
+          </div>
+          <div className="absolute right-20 top-2 text-xl">💡</div> {/* wall lamp */}
+          <div className="absolute bottom-0 right-3 flex h-16 w-11 items-end justify-center rounded-t-2xl border-2 border-[#3f2a18] bg-[#6b4a2b] pb-1 text-[10px] font-black text-amber-100">
+            出入口
+          </div>
+        </div>
+        <div
+          className="room-floor grid"
+          style={{
+            gridTemplateColumns: `repeat(${ROOM_GRID}, 1fr)`,
+            gridTemplateRows: `repeat(${ROOM_GRID}, 1fr)`,
+            aspectRatio: '1 / 1',
+          }}
+        >
+          {cells.map(({ gx, gy }) => {
+            const it = itemAt(gx, gy);
+            const isSel = it !== undefined && it.id === selId;
+            const tone = gridActive ? (it ? 'room-cell-no' : 'room-cell-ok') : '';
+            return (
+              <div
+                key={`${gx}-${gy}`}
+                onClick={() => onCell(gx, gy)}
+                className={`room-cell ${gridActive ? 'room-cell-grid' : ''} ${tone} ${isSel ? 'room-cell-sel' : ''}`}
+              >
+                {it && (
+                  <span key={it.id} className="room-furn furn-pop" style={{ transform: `rotate(${it.rot}deg)` }}>
+                    {FURNITURE_META[it.kind].icon}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Owned-furniture tray */}
-      <div className="mt-3 rounded-2xl bg-[#fffdf7]/95 p-3">
-        <div className="text-xs font-black text-amber-700">🎒 持っている家具（選んで床をクリック）</div>
-        <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-2 w-[min(86vw,520px)] rounded-2xl bg-[#fffdf7]/95 p-2">
+        <div className="text-[11px] font-black text-amber-700">🎒 持っている家具（選んで配置）</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
           {kinds.length === 0 && (
-            <span className="text-xs font-bold text-amber-500">
+            <span className="text-[11px] font-bold text-amber-500">
               家具がないニャ。たぬきち商店で買ってこよう
             </span>
           )}
@@ -561,9 +660,9 @@ function TentInterior({
             <button
               key={k}
               type="button"
-              onClick={() => setSel(k)}
-              className={`btn-press rounded-xl border-2 px-3 py-1.5 text-sm font-black transition ${
-                sel === k
+              onClick={() => { setSelKind(k); setSelId(null); }}
+              className={`btn-press rounded-xl border-2 px-2.5 py-1 text-xs font-black transition ${
+                selKind === k
                   ? 'border-amber-500 bg-amber-100 text-amber-900'
                   : 'border-amber-200 bg-white text-amber-700'
               }`}

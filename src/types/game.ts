@@ -197,6 +197,15 @@ export interface PlacedFurniture {
   y: number;
 }
 
+/** A piece of furniture placed inside the tent on the room grid. */
+export interface InteriorItem {
+  id: string;
+  kind: FurnitureKind;
+  gx: number; // grid column (0..GRID-1)
+  gy: number; // grid row
+  rot: number; // 0 / 90 / 180 / 270
+}
+
 /** A visiting cat that wanders in on 「1日進める」. */
 export interface LifeVisitor {
   id: string;
@@ -229,7 +238,7 @@ export interface LifeState {
   items: GatherItem[]; // gatherables on the ground
   furniture: PlacedFurniture[]; // (legacy) village-map furniture — unused in the campaign
   ownedFurniture: FurnitureKind[]; // bought, not yet placed (shown in the tent)
-  interior: PlacedFurniture[]; // furniture placed inside the tent (x,y = room %)
+  interior: InteriorItem[]; // furniture placed inside the tent on the room grid
   inside: boolean; // the player is in the tent-interior screen
   visitors: LifeVisitor[]; // visiting cats
   soupsMade: number;
@@ -302,6 +311,9 @@ export type PolicyAction =
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned
   | { type: 'LIFE_ENTER_TENT' } // open the tent-interior screen
   | { type: 'LIFE_EXIT_TENT' } // leave the tent-interior screen
-  | { type: 'LIFE_PLACE_INTERIOR'; kind: FurnitureKind; x: number; y: number } // place inside
+  | { type: 'LIFE_PLACE_INTERIOR'; kind: FurnitureKind; gx: number; gy: number; rot: number } // place on grid
+  | { type: 'LIFE_MOVE_INTERIOR'; id: string; gx: number; gy: number } // move a placed piece
+  | { type: 'LIFE_ROTATE_INTERIOR'; id: string } // rotate a placed piece 90°
+  | { type: 'LIFE_REMOVE_INTERIOR'; id: string } // 「しまう」 — back to owned
   | { type: 'LIFE_ADVANCE_DAY' } // advance one day (random visible event)
   | { type: 'LIFE_DISMISS_NOTICE' }; // close the big celebration popup

@@ -4,6 +4,7 @@ import type {
   GameState,
   GatherItem,
   GatherKind,
+  InteriorItem,
   LifeFx,
   LifeState,
   LifeTime,
@@ -362,18 +363,67 @@ export function lifeExitTent(state: GameState): GameState {
   return { ...state, life: { ...life, inside: false } };
 }
 
-/** Place an owned piece of furniture inside the tent (persists in `interior`). */
-export function lifePlaceInterior(state: GameState, kind: FurnitureKind, x: number, y: number): GameState {
+const occupied = (interior: InteriorItem[], gx: number, gy: number, exceptId?: string): boolean =>
+  interior.some((it) => it.gx === gx && it.gy === gy && it.id !== exceptId);
+
+/** Place an owned piece of furniture on the room grid (persists in `interior`). */
+export function lifePlaceInterior(
+  state: GameState,
+  kind: FurnitureKind,
+  gx: number,
+  gy: number,
+  rot: number,
+): GameState {
   const life = state.life;
   const idx = life.ownedFurniture.indexOf(kind);
-  if (idx < 0) return state;
+  if (idx < 0 || occupied(life.interior, gx, gy)) return state;
   const ownedFurniture = life.ownedFurniture.filter((_, i) => i !== idx);
-  const piece = { id: `furn-${life.seq + 1}`, kind, x, y };
+  const piece: InteriorItem = { id: `furn-${life.seq + 1}`, kind, gx, gy, rot };
   // Placing alone does NOT clear DAY3 — the player confirms by stepping back
   // outside (see lifeExitTent), so a stray tent visit can't auto-complete it.
   return {
     ...state,
     life: { ...life, seq: life.seq + 1, ownedFurniture, interior: [...life.interior, piece] },
+  };
+}
+
+/** Move a placed piece to an empty grid cell. */
+export function lifeMoveInterior(state: GameState, id: string, gx: number, gy: number): GameState {
+  const life = state.life;
+  if (occupied(life.interior, gx, gy, id)) return state;
+  return {
+    ...state,
+    life: {
+      ...life,
+      interior: life.interior.map((it) => (it.id === id ? { ...it, gx, gy } : it)),
+    },
+  };
+}
+
+/** Rotate a placed piece 90°. */
+export function lifeRotateInterior(state: GameState, id: string): GameState {
+  const life = state.life;
+  return {
+    ...state,
+    life: {
+      ...life,
+      interior: life.interior.map((it) => (it.id === id ? { ...it, rot: (it.rot + 90) % 360 } : it)),
+    },
+  };
+}
+
+/** 「しまう」: remove a placed piece — it returns to the owned list. */
+export function lifeRemoveInterior(state: GameState, id: string): GameState {
+  const life = state.life;
+  const piece = life.interior.find((it) => it.id === id);
+  if (!piece) return state;
+  return {
+    ...state,
+    life: {
+      ...life,
+      interior: life.interior.filter((it) => it.id !== id),
+      ownedFurniture: [...life.ownedFurniture, piece.kind],
+    },
   };
 }
 

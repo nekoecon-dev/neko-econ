@@ -40,8 +40,11 @@ import {
   lifeGiveLost,
   lifeGiveSoup,
   lifeMove,
+  lifeMoveInterior,
   lifePlaceInterior,
+  lifeRemoveInterior,
   lifeRepay,
+  lifeRotateInterior,
   lifeSetName,
   lifeShowHint,
 } from '@/lib/engine/life';
@@ -151,7 +154,13 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
     case 'LIFE_EXIT_TENT':
       return lifeExitTent(state);
     case 'LIFE_PLACE_INTERIOR':
-      return lifePlaceInterior(state, action.kind, action.x, action.y);
+      return lifePlaceInterior(state, action.kind, action.gx, action.gy, action.rot);
+    case 'LIFE_MOVE_INTERIOR':
+      return lifeMoveInterior(state, action.id, action.gx, action.gy);
+    case 'LIFE_ROTATE_INTERIOR':
+      return lifeRotateInterior(state, action.id);
+    case 'LIFE_REMOVE_INTERIOR':
+      return lifeRemoveInterior(state, action.id);
     case 'LIFE_ADVANCE_DAY':
       return lifeAdvanceDay(state);
     case 'LIFE_DISMISS_NOTICE':
