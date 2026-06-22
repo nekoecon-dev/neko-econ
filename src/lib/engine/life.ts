@@ -82,7 +82,7 @@ const DAY_OBJECTIVE: Record<number, string> = {
 const DAY_INTRO: Record<number, string> = {
   2: '🐱 ミケ「昨日のきのこでスープを作るニャ！」',
   3: '🦝 たぬきち「家具店を開けたニャ。テントを飾るといいニャ」',
-  4: '🐈 タマ「落とし物をしたニャ…赤い屋根のおうちの近くで落とした気がするニャ…」',
+  4: '🐈 タマ「落とし物をしたニャ…広場のあたりの草地で落とした気がするニャ…」',
   5: '🐱 ミケ「スープ屋を開きたいけど、木材とお金が足りないニャ」',
   6: '🐱 ミケ「屋台とスープ鍋を道でつなぐと、もっと売れるニャ」',
   7: '🦝 たぬきち「そろそろテント代を少し返してほしいニャ」',
@@ -100,17 +100,33 @@ export function lifeObjective(life: LifeState): string {
 }
 
 // --- item placement ---------------------------------------------------------
-const PLAZA = { x0: 40, x1: 60, y0: 40, y1: 60 };
+// Obstacles to keep gatherables (and especially the lost item) clear of, in
+// map % with a keep-out radius. Covers the central pot, the player tent,
+// たぬきち + his shop, the cottages and the pond (trees sit near the edges,
+// outside the spawn band below).
+const OBSTACLES: { x: number; y: number; r: number }[] = [
+  { x: 50, y: 50, r: 13 }, // 中央スープ鍋／広場
+  { x: 27.5, y: 72.5, r: 11 }, // プレイヤーのテント
+  { x: 73, y: 51, r: 7 }, // たぬきち
+  { x: 81, y: 46, r: 10 }, // たぬきち商店
+  { x: 22.5, y: 82.5, r: 11 }, // 赤い屋根の家
+  { x: 82.5, y: 25, r: 11 }, // 家
+  { x: 75, y: 90, r: 11 }, // 家
+  { x: 25, y: 17.5, r: 11 }, // 池
+];
 
-/** A random spot in the (zoomed-in) central area, clear of the plaza. */
+function clearOfObstacles(x: number, y: number): boolean {
+  return OBSTACLES.every((o) => Math.hypot(x - o.x, y - o.y) > o.r);
+}
+
+/** An open spot in the central-plaza grass, clear of buildings/pond/trees. */
 function scatterSpot(): { x: number; y: number } {
-  for (let tries = 0; tries < 12; tries++) {
-    const x = 26 + Math.random() * 48;
-    const y = 26 + Math.random() * 44;
-    if (x > PLAZA.x0 && x < PLAZA.x1 && y > PLAZA.y0 && y < PLAZA.y1) continue;
-    return { x, y };
+  for (let tries = 0; tries < 60; tries++) {
+    const x = 24 + Math.random() * 52;
+    const y = 24 + Math.random() * 52;
+    if (clearOfObstacles(x, y)) return { x, y };
   }
-  return { x: 30, y: 30 };
+  return { x: 40, y: 40 }; // open grass fallback
 }
 
 function makeItem(seq: number, kind: GatherKind): GatherItem {
@@ -469,8 +485,8 @@ function setupDay(life: LifeState, day: number): LifeState {
   let items = life.items;
   const shopUnlocked = life.shopUnlocked || day >= 3; // たぬきちの家具店 opens on DAY3
   if (day === 4) {
-    // Dropped near the red-roof house (the hint タマ gives).
-    const spot = { x: 18 + Math.random() * 8, y: 76 + Math.random() * 8 };
+    // Dropped in the open central grass — never inside a building / tree / pond.
+    const spot = scatterSpot();
     items = [...items, { id: `item-${seq++}`, kind: 'bell', x: spot.x, y: spot.y }];
   } else if (day === 5) {
     const wood = [0, 1, 2].map(() => makeItem(seq++, 'wood'));

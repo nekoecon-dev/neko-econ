@@ -224,7 +224,7 @@ export default function LifeOverlay({
             <div className="rounded-2xl border-4 border-rose-300 bg-white/95 px-4 py-2 text-sm font-black text-rose-700 shadow-lg">
               {day4Elapsed > 30000
                 ? '🔦 光の柱が立っているところニャ！'
-                : '🌲 赤い屋根の家のそば、木の近くでキラッと光ってるニャ！'}
+                : '🌿 広場のまわりの草地でキラッと光ってるニャ！'}
             </div>
           )}
           {needTanukiHint && day3Elapsed > 10000 && (
@@ -308,7 +308,7 @@ export default function LifeOverlay({
               </DialogButton>
             </>
           ) : life.day === 4 ? (
-            <p>赤い屋根のおうちの近くで落とし物（🔔）をした気がするニャ…探して拾ってきてほしいニャ。</p>
+            <p>広場のあたりの草地で落とし物（🔔）をした気がするニャ…探して拾ってきてほしいニャ。</p>
           ) : (
             <p>こんにちはニャ！（💗 親密度 Lv {life.intimacy['3'] ?? 1}）</p>
           )}

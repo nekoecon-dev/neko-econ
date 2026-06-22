@@ -1051,7 +1051,7 @@ export default function Village3D({
       }),
     );
     searchCircle.rotation.x = -Math.PI / 2;
-    searchCircle.position.set(-11, 0.08, 13); // the red-roof house
+    searchCircle.position.set(0, 0.08, 0); // repositioned onto the lost item each frame
     searchCircle.visible = false;
     scene.add(searchCircle);
 
@@ -1575,7 +1575,9 @@ export default function Village3D({
         // DAY4 lost-item aids: search-zone ring, a bouncing arrow (on demand),
         // and after 30s of searching, a beam of light over the item.
         searchCircle.visible = day4Searching;
-        if (searchCircle.visible) {
+        if (searchCircle.visible && bell) {
+          const w = mapToWorld(bell.x, bell.y);
+          searchCircle.position.set(w.x, 0.08, w.z); // follow the item's open-grass spot
           const s = 1 + Math.sin(t * 2) * 0.04;
           searchCircle.scale.set(s, s, s);
         }
