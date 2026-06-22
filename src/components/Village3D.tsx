@@ -194,24 +194,24 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
 
 // Life-mode skies: a gentle morning / day / evening cycle plus a grey rainy
 // look. Keyed `rainy` or `sunny-<time>`.
-// fogFar is kept short so the unopened outer districts mist out around the
-// playable centre.
+// fogFar is kept large so the village stays clearly visible even when zoomed
+// out; unopened areas are shown by a thin ground-mist ring instead of heavy fog.
 const LIFE_LOOKS: Record<string, WeatherLook> = {
   'sunny-morning': {
     skyTop: '#8fc7ff', skyBottom: '#ffe9d6', hemi: 1.0, sunInt: 1.0,
-    sunColor: '#fff0cf', sunScale: 1.1, sunVisible: true, fog: '#d3deec', fogFar: 52,
+    sunColor: '#fff0cf', sunScale: 1.1, sunVisible: true, fog: '#d3deec', fogFar: 240,
   },
   'sunny-day': {
     skyTop: '#79b8ff', skyBottom: '#eaf6ff', hemi: 0.95, sunInt: 1.1,
-    sunColor: '#fff4d6', sunScale: 1, sunVisible: true, fog: '#c9d9e8', fogFar: 54,
+    sunColor: '#fff4d6', sunScale: 1, sunVisible: true, fog: '#c9d9e8', fogFar: 250,
   },
   'sunny-evening': {
     skyTop: '#6a4ea0', skyBottom: '#ffb06a', hemi: 0.8, sunInt: 0.9,
-    sunColor: '#ff9e57', sunScale: 1.5, sunVisible: true, fog: '#caa179', fogFar: 44,
+    sunColor: '#ff9e57', sunScale: 1.5, sunVisible: true, fog: '#caa179', fogFar: 220,
   },
   rainy: {
     skyTop: '#6b7480', skyBottom: '#aeb8c2', hemi: 0.6, sunInt: 0.4,
-    sunColor: '#b9c1cb', sunScale: 1, sunVisible: false, fog: '#8a94a0', fogFar: 38,
+    sunColor: '#b9c1cb', sunScale: 1, sunVisible: false, fog: '#8a94a0', fogFar: 190,
   },
 };
 function lifeLookKey(weather: 'sunny' | 'rainy', time: 'morning' | 'day' | 'evening'): string {
@@ -409,9 +409,9 @@ export default function Village3D({
     sunDisc.scale.setScalar(1.8);
     scene.add(sunDisc);
 
-    // Life mode pulls the fog in close so the outer districts fade into mist —
-    // they read as not-yet-opened areas around the playable centre.
-    scene.fog = new THREE.Fog('#cfecff', lifeBoot ? 30 : 30, lifeBoot ? 52 : 130);
+    // Life mode keeps the fog weak/distant so the whole village stays visible
+    // when zoomed out; the "unopened" feel comes from a thin ground-mist ring.
+    scene.fog = new THREE.Fog('#cfecff', lifeBoot ? 90 : 30, lifeBoot ? 240 : 130);
 
     // Weather particle clouds (only the active one is shown + animated).
     const confetti = makeParticles(160, '#ffd54a', 0.3, 0.95); // boom
@@ -430,6 +430,23 @@ export default function Village3D({
     // The soup pot + its cooking flame (life mode grows the fire / glows it).
     const soupPot = village.getObjectByName('soupPot') ?? null;
     const potFire = village.getObjectByName('potFire') ?? null;
+
+    // Thin ground-mist ring marking the unopened outer area (life mode only) —
+    // a light flat haze that doesn't hide the cats / houses / items above it.
+    const mistRing = new THREE.Mesh(
+      new THREE.RingGeometry(15, 27, 48),
+      new THREE.MeshBasicMaterial({
+        color: '#e8eef5',
+        transparent: true,
+        opacity: 0.18,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    mistRing.rotation.x = -Math.PI / 2;
+    mistRing.position.y = 0.06;
+    mistRing.visible = lifeBoot;
+    scene.add(mistRing);
 
     // ---- Spatial UI: info/controls embedded in 3D objects, refreshed each
     // frame by the `updaters` list (they read the latest state via stateRef). ----
