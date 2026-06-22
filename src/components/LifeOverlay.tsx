@@ -303,7 +303,9 @@ export default function LifeOverlay({
                         type="button"
                         disabled={cash < price || life.placing !== null}
                         onClick={() => { dispatch({ type: 'LIFE_BUY_FURNITURE', kind: k }); close(); }}
-                        className="btn-press rounded-lg bg-amber-500 px-3 py-1 text-xs font-black text-white transition enabled:hover:bg-amber-600 disabled:opacity-40"
+                        className={`btn-press rounded-lg bg-amber-500 px-3 py-1 text-xs font-black text-white transition enabled:hover:bg-amber-600 disabled:opacity-40 ${
+                          life.day === 3 && life.furniture.length === 0 ? 'tutorial-cta' : ''
+                        }`}
                       >
                         {price}ニャル
                       </button>
@@ -320,7 +322,7 @@ export default function LifeOverlay({
       {life.notice && (
         <div className="pointer-events-auto absolute inset-0 z-[62] flex items-center justify-center bg-black/45 p-4">
           <div className="animate-pop max-w-sm rounded-3xl border-4 border-amber-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
-            <div className="text-xl font-black leading-relaxed text-amber-900">{life.notice}</div>
+            <div className="whitespace-pre-line text-lg font-black leading-relaxed text-amber-900">{life.notice}</div>
             <button
               type="button"
               onClick={() => dispatch({ type: 'LIFE_DISMISS_NOTICE' })}

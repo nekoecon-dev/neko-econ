@@ -313,7 +313,10 @@ export function lifePlaceFurniture(state: GameState, x: number, y: number): Game
       furniture: [...life.furniture, piece],
       placing: null,
       dayDone: life.day === 3 ? true : life.dayDone,
-      notice: life.day === 3 ? '🛋️ テントが可愛くなったニャ！' : life.notice,
+      notice:
+        life.day === 3
+          ? '🛋️ おうちが少し楽しくなったニャ！\n\n集めて、売って、手に入れたニャルで家具を買えたニャ。お金は貯めるだけじゃなく、暮らしを良くするためにも使えるニャ。'
+          : life.notice,
     },
   };
 }

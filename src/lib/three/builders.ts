@@ -934,6 +934,61 @@ export function makeFurniture(kind: FurnitureKind): THREE.Group {
   return g;
 }
 
+/** たぬきち商店: a cosy furniture shop with an awning, flag, lamp and door mat. */
+export function makeShop(): THREE.Group {
+  const shop = new THREE.Group();
+
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.8, 2.0), matte('#f3d9a8'));
+  walls.position.y = 0.9;
+  shop.add(walls);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.3, 2.3), matte('#7c4a23'));
+  roof.position.y = 1.95;
+  shop.add(roof);
+
+  // Striped red awning over the front.
+  const awning = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 0.8), matte('#e0584f'));
+  awning.position.set(0, 1.55, 1.25);
+  awning.rotation.x = -0.32;
+  shop.add(awning);
+
+  // Sign board (the「たぬきち商店」text is a CSS2D label added in the scene).
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.5, 0.08), matte('#f7ecd2'));
+  sign.position.set(0, 1.32, 1.06);
+  sign.name = 'shopSign';
+  shop.add(sign);
+
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.1), matte('#8a5a2b'));
+  door.position.set(0, 0.5, 1.02);
+  shop.add(door);
+
+  // Flag on a pole.
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), matte('#6b4423'));
+  pole.position.set(1.25, 2.7, 0.4);
+  shop.add(pole);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.34, 0.03), matte('#3fae6a'));
+  flag.position.set(1.52, 3.2, 0.4);
+  shop.add(flag);
+
+  // Lamp by the door.
+  const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.1, 6), matte('#6b4423'));
+  lampPole.position.set(-1.15, 0.55, 1.05);
+  shop.add(lampPole);
+  const lampBulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 12, 10),
+    new THREE.MeshBasicMaterial({ color: '#ffe08a' }),
+  );
+  lampBulb.position.set(-1.15, 1.2, 1.05);
+  shop.add(lampBulb);
+
+  // Door mat.
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 0.75), matte('#c2562f'));
+  mat.position.set(0, 0.04, 1.75);
+  shop.add(mat);
+
+  shop.scale.setScalar(1.6);
+  return shop;
+}
+
 /** The player's own avatar: a cat with a jaunty green cap so it stands out. */
 export function makePlayerCat(): THREE.Group {
   const cat = makeCat({ coat: '#9ad0ff', eye: '#2b6cb0', cheek: '#ffb3c1', pattern: 'plain' });

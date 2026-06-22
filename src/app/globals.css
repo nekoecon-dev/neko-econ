@@ -52,6 +52,72 @@ body {
   display: inline-block;
 }
 
+/* たぬきち商店 signboard */
+.shop-sign {
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  border-radius: 12px;
+  border: 3px solid #7c2d12;
+  background: rgba(255, 244, 214, 0.98);
+  padding: 3px 12px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #7c2d12;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* DAY3: big bouncing 「！」 over たぬきち */
+.tanuki-bang {
+  pointer-events: none;
+  user-select: none;
+  font-size: 40px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+  animation: neko-bang 0.7s ease-in-out infinite;
+}
+@keyframes neko-bang {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.15);
+  }
+}
+.tanuki-call {
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  border-radius: 9999px;
+  border: 3px solid #f59e0b;
+  background: rgba(255, 255, 255, 0.97);
+  padding: 3px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #b45309;
+  box-shadow: 0 0 12px 2px rgba(250, 204, 21, 0.7);
+}
+
+/* Off-screen guide arrow pointing toward たぬきち */
+.edge-arrow {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  font-size: 38px;
+  color: #f59e0b;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+  animation: neko-edge-arrow 0.8s ease-in-out infinite;
+}
+@keyframes neko-edge-arrow {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* 表札: nameplate above the hero's home */
 .home-sign {
   pointer-events: none;
