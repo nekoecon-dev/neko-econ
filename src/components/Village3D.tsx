@@ -847,6 +847,7 @@ export default function Village3D({
     const catLayer = new THREE.Group();
     const catRuntimes = new Map<string, CatRuntime>();
     let selectedCatId: string | null = null; // cat whose detail card is open
+    let hoveredItemId: string | null = null; // gatherable under the cursor (glow on hover)
     const spawnCat = (cat: GameState['cats'][number], i: number) => {
       const group = makeCat(CAT_STYLES[cat.id] ?? DEFAULT_CAT_STYLE);
       const w = mapToWorld(cat.x, cat.y);
@@ -1228,6 +1229,15 @@ export default function Village3D({
         } else {
           hoverTip.style.display = 'none';
         }
+        // Hovering a gatherable makes it glow (esp. the small lost item).
+        const itemHit = raycaster.intersectObjects(itemLayer.children, true)[0];
+        let hid: string | null = null;
+        if (itemHit) {
+          let node: THREE.Object3D | null = itemHit.object;
+          while (node && node.parent !== itemLayer) node = node.parent;
+          hid = (node?.userData.itemId as string | undefined) ?? null;
+        }
+        hoveredItemId = hid;
       }
       if (!ghost) return;
       const rect = renderer.domElement.getBoundingClientRect();
@@ -1532,13 +1542,19 @@ export default function Village3D({
           const w = mapToWorld(item.x, item.y);
           mesh.position.set(w.x, 0, w.z);
           mesh.userData.itemId = item.id;
+          mesh.userData.baseScale = mesh.scale.x; // keep the builder scale for hover glow
           itemMeshes.set(item.id, mesh);
           itemLayer.add(mesh);
         }
-        // Gatherables bob + spin gently so they read as collectable.
-        for (const mesh of itemMeshes.values()) {
+        // Gatherables bob + spin gently so they read as collectable; the hovered
+        // one swells a little (a "光る" cue, esp. for the small lost item).
+        for (const [id, mesh] of itemMeshes) {
           mesh.rotation.y += dt * 1.2;
           mesh.position.y = 0.45 + Math.sin(t * 2 + mesh.position.x) * 0.18;
+          const base = (mesh.userData.baseScale as number) ?? 1;
+          const target = id === hoveredItemId ? base * 1.35 : base;
+          const s = mesh.scale.x + (target - mesh.scale.x) * Math.min(1, dt * 10);
+          mesh.scale.setScalar(s);
         }
 
         // DAY4 lost-item aids: search-zone ring, a bouncing arrow (on demand),

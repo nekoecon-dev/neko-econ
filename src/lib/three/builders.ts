@@ -820,9 +820,9 @@ export function makeGatherable(kind: GatherKind): THREE.Group {
     const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), ink());
     clapper.position.y = 0.08;
     g.add(clapper);
-    // Generous invisible click target so it's easy to grab.
+    // Generous invisible click target so the (small) bell is still easy to grab.
     const hit = new THREE.Mesh(
-      new THREE.SphereGeometry(0.7, 8, 8),
+      new THREE.SphereGeometry(1.4, 8, 8),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }),
     );
     hit.position.y = 0.3;
@@ -832,8 +832,9 @@ export function makeGatherable(kind: GatherKind): THREE.Group {
   }
 
   g.add(makeItemSparkle());
-  // Gatherables are oversized for easy spotting; the lost bell is bigger still.
-  g.scale.setScalar(kind === 'bell' ? 7 : 3.2);
+  // Most gatherables are oversized for easy spotting; the lost bell is kept small
+  // (~0.4× a cat) and relies on its sparkle / outline / search aids instead.
+  g.scale.setScalar(kind === 'bell' ? 1.5 : 3.2);
   return g;
 }
 
