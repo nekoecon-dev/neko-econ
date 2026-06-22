@@ -193,22 +193,24 @@ const WEATHER_LOOK: Record<Weather, WeatherLook> = {
 
 // Life-mode skies: a gentle morning / day / evening cycle plus a grey rainy
 // look. Keyed `rainy` or `sunny-<time>`.
+// fogFar is kept short so the unopened outer districts mist out around the
+// playable centre.
 const LIFE_LOOKS: Record<string, WeatherLook> = {
   'sunny-morning': {
     skyTop: '#8fc7ff', skyBottom: '#ffe9d6', hemi: 1.0, sunInt: 1.0,
-    sunColor: '#fff0cf', sunScale: 1.1, sunVisible: true, fog: '#eaf2ff', fogFar: 140,
+    sunColor: '#fff0cf', sunScale: 1.1, sunVisible: true, fog: '#d3deec', fogFar: 52,
   },
   'sunny-day': {
     skyTop: '#79b8ff', skyBottom: '#eaf6ff', hemi: 0.95, sunInt: 1.1,
-    sunColor: '#fff4d6', sunScale: 1, sunVisible: true, fog: '#dcefff', fogFar: 140,
+    sunColor: '#fff4d6', sunScale: 1, sunVisible: true, fog: '#c9d9e8', fogFar: 54,
   },
   'sunny-evening': {
     skyTop: '#6a4ea0', skyBottom: '#ffb06a', hemi: 0.8, sunInt: 0.9,
-    sunColor: '#ff9e57', sunScale: 1.5, sunVisible: true, fog: '#e7a877', fogFar: 110,
+    sunColor: '#ff9e57', sunScale: 1.5, sunVisible: true, fog: '#caa179', fogFar: 44,
   },
   rainy: {
     skyTop: '#6b7480', skyBottom: '#aeb8c2', hemi: 0.6, sunInt: 0.4,
-    sunColor: '#b9c1cb', sunScale: 1, sunVisible: false, fog: '#9aa4af', fogFar: 90,
+    sunColor: '#b9c1cb', sunScale: 1, sunVisible: false, fog: '#8a94a0', fogFar: 38,
   },
 };
 function lifeLookKey(weather: 'sunny' | 'rainy', time: 'morning' | 'day' | 'evening'): string {
@@ -341,9 +343,12 @@ export default function Village3D({
     const { mesh: skyDome, material: skyMat } = makeSkyDome();
     scene.add(skyDome);
 
-    // 45° isometric-style look-down camera, zoomed out for the larger map.
+    // 45° isometric-style look-down camera. Life mode zooms ~30% closer so the
+    // village centre fills the frame; economy mode stays pulled back.
+    const lifeBoot = stateRef.current.life.active;
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 300);
-    camera.position.set(27, 27, 27);
+    const camDist = lifeBoot ? 19 : 27;
+    camera.position.set(camDist, camDist, camDist);
     camera.lookAt(0, 2, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -377,7 +382,9 @@ export default function Village3D({
     sunDisc.scale.setScalar(1.8);
     scene.add(sunDisc);
 
-    scene.fog = new THREE.Fog('#cfecff', 30, 130);
+    // Life mode pulls the fog in close so the outer districts fade into mist —
+    // they read as not-yet-opened areas around the playable centre.
+    scene.fog = new THREE.Fog('#cfecff', lifeBoot ? 30 : 30, lifeBoot ? 52 : 130);
 
     // Weather particle clouds (only the active one is shown + animated).
     const confetti = makeParticles(160, '#ffd54a', 0.3, 0.95); // boom
