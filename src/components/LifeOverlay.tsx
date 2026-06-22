@@ -91,7 +91,7 @@ export default function LifeOverlay({
   if (life.playerName === '') {
     const confirm = () => dispatch({ type: 'LIFE_SET_NAME', name: nameInput });
     return (
-      <div className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-black/85 p-4">
+      <div className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-black/25 p-4">
         <div className="animate-pop w-full max-w-sm rounded-3xl border-4 border-amber-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
           <div className="text-6xl">🐱</div>
           <h2 className="mt-3 text-2xl font-black text-amber-900">きみの名前を教えてニャ</h2>
@@ -152,7 +152,7 @@ export default function LifeOverlay({
           key={life.day}
           className="day-splash-screen pointer-events-none absolute inset-0 z-[69] flex items-center justify-center overflow-hidden"
         >
-          <div className="absolute inset-0 bg-black/45" />
+          <div className="absolute inset-0 bg-black/25" />
           {/* twinkling sparkles around the title */}
           {SPLASH_SPARKLES.map((s, i) => (
             <span
@@ -370,7 +370,7 @@ export default function LifeOverlay({
 
       {/* ---- Objective-complete celebration (dayDone + notice) ---- */}
       {life.notice && life.dayDone && (
-        <div className="pointer-events-auto absolute inset-0 z-[66] flex items-center justify-center overflow-hidden bg-black/55 p-4">
+        <div className="pointer-events-auto absolute inset-0 z-[66] flex items-center justify-center overflow-hidden bg-black/25 p-4">
           {CELEBRATE_BITS.map((b, i) => (
             <span
               key={i}
@@ -404,7 +404,7 @@ export default function LifeOverlay({
 
       {/* ---- Plain story notice (intros etc.) ---- */}
       {life.notice && !life.dayDone && (
-        <div className="pointer-events-auto absolute inset-0 z-[66] flex items-center justify-center bg-black/45 p-4">
+        <div className="pointer-events-auto absolute inset-0 z-[66] flex items-center justify-center bg-black/25 p-4">
           <div className="animate-pop max-w-sm rounded-3xl border-4 border-amber-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
             <div className="whitespace-pre-line text-lg font-black leading-relaxed text-amber-900">{life.notice}</div>
             <button
@@ -437,7 +437,7 @@ function Dialog({
 }) {
   const ring = tone === 'sky' ? 'border-sky-300' : 'border-amber-300';
   return (
-    <div className="pointer-events-auto absolute inset-0 z-[61] flex items-end justify-center bg-black/30 p-4 pb-28">
+    <div className="pointer-events-auto absolute inset-0 z-[61] flex items-end justify-center bg-black/25 p-4 pb-28">
       <div className={`animate-pop w-full max-w-md rounded-3xl border-4 ${ring} bg-white/97 p-5 shadow-2xl`}>
         <div className="flex items-center gap-3">
           <span className="text-5xl drop-shadow">{avatar}</span>
