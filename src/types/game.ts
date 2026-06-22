@@ -237,6 +237,7 @@ export interface LifeState {
   tamaIntimacy: number; // タマ親密度 (DAY4)
   hasLostItem: boolean; // carrying タマ's lost item (DAY4)
   hasMoved: boolean; // the player has walked at least once (DAY1 move hint)
+  hintArrow: boolean; // show the 3D arrow pointing at the lost item (DAY4 hint)
   placing: FurnitureKind | null; // furniture awaiting a drop spot
   event: string | null; // latest 1日進める event toast
   notice: string | null; // big celebration / story-beat notification
@@ -290,6 +291,7 @@ export type PolicyAction =
   | { type: 'LIFE_GATHER'; id: string } // pick up a gatherable item
   | { type: 'LIFE_GIVE_SOUP' } // give ミケ 3 mushrooms -> soup (DAY2 / free play)
   | { type: 'LIFE_GIVE_LOST' } // return タマ's lost item (DAY4)
+  | { type: 'LIFE_SHOW_HINT' } // DAY4: reveal an arrow over the lost item
   | { type: 'LIFE_BUILD_STALL' } // 3 wood + 200CC -> ミケの屋台 (DAY5)
   | { type: 'LIFE_CONNECT_ROAD' } // pave 屋台↔鍋 (DAY6)
   | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)

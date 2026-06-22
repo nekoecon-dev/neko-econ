@@ -82,7 +82,7 @@ const DAY_OBJECTIVE: Record<number, string> = {
 const DAY_INTRO: Record<number, string> = {
   2: '🐱 ミケ「昨日のきのこでスープを作るニャ！」',
   3: '🦝 たぬきち「家具店を開けたニャ。テントを飾るといいニャ」',
-  4: '🐈 タマ「落とし物をしたニャ…探すの手伝ってほしいニャ」',
+  4: '🐈 タマ「落とし物をしたニャ…赤い屋根のおうちの近くで落とした気がするニャ…」',
   5: '🐱 ミケ「スープ屋を開きたいけど、木材とお金が足りないニャ」',
   6: '🐱 ミケ「屋台とスープ鍋を道でつなぐと、もっと売れるニャ」',
   7: '🦝 たぬきち「そろそろテント代を少し返してほしいニャ」',
@@ -141,6 +141,7 @@ export function lifeInactive(): LifeState {
     tamaIntimacy: 0,
     hasLostItem: false,
     hasMoved: false,
+    hintArrow: false,
     placing: null,
     event: null,
     notice: null,
@@ -212,7 +213,14 @@ export function lifeGather(state: GameState, id: string): GameState {
   if (item.kind === 'bell') {
     return {
       ...state,
-      life: { ...life, items, hasLostItem: true, playerX: item.x, playerY: item.y },
+      life: {
+        ...life,
+        items,
+        hasLostItem: true,
+        hintArrow: false,
+        playerX: item.x,
+        playerY: item.y,
+      },
     };
   }
 
@@ -312,6 +320,11 @@ export function lifePlaceFurniture(state: GameState, x: number, y: number): Game
 
 export function lifeCancelPlacing(state: GameState): GameState {
   return { ...state, life: { ...state.life, placing: null } };
+}
+
+/** DAY4 「ヒントを見る」: reveal a temporary arrow over the lost item. */
+export function lifeShowHint(state: GameState): GameState {
+  return { ...state, life: { ...state.life, hintArrow: true } };
 }
 
 export function lifeBuildStall(state: GameState): GameState {
@@ -414,7 +427,8 @@ function setupDay(life: LifeState, day: number): LifeState {
   let items = life.items;
   const shopUnlocked = life.shopUnlocked || day >= 3; // たぬきちの家具店 opens on DAY3
   if (day === 4) {
-    const spot = scatterSpot();
+    // Dropped near the red-roof house (the hint タマ gives).
+    const spot = { x: 18 + Math.random() * 8, y: 76 + Math.random() * 8 };
     items = [...items, { id: `item-${seq++}`, kind: 'bell', x: spot.x, y: spot.y }];
   } else if (day === 5) {
     const wood = [0, 1, 2].map(() => makeItem(seq++, 'wood'));
@@ -447,6 +461,7 @@ export function lifeAdvanceDay(state: GameState): GameState {
     time: NEXT_TIME[life.time],
     sale: false,
     event: null,
+    hintArrow: false,
   };
   let seq = next.seq;
   const addItem = (k: GatherKind) => {

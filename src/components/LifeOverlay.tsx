@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FurnitureKind, GameState, GatherKind, PolicyAction } from '@/types/game';
 import {
   DAY7_REPAY,
@@ -45,7 +45,18 @@ export default function LifeOverlay({
 }) {
   const [invOpen, setInvOpen] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [day4Elapsed, setDay4Elapsed] = useState(0);
   const life = state.life;
+
+  // DAY4: after ~25s of searching without finding the lost item, nudge harder.
+  const searching = life.active && life.day === 4 && !life.hasLostItem;
+  useEffect(() => {
+    if (!searching) return;
+    const start = Date.now();
+    const id = setInterval(() => setDay4Elapsed(Date.now() - start), 1000);
+    return () => clearInterval(id);
+  }, [searching]);
+
   if (!life.active) return null;
 
   // ---- Opening name-entry screen ----
@@ -160,6 +171,20 @@ export default function LifeOverlay({
               🖱️ 地面をクリックすると移動できるニャ
             </div>
           )}
+          {searching && day4Elapsed > 25000 && (
+            <div className="rounded-2xl border-4 border-rose-300 bg-white/95 px-4 py-2 text-sm font-black text-rose-700 shadow-lg">
+              🌲 木のそばでキラッと光ってるニャ！
+            </div>
+          )}
+          {searching && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'LIFE_SHOW_HINT' })}
+              className="pointer-events-auto btn-press rounded-2xl border-2 border-amber-400 bg-white/95 px-5 py-1.5 text-sm font-black text-amber-700 shadow transition hover:bg-amber-50"
+            >
+              💡 ヒントを見る
+            </button>
+          )}
           {life.day === 6 && !life.roadDone && (
             <button
               type="button"
@@ -238,7 +263,7 @@ export default function LifeOverlay({
               </DialogButton>
             </>
           ) : life.day === 4 ? (
-            <p>どこかに落とし物（🔔）をしたニャ…マップを探して拾ってきてニャ。</p>
+            <p>赤い屋根のおうちの近くで落とし物（🔔）をした気がするニャ…探して拾ってきてほしいニャ。</p>
           ) : (
             <p>こんにちはニャ！（親密度 {life.tamaIntimacy}）</p>
           )}

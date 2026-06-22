@@ -801,8 +801,16 @@ export function makeGatherable(kind: GatherKind): THREE.Group {
       g.add(cap);
     }
   } else if (kind === 'bell') {
-    // タマの落とし物: a little golden bell.
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 12), matte('#f2c14e'));
+    // タマの落とし物: a golden bell with a bright white outline so it pops.
+    const bodyGeo = new THREE.SphereGeometry(0.26, 16, 14);
+    const outline = new THREE.Mesh(
+      bodyGeo,
+      new THREE.MeshBasicMaterial({ color: '#ffffff', side: THREE.BackSide }),
+    );
+    outline.scale.set(1.28, 1.18, 1.28);
+    outline.position.y = 0.3;
+    g.add(outline);
+    const body = new THREE.Mesh(bodyGeo, matte('#f2c14e'));
     body.scale.set(1, 0.9, 1);
     body.position.y = 0.3;
     g.add(body);
@@ -812,12 +820,20 @@ export function makeGatherable(kind: GatherKind): THREE.Group {
     const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), ink());
     clapper.position.y = 0.08;
     g.add(clapper);
+    // Generous invisible click target so it's easy to grab.
+    const hit = new THREE.Mesh(
+      new THREE.SphereGeometry(0.7, 8, 8),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }),
+    );
+    hit.position.y = 0.3;
+    g.add(hit);
   } else {
     g.add(makeFlower(FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)]));
   }
 
   g.add(makeItemSparkle());
-  g.scale.setScalar(3.2); // oversized so the items are easy to spot + click
+  // Gatherables are oversized for easy spotting; the lost bell is bigger still.
+  g.scale.setScalar(kind === 'bell' ? 7 : 3.2);
   return g;
 }
 

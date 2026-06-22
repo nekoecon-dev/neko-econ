@@ -890,6 +890,31 @@ export default function Village3D({
     scene.add(visitorLayer);
     const visitorMeshes = new Map<string, THREE.Group>();
 
+    // DAY4 search aids: a faint search-zone ring near the red-roof house, and a
+    // bouncing arrow over the lost item (shown by the 「ヒントを見る」 button).
+    const searchCircle = new THREE.Mesh(
+      new THREE.RingGeometry(2.5, 8, 36),
+      new THREE.MeshBasicMaterial({
+        color: '#ffe14a',
+        transparent: true,
+        opacity: 0.22,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    searchCircle.rotation.x = -Math.PI / 2;
+    searchCircle.position.set(-11, 0.08, 13); // the red-roof house
+    searchCircle.visible = false;
+    scene.add(searchCircle);
+
+    const hintArrow = new THREE.Mesh(
+      new THREE.ConeGeometry(0.5, 1.2, 5),
+      new THREE.MeshBasicMaterial({ color: '#ff4d4d' }),
+    );
+    hintArrow.rotation.x = Math.PI; // point down
+    hintArrow.visible = false;
+    scene.add(hintArrow);
+
     // Dispose every geometry/material under a group.
     const disposeGroup = (g: THREE.Object3D) => {
       g.traverse((o) => {
@@ -1207,6 +1232,19 @@ export default function Village3D({
         for (const mesh of itemMeshes.values()) {
           mesh.rotation.y += dt * 1.2;
           mesh.position.y = 0.45 + Math.sin(t * 2 + mesh.position.x) * 0.18;
+        }
+
+        // DAY4 lost-item aids: search-zone ring + (on demand) a bouncing arrow.
+        const bell = life.items.find((i) => i.kind === 'bell');
+        searchCircle.visible = life.day === 4 && !!bell && !life.hasLostItem;
+        if (searchCircle.visible) {
+          const s = 1 + Math.sin(t * 2) * 0.04;
+          searchCircle.scale.set(s, s, s);
+        }
+        hintArrow.visible = life.hintArrow && !!bell;
+        if (hintArrow.visible && bell) {
+          const w = mapToWorld(bell.x, bell.y);
+          hintArrow.position.set(w.x, 2.6 + Math.sin(t * 4) * 0.35, w.z);
         }
 
         // Sync placed furniture (oversized; pops in with a sparkle glow).

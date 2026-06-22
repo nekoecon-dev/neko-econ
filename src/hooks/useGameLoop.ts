@@ -42,6 +42,7 @@ import {
   lifePlaceFurniture,
   lifeRepay,
   lifeSetName,
+  lifeShowHint,
 } from '@/lib/engine/life';
 import { clamp, round2 } from '@/lib/engine/math';
 import {
@@ -134,6 +135,8 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeGiveSoup(state);
     case 'LIFE_GIVE_LOST':
       return lifeGiveLost(state);
+    case 'LIFE_SHOW_HINT':
+      return lifeShowHint(state);
     case 'LIFE_BUILD_STALL':
       return lifeBuildStall(state);
     case 'LIFE_CONNECT_ROAD':
