@@ -236,6 +236,7 @@ export interface LifeState {
   loanUnlocked: boolean; // loan-repayment UI revealed (DAY7)
   tamaIntimacy: number; // タマ親密度 (DAY4)
   hasLostItem: boolean; // carrying タマ's lost item (DAY4)
+  hasMoved: boolean; // the player has walked at least once (DAY1 move hint)
   placing: FurnitureKind | null; // furniture awaiting a drop spot
   event: string | null; // latest 1日進める event toast
   notice: string | null; // big celebration / story-beat notification

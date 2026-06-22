@@ -42,8 +42,8 @@ test('life mode boots into the DAY1 campaign with a minimal HUD', async ({ page 
   await expect(page.getByText(/きのこを3つ集めよう/)).toBeVisible();
   await expect(page.getByText(/ニャル/).first()).toBeVisible();
 
-  // Economy UI is fully hidden.
-  await expect(page.getByText('NekoEcon')).toHaveCount(0);
+  // Economy UI is fully hidden (the "3D村" header badge is economy-mode only).
+  await expect(page.getByText('3D村')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '買う' })).toHaveCount(0);
   await expect(page.getByText('⚙️ 金利レバー')).toBeHidden();
   await expect(page.getByText('⚙️ 税率レバー')).toBeHidden();

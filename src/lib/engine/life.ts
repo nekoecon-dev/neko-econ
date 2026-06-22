@@ -140,6 +140,7 @@ export function lifeInactive(): LifeState {
     loanUnlocked: false,
     tamaIntimacy: 0,
     hasLostItem: false,
+    hasMoved: false,
     placing: null,
     event: null,
     notice: null,
@@ -154,7 +155,8 @@ export function lifeInitial(): LifeState {
   let seq = 0;
   const kinds: GatherKind[] = ['mushroom', 'mushroom', 'mushroom', 'mushroom', 'wood'];
   const items = kinds.map((k) => makeItem(seq++, k));
-  return { ...base, active: true, items, seq };
+  // Start just in front of the player's tent so DAY1 begins "stepping out of home".
+  return { ...base, active: true, items, seq, playerX: 33, playerY: 66 };
 }
 
 /** Confirm the hero's name (defaults to ニャオ), then show たぬきち's welcome. */
@@ -197,7 +199,7 @@ function makeShiro(): { cat: Cat; stock: StockShare } {
 
 // --- reducers ---------------------------------------------------------------
 export function lifeMove(state: GameState, x: number, y: number): GameState {
-  return { ...state, life: { ...state.life, playerX: x, playerY: y } };
+  return { ...state, life: { ...state.life, playerX: x, playerY: y, hasMoved: true } };
 }
 
 export function lifeGather(state: GameState, id: string): GameState {

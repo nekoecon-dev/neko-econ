@@ -18,6 +18,17 @@ import {
 const TIME_EMOJI = { morning: '🌅', day: '☀️', evening: '🌇' } as const;
 const GATHER_ORDER: GatherKind[] = ['mushroom', 'fish', 'wood', 'flower'];
 
+// Big "DAY N" splash subtitles shown at the start of each campaign day.
+const DAY_SUBTITLE: Record<number, string> = {
+  1: 'NekoEcon村へようこそ',
+  2: 'はじめてのスープ',
+  3: 'おうちを飾ろう',
+  4: 'タマの落し物',
+  5: 'ミケの屋台づくり',
+  6: '道をつなげよう',
+  7: 'はじめての返済',
+};
+
 /** Talking target, opened by clicking ミケ / タマ / たぬきち in the 3D scene. */
 export type LifeTalking = 'mike' | 'tama' | 'tanuki' | null;
 
@@ -85,6 +96,24 @@ export default function LifeOverlay({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] select-none">
+      {/* ---- Big "DAY N" splash (fade-in + sparkle, CSS auto-dismiss). Keyed by
+              the day so it replays once whenever the campaign day changes. ---- */}
+      {life.day <= 7 && (
+        <div
+          key={life.day}
+          className="pointer-events-none absolute inset-0 z-[63] flex items-center justify-center"
+        >
+          <div className="day-splash text-center">
+            <div className="text-7xl font-black tracking-wider text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.65)]">
+              ✨ DAY {life.day} ✨
+            </div>
+            <div className="mt-3 text-3xl font-black text-amber-200 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+              {DAY_SUBTITLE[life.day]}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---- Top-left HUD: cash / day / objective / inventory ---- */}
       <div className="pointer-events-auto absolute left-3 top-3 w-60 rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/95 p-3 shadow-xl">
         <div className="flex items-center justify-between">
@@ -124,6 +153,11 @@ export default function LifeOverlay({
           {life.event && (
             <div className="animate-pop rounded-2xl border-4 border-sky-300 bg-white/95 px-4 py-2 text-sm font-black text-sky-800 shadow-lg">
               {life.event}
+            </div>
+          )}
+          {life.day === 1 && !life.hasMoved && (
+            <div className="rounded-2xl border-4 border-emerald-300 bg-white/95 px-4 py-2 text-sm font-black text-emerald-800 shadow-lg">
+              🖱️ 地面をクリックすると移動できるニャ
             </div>
           )}
           {life.day === 6 && !life.roadDone && (

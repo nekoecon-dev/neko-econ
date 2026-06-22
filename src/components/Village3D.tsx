@@ -638,13 +638,16 @@ export default function Village3D({
     }
 
     // Player's dwelling (tent while in debt, house once paid off) + たぬきち
-    // banker NPC that shows the loan balance and opens the repayment popup.
+    // banker NPC that shows the loan balance and opens the repayment popup. Life
+    // mode pulls the home in closer to the (zoomed-in) centre.
+    const homeX = lifeBoot ? -9 : -20;
+    const homeZ = lifeBoot ? 9 : 8;
     const tent = makePlayerTent();
-    tent.position.set(-20, 0, 8);
+    tent.position.set(homeX, 0, homeZ);
     scene.add(tent);
     const playerHouse = makeHouse('#dc2626');
     playerHouse.scale.setScalar(0.8);
-    playerHouse.position.set(-20, 0, 8);
+    playerHouse.position.set(homeX, 0, homeZ);
     playerHouse.visible = false;
     scene.add(playerHouse);
 
@@ -840,8 +843,14 @@ export default function Village3D({
     // ---- Life mode: player avatar + gatherables + furniture + visitors -------
     const playerAvatar = makePlayerCat();
     {
-      const w = mapToWorld(stateRef.current.life.playerX, stateRef.current.life.playerY);
-      playerAvatar.position.set(w.x, 0, w.z);
+      // Start standing at the home/tent door, then walk to the DAY1 target spot
+      // (life.playerX/Y) — the avatar "steps out of home" at the start.
+      if (stateRef.current.life.active) {
+        playerAvatar.position.set(homeX, 0, homeZ);
+      } else {
+        const w = mapToWorld(stateRef.current.life.playerX, stateRef.current.life.playerY);
+        playerAvatar.position.set(w.x, 0, w.z);
+      }
     }
     playerAvatar.visible = stateRef.current.life.active;
     scene.add(playerAvatar);

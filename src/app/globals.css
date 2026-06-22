@@ -464,6 +464,26 @@ body {
   animation: neko-quake 0.28s linear infinite;
 }
 
+/* DAY-start splash: fade/zoom in, hold, then fade out */
+@keyframes neko-day-splash {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  18%,
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+.day-splash {
+  animation: neko-day-splash 2.6s ease-in-out forwards;
+}
+
 /* Tutorial: yellow blinking ring on the UI element the player should press */
 @keyframes neko-tutorial-pulse {
   0%,
