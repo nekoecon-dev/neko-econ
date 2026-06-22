@@ -308,7 +308,7 @@ export default function LifeOverlay({
           ) : life.day === 4 ? (
             <p>赤い屋根のおうちの近くで落とし物（🔔）をした気がするニャ…探して拾ってきてほしいニャ。</p>
           ) : (
-            <p>こんにちはニャ！（親密度 {life.tamaIntimacy}）</p>
+            <p>こんにちはニャ！（💗 親密度 Lv {life.intimacy['3'] ?? 1}）</p>
           )}
         </Dialog>
       )}

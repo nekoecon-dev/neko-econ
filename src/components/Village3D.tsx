@@ -85,6 +85,9 @@ interface CatRuntime {
   actionEl: HTMLElement;
   detailObj: CSS2DObject; // money/info card, shown only when the cat is clicked
   detailMoneyEl: HTMLElement;
+  heart: CSS2DObject; // 💗 shown briefly when this cat's intimacy rises
+  heartUntil: number;
+  lastIntimacy: number;
   lastLabel: string;
   lastMoney: number;
 }
@@ -870,6 +873,15 @@ export default function Village3D({
       const { obj: detailObj, moneyEl: detailMoneyEl } = makeCatDetail(cat.name);
       group.add(detailObj);
 
+      // 💗 shown briefly when this cat's 親密度 rises.
+      const heartEl = document.createElement('div');
+      heartEl.className = 'cat-heart';
+      heartEl.textContent = '💗';
+      const heart = new CSS2DObject(heartEl);
+      heart.position.set(0, 4.5, 0);
+      heart.visible = false;
+      group.add(heart);
+
       // A 💤 puff shown only while sleeping.
       const zzzEl = document.createElement('div');
       zzzEl.className = 'cat-zzz';
@@ -957,6 +969,9 @@ export default function Village3D({
         actionEl,
         detailObj,
         detailMoneyEl,
+        heart,
+        heartUntil: 0,
+        lastIntimacy: stateRef.current.life.intimacy[cat.id] ?? 1,
         lastLabel: '',
         lastMoney: Number.NaN,
       });
@@ -1866,6 +1881,14 @@ export default function Village3D({
         rt.zzz.visible = asleep;
         rt.biz.visible = cat.company !== null;
         rt.fish.visible = fishing;
+
+        // 💗 pops up for a couple seconds when this cat's 親密度 rises.
+        const intim = stateRef.current.life.intimacy[cat.id] ?? 1;
+        if (intim > rt.lastIntimacy) {
+          rt.heartUntil = nowMs + 2500;
+          rt.lastIntimacy = intim;
+        }
+        rt.heart.visible = nowMs < rt.heartUntil;
 
         // News-driven stock bubble: golden aura + blinking "💰 BUBBLE!" + countdown.
         const bub = stateRef.current.bubbles[cat.id];

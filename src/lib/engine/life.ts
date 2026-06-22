@@ -147,7 +147,8 @@ export function lifeInactive(): LifeState {
     roadDone: false,
     dailyIncome: 0,
     loanUnlocked: false,
-    tamaIntimacy: 0,
+    intimacy: {},
+    intimacyExplained: false,
     hasLostItem: false,
     hasMoved: false,
     hintArrow: false,
@@ -279,6 +280,10 @@ export function lifeGiveLost(state: GameState): GameState {
   const life = state.life;
   if (!life.hasLostItem) return state;
   const inventory = { ...life.inventory, flower: life.inventory.flower + 1 };
+  const tamaLevel = Math.min(5, (life.intimacy['3'] ?? 1) + 1); // タマ id '3'
+  const explain = life.intimacyExplained
+    ? ''
+    : '\n\n💡 親密度とは、猫たちとの仲良し度ニャ。上がると新しいお願い・プレゼント・特別な会話が増えるニャ。';
   return {
     ...state,
     player: { ...state.player, cash: round2(state.player.cash + DAY4_REWARD) },
@@ -287,10 +292,11 @@ export function lifeGiveLost(state: GameState): GameState {
         ...life,
         hasLostItem: false,
         inventory,
-        tamaIntimacy: life.tamaIntimacy + 2,
+        intimacy: { ...life.intimacy, '3': tamaLevel },
+        intimacyExplained: true,
         dayDone: life.day === 4 ? true : life.dayDone,
         reward: life.day === 4 ? DAY4_REWARD : life.reward,
-        notice: `🐈 タマ「ありがとうニャ！珍しいお花と +${DAY4_REWARD}ニャル をあげるニャ🌸」（親密度+2）`,
+        notice: `🐈 タマ「ありがとうニャ！珍しいお花と +${DAY4_REWARD}ニャル をあげるニャ🌸」\n\n💗 タマとの親密度が上がった！（Lv ${tamaLevel}）${explain}`,
       },
       'soup',
       60,

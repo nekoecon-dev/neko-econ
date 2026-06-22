@@ -238,7 +238,8 @@ export interface LifeState {
   roadDone: boolean; // 屋台↔鍋 road connected (DAY6)
   dailyIncome: number; // CC paid each 「1日進める」 (stall / road)
   loanUnlocked: boolean; // loan-repayment UI revealed (DAY7)
-  tamaIntimacy: number; // タマ親密度 (DAY4)
+  intimacy: Record<string, number>; // catId -> 親密度 level 1..5 (missing = 1)
+  intimacyExplained: boolean; // the first-time 親密度 popup has been shown
   hasLostItem: boolean; // carrying タマ's lost item (DAY4)
   hasMoved: boolean; // the player has walked at least once (DAY1 move hint)
   hintArrow: boolean; // show the 3D arrow pointing at the lost item (DAY4 hint)

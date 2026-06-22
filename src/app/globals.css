@@ -196,6 +196,21 @@ body {
   font-size: 18px;
   animation: neko-zzz 1.6s ease-in-out infinite;
 }
+.cat-heart {
+  pointer-events: none;
+  font-size: 26px;
+  filter: drop-shadow(0 0 6px rgba(255, 120, 170, 0.8));
+  animation: neko-heart 0.8s ease-in-out infinite;
+}
+@keyframes neko-heart {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.2);
+  }
+}
 .cat-biz {
   pointer-events: none;
   font-size: 17px;
