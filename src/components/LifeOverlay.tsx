@@ -447,11 +447,20 @@ function TentInterior({
         <button
           type="button"
           onClick={() => dispatch({ type: 'LIFE_EXIT_TENT' })}
-          className="btn-press rounded-2xl border-2 border-amber-200 bg-amber-500 px-4 py-2 text-sm font-black text-white transition hover:bg-amber-600"
+          className={`btn-press rounded-2xl border-2 border-amber-200 bg-amber-500 px-4 py-2 text-sm font-black text-white transition hover:bg-amber-600 ${
+            life.day === 3 && !life.dayDone && life.interior.length > 0 ? 'tutorial-cta' : ''
+          }`}
         >
           🚪 外に出る
         </button>
       </div>
+      {life.day === 3 && !life.dayDone && (
+        <div className="mt-2 rounded-xl bg-amber-100/90 px-3 py-1.5 text-center text-xs font-black text-amber-800">
+          {life.interior.length > 0
+            ? '✅ 家具を置けたニャ！「外に出る」で確認しよう'
+            : '🪑 持っている家具を選んで、床に置いてみよう'}
+        </div>
+      )}
 
       {/* Room floor (click to place the selected furniture) */}
       <div

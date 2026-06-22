@@ -309,12 +309,30 @@ export function lifeBuyFurniture(state: GameState, kind: FurnitureKind): GameSta
   };
 }
 
-/** Enter / leave the tent-interior screen. */
+/** Enter the tent-interior screen (entering alone never completes a day). */
 export function lifeEnterTent(state: GameState): GameState {
   return { ...state, life: { ...state.life, inside: true } };
 }
+
+/**
+ * Leave the tent. DAY3 completes here — only once at least one piece of
+ * furniture has actually been placed inside (buy → enter → decorate → 確認).
+ */
 export function lifeExitTent(state: GameState): GameState {
-  return { ...state, life: { ...state.life, inside: false } };
+  const life = state.life;
+  if (life.day === 3 && !life.dayDone && life.interior.length > 0) {
+    return {
+      ...state,
+      life: {
+        ...life,
+        inside: false,
+        dayDone: true,
+        notice:
+          '🛋️ おうちが少し楽しくなったニャ！\n\n集めて、売って、手に入れたニャルで家具を買えたニャ。お金は貯めるだけじゃなく、暮らしを良くするためにも使えるニャ。',
+      },
+    };
+  }
+  return { ...state, life: { ...life, inside: false } };
 }
 
 /** Place an owned piece of furniture inside the tent (persists in `interior`). */
@@ -324,20 +342,11 @@ export function lifePlaceInterior(state: GameState, kind: FurnitureKind, x: numb
   if (idx < 0) return state;
   const ownedFurniture = life.ownedFurniture.filter((_, i) => i !== idx);
   const piece = { id: `furn-${life.seq + 1}`, kind, x, y };
+  // Placing alone does NOT clear DAY3 — the player confirms by stepping back
+  // outside (see lifeExitTent), so a stray tent visit can't auto-complete it.
   return {
     ...state,
-    life: {
-      ...life,
-      seq: life.seq + 1,
-      ownedFurniture,
-      interior: [...life.interior, piece],
-      // DAY3 completes once something is placed inside (commit 5 moves this to 退室時).
-      dayDone: life.day === 3 ? true : life.dayDone,
-      notice:
-        life.day === 3 && life.interior.length === 0
-          ? '🛋️ おうちが少し楽しくなったニャ！\n\n集めて、売って、手に入れたニャルで家具を買えたニャ。お金は貯めるだけじゃなく、暮らしを良くするためにも使えるニャ。'
-          : life.notice,
-    },
+    life: { ...life, seq: life.seq + 1, ownedFurniture, interior: [...life.interior, piece] },
   };
 }
 
