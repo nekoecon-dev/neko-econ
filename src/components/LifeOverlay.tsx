@@ -21,13 +21,23 @@ const GATHER_ORDER: GatherKind[] = ['mushroom', 'fish', 'wood', 'flower'];
 // Big "DAY N" splash subtitles shown at the start of each campaign day.
 const DAY_SUBTITLE: Record<number, string> = {
   1: 'NekoEcon村へようこそ',
-  2: 'はじめてのスープ',
+  2: 'はじめてのスープ作り',
   3: 'おうちを飾ろう',
   4: 'タマの落し物',
   5: 'ミケの屋台づくり',
   6: '道をつなげよう',
   7: 'はじめての返済',
 };
+
+// Sparkle positions (%), scattered around the DAY splash text.
+const SPLASH_SPARKLES = [
+  { x: 14, y: 26, d: 0 },
+  { x: 84, y: 22, d: 0.3 },
+  { x: 24, y: 70, d: 0.6 },
+  { x: 78, y: 66, d: 0.15 },
+  { x: 50, y: 16, d: 0.45 },
+  { x: 60, y: 80, d: 0.75 },
+];
 
 /** Talking target, opened by clicking ミケ / タマ / たぬきち in the 3D scene. */
 export type LifeTalking = 'mike' | 'tama' | 'tanuki' | null;
@@ -134,8 +144,18 @@ export default function LifeOverlay({
       {life.day <= 7 && (
         <div
           key={life.day}
-          className="pointer-events-none absolute inset-0 z-[63] flex items-center justify-center"
+          className="pointer-events-none absolute inset-0 z-[63] flex items-center justify-center overflow-hidden"
         >
+          {/* twinkling sparkles around the title */}
+          {SPLASH_SPARKLES.map((s, i) => (
+            <span
+              key={i}
+              className="splash-sparkle absolute text-3xl"
+              style={{ left: `${s.x}%`, top: `${s.y}%`, animationDelay: `${s.d}s` }}
+            >
+              ✨
+            </span>
+          ))}
           <div className="day-splash text-center">
             <div className="text-7xl font-black tracking-wider text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.65)]">
               ✨ DAY {life.day} ✨

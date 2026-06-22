@@ -598,6 +598,23 @@ body {
 .day-splash {
   animation: neko-day-splash 2.6s ease-in-out forwards;
 }
+/* Twinkling sparkles scattered around the DAY splash */
+@keyframes neko-splash-sparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5) rotate(0deg);
+  }
+  35%,
+  65% {
+    opacity: 1;
+    transform: scale(1.25) rotate(25deg);
+  }
+}
+.splash-sparkle {
+  animation: neko-splash-sparkle 2.4s ease-in-out forwards;
+  filter: drop-shadow(0 0 6px rgba(255, 240, 150, 0.9));
+}
 
 /* Tutorial: yellow blinking ring on the UI element the player should press */
 @keyframes neko-tutorial-pulse {
