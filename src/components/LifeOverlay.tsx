@@ -193,9 +193,11 @@ export default function LifeOverlay({
               🖱️ 地面をクリックすると移動できるニャ
             </div>
           )}
-          {searching && day4Elapsed > 25000 && (
+          {searching && day4Elapsed > 15000 && (
             <div className="rounded-2xl border-4 border-rose-300 bg-white/95 px-4 py-2 text-sm font-black text-rose-700 shadow-lg">
-              🌲 木のそばでキラッと光ってるニャ！
+              {day4Elapsed > 30000
+                ? '🔦 光の柱が立っているところニャ！'
+                : '🌲 赤い屋根の家のそば、木の近くでキラッと光ってるニャ！'}
             </div>
           )}
           {needTanukiHint && day3Elapsed > 10000 && (

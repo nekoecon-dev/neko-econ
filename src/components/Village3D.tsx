@@ -1030,6 +1030,22 @@ export default function Village3D({
     hintArrow.visible = false;
     scene.add(hintArrow);
 
+    // Beam of light over the lost item (DAY4, shown after 30s of not finding it).
+    const lostPillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.7, 0.7, 16, 16, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: '#fff27a',
+        transparent: true,
+        opacity: 0.32,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    lostPillar.position.y = 8;
+    lostPillar.visible = false;
+    scene.add(lostPillar);
+
     // DAY3 furniture-placement guide ring (near the player's home/tent).
     const placeCircle = new THREE.Mesh(
       new THREE.RingGeometry(0.6, 4, 36),
@@ -1063,9 +1079,13 @@ export default function Village3D({
     // Camera pan toward たぬきち at the start of DAY3, plus a sparkle emitter.
     const tanukiLook = new THREE.Vector3(tanukiX, 1.5, tanukiZ);
     const effTarget = new THREE.Vector3();
+    const panTarget = new THREE.Vector3(tanukiX, 1.5, tanukiZ);
+    const guideVec = new THREE.Vector3();
     let lastSeenDay = stateRef.current.life.day;
     let panUntil = 0;
     let lastTanukiSparkle = 0;
+    let day4StartMs = 0;
+    let lastHintArrow = false;
 
     // ---- Camera controls (life mode only) ----
     const onWheel = (e: WheelEvent) => {
@@ -1429,20 +1449,35 @@ export default function Village3D({
       // ---- Life mode: avatar + items + furniture + visitors + effects --------
       playerAvatar.visible = life.active;
       if (life.active) {
-        // Camera pan toward たぬきち when DAY3 begins (after the splash), then
-        // ease back — makes "たぬきちはあそこだ" obvious within a couple seconds.
+        const bell = life.items.find((i) => i.kind === 'bell');
+        const day4Searching = life.day === 4 && !!bell && !life.hasLostItem;
+        const day3ToShop = life.day === 3 && life.furniture.length === 0;
+
+        // Day transitions: pan to たぬきち on DAY3, stamp the DAY4 search start.
         if (life.day !== lastSeenDay) {
-          if (life.day === 3) panUntil = nowMs + 2600;
+          if (life.day === 3) {
+            panTarget.copy(tanukiLook);
+            panUntil = nowMs + 2600;
+          }
+          if (life.day === 4) day4StartMs = nowMs;
           lastSeenDay = life.day;
         }
+        // 「ヒントを見る」 → pan the camera over to the lost item.
+        if (life.hintArrow && !lastHintArrow && bell) {
+          const w = mapToWorld(bell.x, bell.y);
+          panTarget.set(w.x, 1.5, w.z);
+          panUntil = nowMs + 2200;
+        }
+        lastHintArrow = life.hintArrow;
+
         effTarget.copy(userGoal);
-        if (nowMs < panUntil) effTarget.lerp(tanukiLook, 0.7);
+        if (nowMs < panUntil) effTarget.lerp(panTarget, 0.7);
         orbitTarget.lerp(effTarget, Math.min(1, dt * 2.2));
         camAz += (camAzGoal - camAz) * Math.min(1, dt * 6); // ease Q/E/drag rotation
         applyCamera();
 
         // Sparkles around たぬきち during the DAY3 「店へ」 step.
-        if (life.day === 3 && life.furniture.length === 0 && nowMs - lastTanukiSparkle > 380) {
+        if (day3ToShop && nowMs - lastTanukiSparkle > 380) {
           lastTanukiSparkle = nowMs;
           spawnSparkle(tanukiX + (Math.random() - 0.5) * 2.2, tanukiZ + (Math.random() - 0.5) * 2.2);
         }
@@ -1450,9 +1485,15 @@ export default function Village3D({
         // DAY3 furniture-placement guide ring while carrying a piece.
         placeCircle.visible = life.placing !== null;
 
-        // Off-screen guide arrow pointing at たぬきち during the DAY3 「店へ」 step.
-        if (life.day === 3 && life.furniture.length === 0) {
-          const v = tanukiLook.clone().project(camera);
+        // Off-screen guide arrow: points at たぬきち (DAY3) or the lost item (DAY4).
+        let guide: THREE.Vector3 | null = null;
+        if (day3ToShop) guide = tanukiLook;
+        else if (day4Searching && bell) {
+          const w = mapToWorld(bell.x, bell.y);
+          guide = guideVec.set(w.x, 1, w.z);
+        }
+        if (guide) {
+          const v = guide.clone().project(camera);
           const onScreen = v.z < 1 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1;
           if (onScreen) {
             edgeArrow.style.display = 'none';
@@ -1500,9 +1541,9 @@ export default function Village3D({
           mesh.position.y = 0.45 + Math.sin(t * 2 + mesh.position.x) * 0.18;
         }
 
-        // DAY4 lost-item aids: search-zone ring + (on demand) a bouncing arrow.
-        const bell = life.items.find((i) => i.kind === 'bell');
-        searchCircle.visible = life.day === 4 && !!bell && !life.hasLostItem;
+        // DAY4 lost-item aids: search-zone ring, a bouncing arrow (on demand),
+        // and after 30s of searching, a beam of light over the item.
+        searchCircle.visible = day4Searching;
         if (searchCircle.visible) {
           const s = 1 + Math.sin(t * 2) * 0.04;
           searchCircle.scale.set(s, s, s);
@@ -1511,6 +1552,12 @@ export default function Village3D({
         if (hintArrow.visible && bell) {
           const w = mapToWorld(bell.x, bell.y);
           hintArrow.position.set(w.x, 2.6 + Math.sin(t * 4) * 0.35, w.z);
+        }
+        lostPillar.visible = day4Searching && nowMs - day4StartMs > 30000;
+        if (lostPillar.visible && bell) {
+          const w = mapToWorld(bell.x, bell.y);
+          lostPillar.position.set(w.x, 8, w.z);
+          (lostPillar.material as THREE.MeshBasicMaterial).opacity = 0.28 + Math.sin(t * 3) * 0.12;
         }
 
         // Sync placed furniture (oversized; pops in with a sparkle glow).
