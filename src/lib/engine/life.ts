@@ -90,7 +90,7 @@ const DAY_INTRO: Record<number, string> = {
   3: '🦝 たぬきち「家具店を開けたニャ。テントを飾るといいニャ」',
   4: '🐈 タマ「落とし物をしたニャ…広場のあたりの草地で落とした気がするニャ…」',
   5: '🐱 ミケ「スープ屋を開きたいけど、木材とお金が足りないニャ」',
-  6: '🐱 ミケ「屋台とスープ鍋を道でつなぐと、もっと売れるニャ」',
+  6: '🦝 たぬきち「道を作るにはお金がかかるニャ。今回は村からインフラ補助金30ニャルが出るニャ」',
   7: '🦝 たぬきち「そろそろテント代を少し返してほしいニャ」',
 };
 
@@ -172,6 +172,8 @@ export function lifeInactive(): LifeState {
     shopOpen: false,
     shopUnlocked: false,
     roadDone: false,
+    roadBudget: 0,
+    infraExplained: false,
     dailyIncome: 0,
     lendDays: 0,
     loanUnlocked: false,
@@ -548,28 +550,67 @@ export function lifeConnectRoad(state: GameState): GameState {
 }
 
 export const LIFE_ROAD_COST = 5; // ニャル per 土の道 tile in life mode (DAY6)
+export const ROAD_SUBSIDY = 30; // 村のインフラ補助金 granted at the start of DAY6
 
 // ミケの屋台 ≈ map (38,62) → grid (-2,2); スープ鍋 is the central pot at grid
 // (0,0). (Derived from mapToWorld/TILE; hardcoded so the engine stays free of
 // the THREE-importing builders module.)
 const SHOP_GRID = { gx: -2, gz: 2 };
 const POT_GRID = { gx: 0, gz: 0 };
-const ROAD_NEAR = 2; // Chebyshev tiles counted as 屋台/鍋「周辺」
-const ROAD_NEED = 3; // tiles near 屋台 or 鍋 required to connect them
+
+type Cell = { gx: number; gz: number };
+const cheb = (a: Cell, b: Cell) => Math.max(Math.abs(a.gx - b.gx), Math.abs(a.gz - b.gz));
 
 /**
- * DAY6 mission: 「ミケの屋台とスープ鍋を道でつなごう」. Completes once at least
- * ROAD_NEED tiles sit around the 屋台 or the 鍋. On clear it speeds the cats up
- * (handled in Village3D via roadDone), lifts the 屋台's daily takings by
- * ROAD_INCOME, and raises the village's にぎわい — an infrastructure investment.
+ * BFS over the laid road tiles: is there a connected run of road (8-neighbour)
+ * that touches both the 屋台 entrance and the 鍋 entrance (Chebyshev ≤ 1)?
+ */
+export function roadsConnect(roads: Cell[], from: Cell, to: Cell): boolean {
+  const set = new Set(roads.map((r) => `${r.gx},${r.gz}`));
+  const starts = roads.filter((r) => cheb(r, from) <= 1);
+  if (starts.length === 0) return false;
+  const seen = new Set<string>();
+  const queue: Cell[] = [];
+  for (const s of starts) {
+    const k = `${s.gx},${s.gz}`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      queue.push(s);
+    }
+  }
+  while (queue.length > 0) {
+    const cur = queue.shift() as Cell;
+    if (cheb(cur, to) <= 1) return true;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        if (dx === 0 && dz === 0) continue;
+        const nk = `${cur.gx + dx},${cur.gz + dz}`;
+        if (set.has(nk) && !seen.has(nk)) {
+          seen.add(nk);
+          queue.push({ gx: cur.gx + dx, gz: cur.gz + dz });
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/** Are the 屋台 and スープ鍋 currently joined by a continuous road? */
+export function lifeRoadConnected(roads: Cell[]): boolean {
+  return roadsConnect(roads, SHOP_GRID, POT_GRID);
+}
+
+/**
+ * DAY6 mission: 「ミケの屋台とスープ鍋を道でつなごう」. Clears once a *continuous*
+ * road actually links the 屋台 and the 鍋 (BFS, not a loose tile count). On clear
+ * it speeds the cats up (Village3D via roadDone), lifts the 屋台's daily takings
+ * by ROAD_INCOME, and raises the village's にぎわい — an infrastructure investment.
+ * (commit 2 layers the arrival 演出 / bonuses on top.)
  */
 function judgeDay6Road(state: GameState): GameState {
   const life = state.life;
   if (life.day !== 6 || life.roadDone) return state;
-  const near = (r: { gx: number; gz: number }, c: { gx: number; gz: number }) =>
-    Math.max(Math.abs(r.gx - c.gx), Math.abs(r.gz - c.gz)) <= ROAD_NEAR;
-  const connecting = state.roads.filter((r) => near(r, SHOP_GRID) || near(r, POT_GRID)).length;
-  if (connecting < ROAD_NEED) return state;
+  if (!lifeRoadConnected(state.roads)) return state;
   return {
     ...state,
     life: {
@@ -585,15 +626,31 @@ function judgeDay6Road(state: GameState): GameState {
   };
 }
 
-/** Lay one 土の道 tile in life mode (5ニャル). No-op if unaffordable / paved. */
+/**
+ * Lay one 土の道 tile (5ニャル). Pays from the 村のインフラ補助金 (roadBudget)
+ * first, then from personal cash. No-op if both are exhausted, or if paved.
+ */
 export function lifeLayRoad(state: GameState, gx: number, gz: number): GameState {
-  if (state.player.cash < LIFE_ROAD_COST) return state;
+  const life = state.life;
+  const fromBudget = life.roadBudget >= LIFE_ROAD_COST;
+  if (!fromBudget && state.player.cash < LIFE_ROAD_COST) return state;
   const key = `${gx},${gz}`;
   if (state.roads.some((r) => `${r.gx},${r.gz}` === key)) return state;
+  const nextLife = { ...life };
+  let cash = state.player.cash;
+  if (fromBudget) nextLife.roadBudget = life.roadBudget - LIFE_ROAD_COST;
+  else cash = round2(cash - LIFE_ROAD_COST);
+  // First road of DAY6 teaches what 公共インフラ is (once).
+  if (life.day === 6 && !life.infraExplained) {
+    nextLife.infraExplained = true;
+    nextLife.notice =
+      '💡 公共インフラとは、みんなが使う道や橋のことニャ。道ができると村の商売が元気になるニャ';
+  }
   return judgeDay6Road({
     ...state,
-    player: { ...state.player, cash: round2(state.player.cash - LIFE_ROAD_COST) },
+    player: { ...state.player, cash },
     roads: [...state.roads, { gx, gz }],
+    life: nextLife,
   });
 }
 
@@ -700,7 +757,9 @@ function setupDay(life: LifeState, day: number): LifeState {
     const wood = [0, 1, 2].map(() => makeItem(seq++, 'wood'));
     items = [...items, ...wood];
   }
-  return { ...life, seq, items, shopUnlocked, notice: DAY_INTRO[day] ?? life.notice };
+  // DAY6: hand out the 村のインフラ補助金 so the first roads are "village funded".
+  const roadBudget = day === 6 ? life.roadBudget + ROAD_SUBSIDY : life.roadBudget;
+  return { ...life, seq, items, shopUnlocked, roadBudget, notice: DAY_INTRO[day] ?? life.notice };
 }
 
 /**

@@ -1073,6 +1073,59 @@ export default function Village3D({
     roadGrid.visible = false;
     scene.add(roadGrid);
 
+    // DAY6 guide: a faint dashed line from ミケの屋台 (map 38,62) to スープ鍋
+    // (map 50,50) plus pulsing rings on the two entrance cells, shown until the
+    // road actually connects them.
+    const guideGroup = new THREE.Group();
+    scene.add(guideGroup);
+    {
+      const shopW = mapToWorld(38, 62);
+      const potW = mapToWorld(50, 50);
+      const lineMat = new THREE.LineDashedMaterial({
+        color: 0xffe14a,
+        dashSize: 0.5,
+        gapSize: 0.4,
+        transparent: true,
+        opacity: 0.6,
+      });
+      const guideLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(shopW.x, 0.14, shopW.z),
+          new THREE.Vector3(potW.x, 0.14, potW.z),
+        ]),
+        lineMat,
+      );
+      guideLine.computeLineDistances();
+      guideGroup.add(guideLine);
+      const markers = [shopW, potW].map((w) => {
+        const m = new THREE.Mesh(
+          new THREE.RingGeometry(0.8, 1.3, 28),
+          new THREE.MeshBasicMaterial({
+            color: 0xffe14a,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          }),
+        );
+        m.rotation.x = -Math.PI / 2;
+        m.position.set(w.x, 0.1, w.z);
+        guideGroup.add(m);
+        return m;
+      });
+      updaters.push(() => {
+        const s = stateRef.current.life;
+        const show = s.active && s.day === 6 && !s.roadDone;
+        guideGroup.visible = show;
+        if (show) {
+          const tt = Date.now() / 1000;
+          lineMat.opacity = 0.4 + Math.sin(tt * 3) * 0.25;
+          const sc = 1 + Math.sin(tt * 3) * 0.18;
+          for (const m of markers) m.scale.set(sc, sc, sc);
+        }
+      });
+    }
+
     // ---- Life mode: player avatar + gatherables + furniture + visitors -------
     const playerAvatar = makePlayerCat();
     {

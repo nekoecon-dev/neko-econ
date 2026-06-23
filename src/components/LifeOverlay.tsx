@@ -10,6 +10,7 @@ import {
   gatherName,
   LIFE_ROAD_COST,
   lifeObjective,
+  lifeRoadConnected,
   SHOP_FURNITURE,
   SOUP_NEED,
   STALL_COST,
@@ -292,9 +293,25 @@ export default function LifeOverlay({
           {life.active && life.day >= 6 && (
             roadMode ? (
               <div className="pointer-events-auto flex flex-col items-center gap-1.5">
-                <div className="rounded-2xl border-2 border-amber-300 bg-white/95 px-4 py-1.5 text-xs font-black text-amber-800 shadow">
+                <div className="rounded-2xl border-2 border-amber-300 bg-[#fffdf7]/95 px-4 py-1.5 text-center text-xs font-black text-amber-900 shadow">
                   🖱️ マップをクリック／ドラッグして道をつくるニャ（{LIFE_ROAD_COST}ニャル/マス）
+                  <br />
+                  🏛️ 道路予算：{life.roadBudget}ニャル
+                  {life.roadBudget === 0 && <span className="text-amber-700">（使い切ったら所持金から払うニャ）</span>}
                 </div>
+                {life.day === 6 && !life.roadDone && (
+                  <div
+                    className={`rounded-2xl border-2 px-4 py-1 text-xs font-black shadow ${
+                      lifeRoadConnected(state.roads)
+                        ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                        : 'border-rose-300 bg-rose-50 text-rose-700'
+                    }`}
+                  >
+                    {lifeRoadConnected(state.roads)
+                      ? '✅ 屋台とスープ鍋がつながったニャ！'
+                      : '❌ まだ屋台とスープ鍋がつながっていないニャ'}
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

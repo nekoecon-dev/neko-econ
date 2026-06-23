@@ -254,6 +254,8 @@ export interface LifeState {
   shopOpen: boolean; // ミケの屋台 has been built (DAY5)
   shopUnlocked: boolean; // たぬきちの家具店 is open (DAY3)
   roadDone: boolean; // 屋台↔鍋 road connected (DAY6)
+  roadBudget: number; // 村のインフラ補助金 — spent on roads before personal cash (DAY6)
+  infraExplained: boolean; // the first-time 公共インフラ explanation has been shown
   dailyIncome: number; // CC paid each 「1日進める」 (stall / road)
   lendDays: number; // remaining days of ミケへの貸付 repayment (DAY5 「貸す」, 0 = none)
   loanUnlocked: boolean; // loan-repayment UI revealed (DAY7)
