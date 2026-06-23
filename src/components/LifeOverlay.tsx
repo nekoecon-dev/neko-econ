@@ -331,6 +331,16 @@ export default function LifeOverlay({
         </div>
       )}
 
+      {/* ---- DAY7: 新住民シロ arrival banner (non-dimming, over the 3D pan) ---- */}
+      {fest === 'shiro' && (
+        <div className="pointer-events-none absolute inset-x-0 top-24 z-[60] flex justify-center px-4">
+          <div className="animate-pop rounded-3xl border-4 border-sky-300 bg-white/95 px-6 py-3 text-center shadow-2xl">
+            <div className="text-2xl font-black text-sky-700">🐱 新住民シロが引っ越してきたニャ！</div>
+            <div className="mt-1 text-sm font-bold text-sky-500">あたらしいなかまが村にやってきたニャ〜</div>
+          </div>
+        </div>
+      )}
+
       {/* ---- Tent interior screen ---- */}
       {life.inside && <TentInterior life={life} dispatch={dispatch} />}
 

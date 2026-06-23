@@ -1129,6 +1129,7 @@ export default function Village3D({
     const panTarget = new THREE.Vector3(tanukiX, 1.5, tanukiZ);
     const guideVec = new THREE.Vector3();
     let lastSeenDay = stateRef.current.life.day;
+    let lastFestPhase: GameState['life']['festivalPhase'] = stateRef.current.life.festivalPhase;
     let panUntil = 0;
     let lastTanukiSparkle = 0;
     let day4StartMs = 0;
@@ -1575,6 +1576,18 @@ export default function Village3D({
           }
           if (life.day === 4) day4StartMs = nowMs;
           lastSeenDay = life.day;
+        }
+        // DAY7 シロ arrival: gently pan the camera over to the new resident.
+        if (life.festivalPhase !== lastFestPhase) {
+          if (life.festivalPhase === 'shiro') {
+            const shiro = stateRef.current.cats.find((c) => c.name === 'シロ');
+            if (shiro) {
+              const w = mapToWorld(shiro.x, shiro.y);
+              panTarget.set(w.x, 1.2, w.z);
+              panUntil = nowMs + 3400;
+            }
+          }
+          lastFestPhase = life.festivalPhase;
         }
         // 「ヒントを見る」 → pan the camera over to the lost item.
         if (life.hintArrow && !lastHintArrow && bell) {
