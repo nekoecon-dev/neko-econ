@@ -469,6 +469,26 @@ export default function LifeOverlay({
         <Dialog onClose={close} avatar="🦝" name="たぬきち" tone="sky">
           {!life.shopUnlocked ? (
             <p>家具店はDAY3で開くニャ。それまで待っててほしいニャ。</p>
+          ) : life.day === 7 && !life.dayDone && cash < DAY7_REPAY ? (
+            <>
+              <p>ニャルが足りないみたいニャ。どうするニャ？</p>
+              <p className="mt-1 text-sm font-bold text-amber-700">所持金 {cash} / {DAY7_REPAY}ニャル</p>
+              <DialogButton onClick={() => { dispatch({ type: 'LIFE_RESCUE_WORK' }); close(); }}>
+                💪 もう1日働いてから返す（採集＋お駄賃）
+              </DialogButton>
+              <DialogButton
+                disabled={!life.shopOpen}
+                onClick={() => { dispatch({ type: 'LIFE_RESCUE_BORROW' }); close(); }}
+              >
+                🐱 ミケから売上を前借りする{life.shopOpen ? '' : '（屋台が必要ニャ）'}
+              </DialogButton>
+              <DialogButton
+                disabled={life.rescueUsed}
+                onClick={() => { dispatch({ type: 'LIFE_RESCUE_WAIT' }); close(); }}
+              >
+                ⏳ 返済を少し待ってもらう{life.rescueUsed ? '（使用済み）' : '（次回+50ニャル）'}
+              </DialogButton>
+            </>
           ) : life.day === 7 && !life.dayDone ? (
             <>
               <p>そろそろテント代を少し返してほしいニャ。{DAY7_REPAY}ニャルで大丈夫ニャ。</p>

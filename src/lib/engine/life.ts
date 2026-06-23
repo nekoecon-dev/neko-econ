@@ -177,6 +177,7 @@ export function lifeInactive(): LifeState {
     dailyIncome: 0,
     lendDays: 0,
     loanUnlocked: false,
+    rescueUsed: false,
     intimacy: {},
     intimacyExplained: false,
     hasLostItem: false,
@@ -657,6 +658,61 @@ export function lifeRoadNotice(state: GameState): GameState {
     life: {
       ...life,
       notice: `🛤️ 道がつながって、ミケの屋台に猫が来やすくなったニャ。便利になると、商売も伸びるニャ！\n\n💰 物流改善ボーナス +${LOGISTICS_BONUS}ニャル ／ 毎日配当 +${ROAD_INCOME + ROAD_DIVIDEND}ニャル ／ にぎわい+1`,
+    },
+  };
+}
+
+// --- DAY7 詰み防止：救済イベント -------------------------------------------
+const RESCUE_WAGE = 100; // ニャル earned by 「もう1日働く」
+const RESCUE_WAIT_PENALTY = 50; // added to the loan when deferring repayment
+
+/** DAY7 rescue ①「もう1日働いてから返す」: forage more + earn a day's wage. */
+export function lifeRescueWork(state: GameState): GameState {
+  const life = state.life;
+  let seq = life.seq;
+  const fresh = (['fish', 'mushroom', 'fish', 'flower', 'mushroom', 'wood'] as GatherKind[]).map(
+    (k) => makeItem(seq++, k),
+  );
+  return {
+    ...state,
+    player: { ...state.player, cash: round2(state.player.cash + RESCUE_WAGE) },
+    life: {
+      ...life,
+      seq,
+      items: [...life.items, ...fresh],
+      notice: `🌅 もう1日がんばって働いたニャ！採集アイテムが増えて、お駄賃${RESCUE_WAGE}ニャルももらったニャ。集めて売れば返済できるニャ`,
+    },
+  };
+}
+
+/** DAY7 rescue ②「ミケから売上を前借りする」: only if the 屋台 is open; tops cash up to the repayment. */
+export function lifeRescueBorrow(state: GameState): GameState {
+  const life = state.life;
+  if (!life.shopOpen || state.player.cash >= DAY7_REPAY) return state;
+  return {
+    ...state,
+    player: { ...state.player, cash: DAY7_REPAY },
+    life: {
+      ...life,
+      notice: `🐱 ミケ「屋台の売上から前借りしていいニャ！」\n\n不足分を補って${DAY7_REPAY}ニャルになったニャ。たぬきちに返済できるニャ`,
+    },
+  };
+}
+
+/** DAY7 rescue ③「返済を少し待ってもらう」: once only — defer (loan +50) and move on. */
+export function lifeRescueWait(state: GameState): GameState {
+  const life = state.life;
+  if (life.rescueUsed) return state;
+  return {
+    ...state,
+    player: { ...state.player, loan: round2(state.player.loan + RESCUE_WAIT_PENALTY) },
+    life: {
+      ...life,
+      rescueUsed: true,
+      dayDone: true,
+      reward: 0,
+      loanUnlocked: true,
+      notice: `🦝 たぬきち「今回は待つニャ。そのかわり次の返済は+${RESCUE_WAIT_PENALTY}ニャルニャ」\n\n返済をあとに回したニャ。テント代はあとでゆっくり返せばいいニャ`,
     },
   };
 }

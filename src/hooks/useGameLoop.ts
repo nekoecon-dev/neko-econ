@@ -47,6 +47,9 @@ import {
   lifeRemoveInterior,
   lifeRemoveRoad,
   lifeRepay,
+  lifeRescueBorrow,
+  lifeRescueWait,
+  lifeRescueWork,
   lifeRoadNotice,
   lifeRotateInterior,
   lifeSetName,
@@ -155,6 +158,12 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeRemoveRoad(state, action.gx, action.gz);
     case 'LIFE_ROAD_NOTICE':
       return lifeRoadNotice(state);
+    case 'LIFE_RESCUE_WORK':
+      return lifeRescueWork(state);
+    case 'LIFE_RESCUE_BORROW':
+      return lifeRescueBorrow(state);
+    case 'LIFE_RESCUE_WAIT':
+      return lifeRescueWait(state);
     case 'LIFE_REPAY':
       return lifeRepay(state);
     case 'LIFE_FESTIVAL_NEXT':

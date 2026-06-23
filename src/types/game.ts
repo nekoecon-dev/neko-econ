@@ -259,6 +259,7 @@ export interface LifeState {
   dailyIncome: number; // CC paid each 「1日進める」 (stall / road)
   lendDays: number; // remaining days of ミケへの貸付 repayment (DAY5 「貸す」, 0 = none)
   loanUnlocked: boolean; // loan-repayment UI revealed (DAY7)
+  rescueUsed: boolean; // the once-only DAY7「返済を待ってもらう」 has been used
   intimacy: Record<string, number>; // catId -> 親密度 level 1..5 (missing = 1)
   intimacyExplained: boolean; // the first-time 親密度 popup has been shown
   hasLostItem: boolean; // carrying タマ's lost item (DAY4)
@@ -324,6 +325,9 @@ export type PolicyAction =
   | { type: 'LIFE_ROAD_NOTICE' } // DAY6: reveal the connection explanation after the 演出
   | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)
   | { type: 'LIFE_FESTIVAL_NEXT' } // advance the DAY7 ending cinematic one beat
+  | { type: 'LIFE_RESCUE_WORK' } // DAY7 rescue: forage more + earn a wage
+  | { type: 'LIFE_RESCUE_BORROW' } // DAY7 rescue: borrow the shortfall from ミケ
+  | { type: 'LIFE_RESCUE_WAIT' } // DAY7 rescue: defer repayment once (+50 later)
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned
   | { type: 'LIFE_ENTER_TENT' } // open the tent-interior screen
   | { type: 'LIFE_EXIT_TENT' } // leave the tent-interior screen
