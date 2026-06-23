@@ -87,6 +87,7 @@ interface CatRuntime {
   detailMoneyEl: HTMLElement;
   heart: CSS2DObject; // 💗 shown briefly when this cat's intimacy rises
   heartUntil: number;
+  clap: CSS2DObject; // 👏 shown briefly when the village celebrates (e.g. 屋台完成)
   lastIntimacy: number;
   lastLabel: string;
   lastMoney: number;
@@ -882,6 +883,15 @@ export default function Village3D({
       heart.visible = false;
       group.add(heart);
 
+      // 👏 shown briefly when the whole village celebrates (e.g. 屋台完成).
+      const clapEl = document.createElement('div');
+      clapEl.className = 'cat-heart';
+      clapEl.textContent = '👏';
+      const clap = new CSS2DObject(clapEl);
+      clap.position.set(0, 4.5, 0);
+      clap.visible = false;
+      group.add(clap);
+
       // A 💤 puff shown only while sleeping.
       const zzzEl = document.createElement('div');
       zzzEl.className = 'cat-zzz';
@@ -971,6 +981,7 @@ export default function Village3D({
         detailMoneyEl,
         heart,
         heartUntil: 0,
+        clap,
         lastIntimacy: stateRef.current.life.intimacy[cat.id] ?? 1,
         lastLabel: '',
         lastMoney: Number.NaN,
@@ -1025,6 +1036,11 @@ export default function Village3D({
     const playerRig = playerAvatar.getObjectByName('rig') ?? playerAvatar;
     let playerYaw = 0;
     let lastLifeFxId = 0; // last life.fx.id we played a one-shot effect for
+    let clapBurstUntil = 0; // while > now, every cat shows 👏 (village applause)
+    // Facilities pop into place (scale 0 -> 1, ease-out-back) when first built.
+    const popping: { group: THREE.Group; t: number }[] = [];
+    // Stacked wood planks that rise into a pile then fade (DAY5 屋台 build-up).
+    const buildPieces: { mesh: THREE.Mesh; targetY: number; t: number }[] = [];
 
     const itemLayer = new THREE.Group();
     scene.add(itemLayer);
@@ -1457,8 +1473,10 @@ export default function Village3D({
         const facility = makeFacility(p.kind);
         const w = mapToWorld(p.x, p.y);
         facility.position.set(w.x, 0, w.z);
+        facility.scale.setScalar(0.01); // pops up via the `popping` animation
         placedMeshes.set(p.id, facility);
         facilityLayer.add(facility);
+        popping.push({ group: facility, t: 0 });
         spawnSparkle(w.x, w.z);
       }
 
@@ -1660,6 +1678,19 @@ export default function Village3D({
             for (let s = 0; s < 3; s++) spawnSparkle(w.x + (Math.random() - 0.5) * 2, w.z + (Math.random() - 0.5) * 2);
           } else if (life.fx.kind === 'construct') {
             for (let s = 0; s < 4; s++) spawnSparkle(w.x + (Math.random() - 0.5) * 2.4, w.z + (Math.random() - 0.5) * 2.4);
+            // 猫たちが拍手 — every cat shows 👏 for 3s.
+            clapBurstUntil = nowMs + 3000;
+            // 木材が積まれる — a little stack of planks rises beside the new stall.
+            for (let s = 0; s < 5; s++) {
+              const plank = new THREE.Mesh(
+                new THREE.BoxGeometry(1.5, 0.28, 0.8),
+                new THREE.MeshStandardMaterial({ color: '#b07a3c', flatShading: true }),
+              );
+              plank.position.set(w.x - 1.4 + (s % 2) * 0.3, 6 + s * 0.6, w.z + 1.2);
+              plank.castShadow = true;
+              scene.add(plank);
+              buildPieces.push({ mesh: plank, targetY: 0.18 + s * 0.32, t: -s * 0.12 });
+            }
           } else {
             // fireworks: bursts scattered across the plaza
             for (let s = 0; s < 8; s++) spawnSparkle((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
@@ -1715,6 +1746,39 @@ export default function Village3D({
           scene.remove(sp.points);
           disposeGroup(sp.points);
           sparkles.splice(i, 1);
+        }
+      }
+
+      // Facilities pop into place (ease-out-back overshoot), then settle at 1.
+      for (let i = popping.length - 1; i >= 0; i--) {
+        const p = popping[i];
+        p.t = Math.min(1, p.t + dt * 2.4);
+        const k = p.t - 1;
+        const s = 1 + k * k * ((1.7 + 1) * k + 1.7); // easeOutBack
+        p.group.scale.setScalar(Math.max(0.01, s));
+        if (p.t >= 1) {
+          p.group.scale.setScalar(1);
+          popping.splice(i, 1);
+        }
+      }
+
+      // Wood planks fall/stack into a pile, hold, then fade out and dispose.
+      for (let i = buildPieces.length - 1; i >= 0; i--) {
+        const b = buildPieces[i];
+        b.t += dt;
+        const mat = b.mesh.material as THREE.MeshStandardMaterial;
+        if (b.t < 0) continue; // staggered start
+        if (b.t < 0.5) {
+          b.mesh.position.y = b.targetY + (1 - Math.min(1, b.t / 0.5)) * 5.5; // drop in
+        } else if (b.t > 1.7) {
+          mat.transparent = true;
+          mat.opacity = Math.max(0, 1 - (b.t - 1.7) / 0.6); // fade away
+        }
+        if (b.t > 2.3) {
+          scene.remove(b.mesh);
+          b.mesh.geometry.dispose();
+          mat.dispose();
+          buildPieces.splice(i, 1);
         }
       }
 
@@ -1891,6 +1955,11 @@ export default function Village3D({
           rt.lastIntimacy = intim;
         }
         rt.heart.visible = nowMs < rt.heartUntil;
+
+        // 👏 every cat applauds together during a celebration burst (屋台完成).
+        const clapping = nowMs < clapBurstUntil && !rt.heart.visible;
+        rt.clap.visible = clapping;
+        if (clapping) rt.clap.position.y = 4.5 + Math.abs(Math.sin(t * 12)) * 0.4;
 
         // News-driven stock bubble: golden aura + blinking "💰 BUBBLE!" + countdown.
         const bub = stateRef.current.bubbles[cat.id];
