@@ -35,20 +35,21 @@ body {
 .cat-label-name {
   display: inline-block;
   border-radius: 9999px;
-  background: rgba(120, 53, 15, 0.92);
+  background: rgba(60, 36, 18, 0.96);
   padding: 1px 9px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .cat-label-action {
   margin-top: 1px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 0 6px;
-  font-size: 9px;
-  font-weight: 700;
-  color: #7c2d12;
+  background: rgba(255, 252, 245, 0.98);
+  padding: 1px 7px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #5b2310;
   display: inline-block;
 }
 
@@ -60,11 +61,12 @@ body {
   display: inline-block;
   border-radius: 9999px;
   border: 2px solid #bbf7d0;
-  background: rgba(22, 101, 52, 0.92);
+  background: rgba(20, 83, 45, 0.96);
   padding: 1px 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
 }
 
@@ -174,9 +176,9 @@ body {
   border: 3px solid #f59e0b;
   background: rgba(255, 255, 255, 0.97);
   padding: 3px 12px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
-  color: #b45309;
+  color: #7c2d12;
   box-shadow: 0 0 12px 2px rgba(250, 204, 21, 0.7);
 }
 

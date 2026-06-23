@@ -336,7 +336,7 @@ export default function LifeOverlay({
         <div className="pointer-events-none absolute inset-x-0 top-24 z-[60] flex justify-center px-4">
           <div className="animate-pop rounded-3xl border-4 border-sky-300 bg-white/95 px-6 py-3 text-center shadow-2xl">
             <div className="text-2xl font-black text-sky-700">🐱 新住民シロが引っ越してきたニャ！</div>
-            <div className="mt-1 text-sm font-bold text-sky-500">あたらしいなかまが村にやってきたニャ〜</div>
+            <div className="mt-1 text-sm font-bold text-sky-700">あたらしいなかまが村にやってきたニャ〜</div>
           </div>
         </div>
       )}
@@ -514,7 +514,7 @@ export default function LifeOverlay({
                     報酬：{life.reward} ニャル
                   </div>
                 )}
-                <div className="mt-2 text-sm font-bold text-amber-500">🐱🐈 みんなが喜んでいるニャ！</div>
+                <div className="mt-2 text-sm font-bold text-amber-700">🐱🐈 みんなが喜んでいるニャ！</div>
                 <button
                   type="button"
                   onClick={() => dispatch({ type: 'LIFE_ADVANCE_DAY' })}
@@ -821,10 +821,10 @@ function TentInterior({
 
       {/* Owned-furniture tray */}
       <div className="mt-2 w-[min(86vw,520px)] rounded-2xl bg-[#fffdf7]/95 p-2">
-        <div className="text-[11px] font-black text-amber-700">🎒 持っている家具（選んで配置）</div>
+        <div className="text-xs font-black text-amber-800">🎒 持っている家具（選んで配置）</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {kinds.length === 0 && (
-            <span className="text-[11px] font-bold text-amber-500">
+            <span className="text-xs font-bold text-amber-700">
               家具がないニャ。たぬきち商店で買ってこよう
             </span>
           )}
