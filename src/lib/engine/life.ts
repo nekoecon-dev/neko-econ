@@ -19,7 +19,9 @@ export const SOUP_NEED = 3; // mushrooms ミケ wants for a pot of soup
 export const SOUP_REWARD = 100; // ニャル per soup in free play
 export const STALL_WOOD = 3; // wood needed to build the DAY5 stall
 export const STALL_COST = 200; // ニャル to build the DAY5 stall
-export const DAY7_REPAY = 300; // ニャル たぬきち collects on DAY7
+export const DAY7_PRINCIPAL = 300; // 元金
+export const DAY7_INTEREST = 10; // 利息
+export const DAY7_REPAY = DAY7_PRINCIPAL + DAY7_INTEREST; // 合計 310ニャル たぬきち collects on DAY7
 
 /**
  * Prepared 公共財政 learning messages — shown once the village reaches level 2
@@ -798,7 +800,7 @@ export function lifeRemoveRoad(state: GameState, gx: number, gz: number): GameSt
 export function lifeRepay(state: GameState): GameState {
   const life = state.life;
   if (state.player.cash < DAY7_REPAY) return state;
-  const pay = Math.min(DAY7_REPAY, state.player.loan);
+  const pay = Math.min(DAY7_PRINCIPAL, state.player.loan); // 元金分だけ借金が減る（利息は手数料）
   // 新区画の採集アイテムをまく
   let seq = life.seq;
   const newItems = (['fish', 'fish', 'flower', 'mushroom', 'wood'] as GatherKind[]).map((k) =>
@@ -825,6 +827,7 @@ export function lifeRepay(state: GameState): GameState {
         items: [...life.items, ...newItems],
         level: 2,
         loanUnlocked: true,
+        trust: life.trust + 1, // 信用 +1 — ちゃんと返せた証
         dayDone: true,
         reward: 0,
         festivalPhase: 'fireworks',

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import type { FurnitureKind, GameState, GatherKind, PolicyAction } from '@/types/game';
 import {
+  DAY7_INTEREST,
+  DAY7_PRINCIPAL,
   DAY7_REPAY,
   FURNITURE_COST,
   FURNITURE_META,
@@ -308,6 +310,14 @@ export default function LifeOverlay({
               🎪 にぎわい {life.liveliness}
             </div>
           )}
+          {life.trust > 0 && (
+            <div
+              className="whitespace-nowrap rounded-2xl bg-amber-100 px-2.5 py-1 text-sm font-black text-amber-700"
+              title="たぬきちからの信用"
+            >
+              ⭐ 信用 {life.trust}
+            </div>
+          )}
         </div>
         <div className="mt-2 rounded-xl bg-amber-100 px-2.5 py-1.5 text-xs font-black leading-snug text-amber-800">
           🎯 今日の目的<br />
@@ -563,12 +573,34 @@ export default function LifeOverlay({
             </>
           ) : life.day === 7 && !life.dayDone ? (
             <>
-              <p>そろそろテント代を少し返してほしいニャ。{DAY7_REPAY}ニャルで大丈夫ニャ。</p>
+              <p>今日はテント代を少し返す日ニャ。</p>
+              <p className="mt-1">
+                借りた{DAY7_PRINCIPAL}ニャルに、ちょっとだけ利息がついて、合計{DAY7_REPAY}ニャルニャ。
+              </p>
+              <p className="mt-1 text-sm font-bold text-amber-700">
+                利息とは、お金を借りたお礼として少し多く返す分ニャ。たくさん借りたり、長く借りたりすると、利息も増えるニャ。
+              </p>
+              <div className="mt-2 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 text-amber-900">
+                <div className="text-center text-base font-black">💰 はじめての返済</div>
+                <div className="mt-2 flex justify-between text-sm font-black">
+                  <span>元金</span>
+                  <span className="tabular-nums">{DAY7_PRINCIPAL} ニャル</span>
+                </div>
+                <div className="flex justify-between text-sm font-black">
+                  <span>利息</span>
+                  <span className="tabular-nums">+ {DAY7_INTEREST} ニャル</span>
+                </div>
+                <div className="my-1.5 border-t-2 border-dashed border-amber-300" />
+                <div className="flex justify-between text-lg font-black">
+                  <span>合計</span>
+                  <span className="tabular-nums">{DAY7_REPAY} ニャル</span>
+                </div>
+              </div>
               <DialogButton
                 disabled={cash < DAY7_REPAY}
                 onClick={() => { dispatch({ type: 'LIFE_REPAY' }); close(); }}
               >
-                💰 {DAY7_REPAY}ニャル返済する
+                💰 {DAY7_REPAY}ニャルを返済する
               </DialogButton>
             </>
           ) : (
@@ -626,10 +658,13 @@ export default function LifeOverlay({
               <>
                 <div className="text-5xl font-black leading-tight text-amber-600 drop-shadow">🎆</div>
                 <div className="mt-1 text-3xl font-black leading-tight text-rose-500">NekoEcon村 レベル2！</div>
+                <div className="mt-2 inline-block rounded-full bg-amber-100 px-4 py-1 text-base font-black text-amber-700">
+                  ⭐ 信用 +1
+                </div>
                 <div className="mt-2 text-base font-black leading-relaxed text-amber-900">
-                  テント代を返して、村が大きくなったニャ！
+                  ちゃんと返せて、信用が少し上がったニャ！
                   <br />
-                  新しい区画と住民がやってくるニャ！
+                  信用が上がると、次はもっと大きな家を建てる相談もできるニャ。
                 </div>
                 <button
                   type="button"
