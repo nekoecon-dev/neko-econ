@@ -309,7 +309,9 @@ export type PolicyAction =
   | { type: 'LIFE_GIVE_LOST' } // return タマ's lost item (DAY4)
   | { type: 'LIFE_SHOW_HINT' } // DAY4: reveal an arrow over the lost item
   | { type: 'LIFE_BUILD_STALL'; choice: StallChoice } // 3 wood + 200CC -> ミケの屋台 (DAY5)
-  | { type: 'LIFE_CONNECT_ROAD' } // pave 屋台↔鍋 (DAY6)
+  | { type: 'LIFE_CONNECT_ROAD' } // pave 屋台↔鍋 (DAY6, legacy auto-connect)
+  | { type: 'LIFE_LAY_ROAD'; gx: number; gz: number } // DAY6: lay one 土の道 tile (5ニャル)
+  | { type: 'LIFE_REMOVE_ROAD'; gx: number; gz: number } // DAY6: remove a tile (no refund)
   | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned
   | { type: 'LIFE_ENTER_TENT' } // open the tent-interior screen

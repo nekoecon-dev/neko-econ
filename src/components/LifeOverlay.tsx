@@ -8,6 +8,7 @@ import {
   FURNITURE_META,
   gatherIcon,
   gatherName,
+  LIFE_ROAD_COST,
   lifeObjective,
   SHOP_FURNITURE,
   SOUP_NEED,
@@ -52,11 +53,19 @@ export default function LifeOverlay({
   dispatch,
   talking,
   setTalking,
+  roadMode,
+  setRoadMode,
+  roadErase,
+  setRoadErase,
 }: {
   state: GameState;
   dispatch: (action: PolicyAction) => void;
   talking: LifeTalking;
   setTalking: (t: LifeTalking) => void;
+  roadMode: boolean;
+  setRoadMode: (v: boolean | ((m: boolean) => boolean)) => void;
+  roadErase: boolean;
+  setRoadErase: (v: boolean | ((m: boolean) => boolean)) => void;
 }) {
   const [invOpen, setInvOpen] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -243,14 +252,51 @@ export default function LifeOverlay({
               💡 ヒントを見る
             </button>
           )}
-          {life.day === 6 && !life.roadDone && (
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'LIFE_CONNECT_ROAD' })}
-              className="pointer-events-auto tutorial-cta btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-emerald-400 to-emerald-600 px-7 py-3 text-lg font-black text-white shadow-xl"
-            >
-              🛤️ 屋台とスープ鍋を道でつなぐ
-            </button>
+          {life.active && life.day >= 6 && (
+            roadMode ? (
+              <div className="pointer-events-auto flex flex-col items-center gap-1.5">
+                <div className="rounded-2xl border-2 border-amber-300 bg-white/95 px-4 py-1.5 text-xs font-black text-amber-800 shadow">
+                  🖱️ マップをクリック／ドラッグして道をつくるニャ（{LIFE_ROAD_COST}ニャル/マス）
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRoadErase(false)}
+                    className={`btn-press rounded-xl border-2 px-4 py-1.5 text-sm font-black transition ${
+                      !roadErase ? 'border-amber-500 bg-amber-400 text-white' : 'border-amber-300 bg-white text-amber-800'
+                    }`}
+                  >
+                    🛤️ 道をおく
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoadErase(true)}
+                    className={`btn-press rounded-xl border-2 px-4 py-1.5 text-sm font-black transition ${
+                      roadErase ? 'border-rose-500 bg-rose-400 text-white' : 'border-rose-300 bg-white text-rose-700'
+                    }`}
+                  >
+                    🧽 道をけす
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setRoadMode(false); setRoadErase(false); }}
+                    className="btn-press rounded-xl border-2 border-slate-300 bg-white px-4 py-1.5 text-sm font-black text-slate-700"
+                  >
+                    ✓ おわる
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setRoadMode(true)}
+                className={`pointer-events-auto btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-emerald-400 to-emerald-600 px-7 py-3 text-lg font-black text-white shadow-xl ${
+                  life.roadDone ? '' : 'tutorial-cta'
+                }`}
+              >
+                🛤️ 道を作る
+              </button>
+            )
           )}
           <button
             type="button"

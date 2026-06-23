@@ -698,6 +698,31 @@ export function makeFacility(kind: FacilityKind): THREE.Group {
 const COBBLE_COLORS = ['#c8c2b6', '#b9b2a4', '#d2ccc0', '#aea796'];
 
 /**
+ * A simple 土の道 (dirt path) tile (TILE x TILE) for life mode: a flat brown
+ * earth square with a couple of darker scuffs, so the player-laid path reads as
+ * trodden ground rather than fancy cobblestone.
+ */
+export function makeDirtTile(): THREE.Group {
+  const tile = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(TILE, 0.08, TILE), matte('#b07a44'));
+  base.position.y = 0.04;
+  tile.add(base);
+  const scuffGeo = new THREE.CircleGeometry(0.34, 8);
+  const scuffMat = matte('#9c6836');
+  for (const [sx, sz] of [
+    [-0.5, 0.4],
+    [0.5, -0.4],
+    [0.1, 0.1],
+  ] as const) {
+    const scuff = new THREE.Mesh(scuffGeo, scuffMat);
+    scuff.rotation.x = -Math.PI / 2;
+    scuff.position.set(sx, 0.085, sz);
+    tile.add(scuff);
+  }
+  return tile;
+}
+
+/**
  * A single cute 石畳 (cobblestone) road tile (TILE x TILE), laid flat on the
  * grass: a pale mortar base studded with a 3x3 grid of little rounded stones.
  */

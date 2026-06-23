@@ -535,6 +535,49 @@ export function lifeConnectRoad(state: GameState): GameState {
   };
 }
 
+export const LIFE_ROAD_COST = 5; // ニャル per 土の道 tile in life mode (DAY6)
+
+/**
+ * DAY6 road judge. Sets roadDone (and completes the day) once enough path has
+ * been laid. (commit 2 upgrades this to the 屋台↔鍋 proximity check + the full
+ * クリア effects — for now it just needs at least 3 tiles.)
+ */
+function judgeDay6Road(state: GameState): GameState {
+  const life = state.life;
+  if (life.day !== 6 || life.roadDone) return state;
+  if (state.roads.length < 3) return state;
+  return {
+    ...state,
+    life: {
+      ...life,
+      roadDone: true,
+      dayDone: true,
+      reward: 0,
+      notice: '🛤️ 道が開通したニャ！屋台とスープ鍋がつながったニャ',
+    },
+  };
+}
+
+/** Lay one 土の道 tile in life mode (5ニャル). No-op if unaffordable / paved. */
+export function lifeLayRoad(state: GameState, gx: number, gz: number): GameState {
+  if (state.player.cash < LIFE_ROAD_COST) return state;
+  const key = `${gx},${gz}`;
+  if (state.roads.some((r) => `${r.gx},${r.gz}` === key)) return state;
+  return judgeDay6Road({
+    ...state,
+    player: { ...state.player, cash: round2(state.player.cash - LIFE_ROAD_COST) },
+    roads: [...state.roads, { gx, gz }],
+  });
+}
+
+/** Remove a 土の道 tile (no refund). */
+export function lifeRemoveRoad(state: GameState, gx: number, gz: number): GameState {
+  const key = `${gx},${gz}`;
+  const roads = state.roads.filter((r) => `${r.gx},${r.gz}` !== key);
+  if (roads.length === state.roads.length) return state;
+  return { ...state, roads };
+}
+
 export function lifeRepay(state: GameState): GameState {
   const life = state.life;
   if (state.player.cash < DAY7_REPAY) return state;

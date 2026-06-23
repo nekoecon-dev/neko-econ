@@ -17,6 +17,7 @@ import {
   makeCat,
   makeFacility,
   makeFurniture,
+  makeDirtTile,
   makeGatherable,
   makeHouse,
   makeLever,
@@ -300,6 +301,7 @@ export default function Village3D({
   pendingFacility,
   onPlaced,
   roadMode,
+  roadErase = false,
   onTalkMike = () => {},
   onTalkTanuki = () => {},
   onTalkTama = () => {},
@@ -310,6 +312,7 @@ export default function Village3D({
   pendingFacility: FacilityKind | null;
   onPlaced: () => void;
   roadMode: boolean;
+  roadErase?: boolean; // life mode: road tool is in eraser mode
   onTalkMike?: () => void; // life mode: clicked ミケ
   onTalkTanuki?: () => void; // life mode: clicked たぬきち
   onTalkTama?: () => void; // life mode: clicked タマ
@@ -321,6 +324,7 @@ export default function Village3D({
   const pendingRef = useRef(pendingFacility);
   const onPlacedRef = useRef(onPlaced);
   const roadModeRef = useRef(roadMode);
+  const roadEraseRef = useRef(roadErase);
   const onTalkMikeRef = useRef(onTalkMike);
   const onTalkTanukiRef = useRef(onTalkTanuki);
   const onTalkTamaRef = useRef(onTalkTama);
@@ -334,6 +338,7 @@ export default function Village3D({
     pendingRef.current = pendingFacility;
     onPlacedRef.current = onPlaced;
     roadModeRef.current = roadMode;
+    roadEraseRef.current = roadErase;
     onTalkMikeRef.current = onTalkMike;
     onTalkTanukiRef.current = onTalkTanuki;
     onTalkTamaRef.current = onTalkTama;
@@ -1001,6 +1006,15 @@ export default function Village3D({
     scene.add(roadLayer);
     const roadMeshes = new Map<string, THREE.Object3D>();
 
+    // Faint snap-to grid shown only while the road tool is active.
+    const roadGrid = new THREE.GridHelper(GROUND, GROUND / TILE, 0xffffff, 0xffffff);
+    const roadGridMat = roadGrid.material as THREE.Material;
+    roadGridMat.transparent = true;
+    roadGridMat.opacity = 0.16;
+    roadGrid.position.y = 0.06;
+    roadGrid.visible = false;
+    scene.add(roadGrid);
+
     // ---- Life mode: player avatar + gatherables + furniture + visitors -------
     const playerAvatar = makePlayerCat();
     {
@@ -1395,7 +1409,16 @@ export default function Village3D({
       const key = roadKey(gx, gz);
       if (key === lastRoadKey) return;
       lastRoadKey = key;
-      dispatchRef.current({ type: 'LAY_ROAD', gx, gz });
+      if (stateRef.current.life.active) {
+        // Life mode: 5ニャル dirt path, with an eraser sub-mode (no refund).
+        dispatchRef.current(
+          roadEraseRef.current
+            ? { type: 'LIFE_REMOVE_ROAD', gx, gz }
+            : { type: 'LIFE_LAY_ROAD', gx, gz },
+        );
+      } else {
+        dispatchRef.current({ type: 'LAY_ROAD', gx, gz });
+      }
     };
     const onRoadDown = (e: PointerEvent) => {
       if (!roadModeRef.current) return;
@@ -1486,11 +1509,20 @@ export default function Village3D({
         const key = roadKey(r.gx, r.gz);
         roadSet.add(key);
         if (roadMeshes.has(key)) continue;
-        const tile = makeRoadTile();
+        const tile = stateRef.current.life.active ? makeDirtTile() : makeRoadTile();
         tile.position.set(r.gx * TILE, 0.05, r.gz * TILE);
         roadMeshes.set(key, tile);
         roadLayer.add(tile);
       }
+      // Drop meshes for any tiles that were erased (life-mode road eraser).
+      for (const [key, tile] of roadMeshes) {
+        if (roadSet.has(key)) continue;
+        roadLayer.remove(tile);
+        disposeGroup(tile);
+        roadMeshes.delete(key);
+      }
+      // Faint placement grid while the road tool is active.
+      roadGrid.visible = roadModeRef.current;
 
       // ---- Life mode: avatar + items + furniture + visitors + effects --------
       playerAvatar.visible = life.active;

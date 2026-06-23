@@ -39,10 +39,12 @@ import {
   lifeGather,
   lifeGiveLost,
   lifeGiveSoup,
+  lifeLayRoad,
   lifeMove,
   lifeMoveInterior,
   lifePlaceInterior,
   lifeRemoveInterior,
+  lifeRemoveRoad,
   lifeRepay,
   lifeRotateInterior,
   lifeSetName,
@@ -145,6 +147,10 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeBuildStall(state, action.choice);
     case 'LIFE_CONNECT_ROAD':
       return lifeConnectRoad(state);
+    case 'LIFE_LAY_ROAD':
+      return lifeLayRoad(state, action.gx, action.gz);
+    case 'LIFE_REMOVE_ROAD':
+      return lifeRemoveRoad(state, action.gx, action.gz);
     case 'LIFE_REPAY':
       return lifeRepay(state);
     case 'LIFE_BUY_FURNITURE':

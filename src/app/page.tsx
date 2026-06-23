@@ -22,6 +22,7 @@ export default function Home() {
   const [loanOpen, setLoanOpen] = useState(false);
   const [pending, setPending] = useState<FacilityKind | null>(null);
   const [roadMode, setRoadMode] = useState(false);
+  const [roadErase, setRoadErase] = useState(false); // life-mode road eraser
   const [talking, setTalking] = useState<LifeTalking>(null);
   const repayRemaining = Math.max(0, state.repayDueTick - state.tick);
   const lifeMode = state.life.active;
@@ -37,6 +38,7 @@ export default function Home() {
           pendingFacility={pending}
           onPlaced={() => setPending(null)}
           roadMode={roadMode}
+          roadErase={roadErase}
           onTalkMike={() => setTalking('mike')}
           onTalkTanuki={() => setTalking('tanuki')}
           onTalkTama={() => setTalking('tama')}
@@ -45,7 +47,16 @@ export default function Home() {
 
       {/* ---- Life mode: the cosy "living in the village" prototype ---- */}
       {lifeMode && (
-        <LifeOverlay state={state} dispatch={dispatch} talking={talking} setTalking={setTalking} />
+        <LifeOverlay
+          state={state}
+          dispatch={dispatch}
+          talking={talking}
+          setTalking={setTalking}
+          roadMode={roadMode}
+          setRoadMode={setRoadMode}
+          roadErase={roadErase}
+          setRoadErase={setRoadErase}
+        />
       )}
 
       {/* ---- Economy mode: the full dashboard / tutorial UI ---- */}
