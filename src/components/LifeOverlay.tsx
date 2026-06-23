@@ -562,21 +562,24 @@ function Dialog({
   children: React.ReactNode;
 }) {
   const ring = tone === 'sky' ? 'border-sky-300' : 'border-amber-300';
+  // A dedicated conversation panel pinned to the bottom of the screen, clear of
+  // the floating NPC name labels (which are dimmed while a dialog is open). The
+  // light bottom gradient catches stray clicks without hiding the 3D scene.
   return (
-    <div className="pointer-events-auto absolute inset-0 z-[61] flex items-end justify-center bg-black/25 p-4 pb-28">
-      <div className={`animate-pop w-full max-w-md rounded-3xl border-4 ${ring} bg-white/97 p-5 shadow-2xl`}>
+    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[61] flex justify-center bg-gradient-to-t from-black/35 to-transparent p-3 pt-10">
+      <div className={`animate-pop w-full max-w-2xl rounded-3xl border-4 ${ring} bg-[#fffdf7]/97 p-5 shadow-2xl`}>
         <div className="flex items-center gap-3">
           <span className="text-5xl drop-shadow">{avatar}</span>
-          <span className="text-sm font-black text-amber-600">{name}</span>
+          <span className="text-base font-black text-amber-700">{name}</span>
           <button
             type="button"
             onClick={onClose}
             className="btn-press ml-auto rounded-full border-2 border-amber-200 bg-white px-2.5 py-0.5 text-xs font-bold text-amber-700"
           >
-            ✕
+            ✕ とじる
           </button>
         </div>
-        <div className="mt-2 text-lg font-black leading-relaxed text-amber-900">{children}</div>
+        <div className="mt-2 text-lg font-black leading-relaxed text-amber-950">{children}</div>
       </div>
     </div>
   );

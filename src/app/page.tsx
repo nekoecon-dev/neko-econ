@@ -39,6 +39,7 @@ export default function Home() {
           onPlaced={() => setPending(null)}
           roadMode={roadMode}
           roadErase={roadErase}
+          talking={talking}
           onTalkMike={() => setTalking('mike')}
           onTalkTanuki={() => setTalking('tanuki')}
           onTalkTama={() => setTalking('tama')}

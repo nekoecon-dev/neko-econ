@@ -84,6 +84,7 @@ interface CatRuntime {
   bubbleSecEl: HTMLElement;
   lastBubbleSec: number;
   actionEl: HTMLElement;
+  label: CSS2DObject; // floating name/action label (dimmed during others' dialogs)
   detailObj: CSS2DObject; // money/info card, shown only when the cat is clicked
   detailMoneyEl: HTMLElement;
   heart: CSS2DObject; // 💗 shown briefly when this cat's intimacy rises
@@ -302,6 +303,7 @@ export default function Village3D({
   onPlaced,
   roadMode,
   roadErase = false,
+  talking = null,
   onTalkMike = () => {},
   onTalkTanuki = () => {},
   onTalkTama = () => {},
@@ -313,6 +315,7 @@ export default function Village3D({
   onPlaced: () => void;
   roadMode: boolean;
   roadErase?: boolean; // life mode: road tool is in eraser mode
+  talking?: 'mike' | 'tama' | 'tanuki' | null; // who the player is conversing with
   onTalkMike?: () => void; // life mode: clicked ミケ
   onTalkTanuki?: () => void; // life mode: clicked たぬきち
   onTalkTama?: () => void; // life mode: clicked タマ
@@ -325,6 +328,7 @@ export default function Village3D({
   const onPlacedRef = useRef(onPlaced);
   const roadModeRef = useRef(roadMode);
   const roadEraseRef = useRef(roadErase);
+  const talkingRef = useRef(talking);
   const onTalkMikeRef = useRef(onTalkMike);
   const onTalkTanukiRef = useRef(onTalkTanuki);
   const onTalkTamaRef = useRef(onTalkTama);
@@ -339,6 +343,7 @@ export default function Village3D({
     onPlacedRef.current = onPlaced;
     roadModeRef.current = roadMode;
     roadEraseRef.current = roadErase;
+    talkingRef.current = talking;
     onTalkMikeRef.current = onTalkMike;
     onTalkTanukiRef.current = onTalkTanuki;
     onTalkTamaRef.current = onTalkTama;
@@ -756,7 +761,8 @@ export default function Village3D({
       let lastName = '';
       updaters.push(() => {
         const s = stateRef.current;
-        obj.visible = s.life.active && s.life.playerName !== '';
+        obj.visible =
+          s.life.active && s.life.playerName !== '' && !(s.life.notice !== null && s.life.dayDone);
         if (obj.visible && s.life.playerName !== lastName) {
           root.textContent = `🏠 ${s.life.playerName}の家`;
           lastName = s.life.playerName;
@@ -828,7 +834,8 @@ export default function Village3D({
 
       updaters.push(() => {
         const s = stateRef.current;
-        signObj.visible = s.life.active;
+        // Hide the shop sign while a 目的達成 modal is up so it can't peek through.
+        signObj.visible = s.life.active && !(s.life.notice !== null && s.life.dayDone);
         // DAY3 「まずはたぬきちへ」: highlight until the player has bought furniture
         // (then the guidance hands off to the tent's own ring).
         const callTanuki =
@@ -1032,6 +1039,7 @@ export default function Village3D({
         bubbleSecEl,
         lastBubbleSec: -1,
         actionEl,
+        label,
         detailObj,
         detailMoneyEl,
         heart,
@@ -1090,7 +1098,8 @@ export default function Village3D({
       let lastName = '';
       updaters.push(() => {
         const s = stateRef.current;
-        nameObj.visible = s.life.active && s.life.playerName !== '';
+        nameObj.visible =
+          s.life.active && s.life.playerName !== '' && !(s.life.notice !== null && s.life.dayDone);
         if (nameObj.visible && s.life.playerName !== lastName) {
           nameEl.textContent = `⭐ ${s.life.playerName}`;
           lastName = s.life.playerName;
@@ -2148,6 +2157,13 @@ export default function Village3D({
           rt.actionEl.textContent = labelText;
           rt.lastLabel = labelText;
         }
+
+        // Label legibility: hide every cat label while a 目的達成 modal is up, and
+        // fade non-target cats while the player is talking to one of them.
+        const celebrating = life.notice !== null && life.dayDone;
+        const talkId = talkingRef.current === 'mike' ? '4' : talkingRef.current === 'tama' ? '3' : null;
+        rt.label.visible = !celebrating;
+        rt.label.element.style.opacity = talkId !== null && cat.id !== talkId ? '0.28' : '1';
 
         // Money detail card: only the clicked cat shows it (refreshed lazily).
         const selected = selectedCatId === cat.id;
