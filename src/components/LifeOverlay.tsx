@@ -227,17 +227,22 @@ export default function LifeOverlay({
       )}
 
       {/* ---- Top-left HUD: cash / day / objective / inventory ---- */}
-      <div className="pointer-events-auto absolute left-3 top-3 w-60 rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/95 p-3 shadow-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-b from-yellow-100 to-amber-100 px-2.5 py-1">
+      <div className="pointer-events-auto absolute left-3 top-3 w-72 rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/95 p-3 shadow-xl">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex min-w-[120px] items-center gap-1.5 whitespace-nowrap rounded-2xl bg-gradient-to-b from-yellow-100 to-amber-100 px-2.5 py-1">
             <span className="text-xl">👛</span>
-            <span className="text-lg font-black tabular-nums text-amber-900">{cash.toLocaleString()} ニャル</span>
+            <span className="whitespace-nowrap text-lg font-black tabular-nums text-amber-900">
+              {cash.toLocaleString()}ニャル
+            </span>
           </div>
-          <div className="rounded-2xl bg-sky-100 px-2.5 py-1 text-sm font-black text-sky-800">
+          <div className="whitespace-nowrap rounded-2xl bg-sky-100 px-2.5 py-1 text-sm font-black text-sky-800">
             {TIME_EMOJI[life.time]} {campaign ? `DAY${life.day}` : `${life.day}日目`}
           </div>
           {life.liveliness > 0 && (
-            <div className="rounded-2xl bg-rose-100 px-2.5 py-1 text-sm font-black text-rose-700" title="村のにぎわい">
+            <div
+              className="whitespace-nowrap rounded-2xl bg-rose-100 px-2.5 py-1 text-sm font-black text-rose-700"
+              title="村のにぎわい"
+            >
               🎪 にぎわい {life.liveliness}
             </div>
           )}
