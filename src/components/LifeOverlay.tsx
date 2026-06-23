@@ -109,6 +109,19 @@ export default function LifeOverlay({
     return () => clearTimeout(id);
   }, [roadJustConnected, dispatch]);
 
+  // Force road-build mode OFF once the DAY6 mission completes or DAY7 begins, so
+  // the grid + road UI disappear and the player is back in normal interaction.
+  // (Deferred via setTimeout to keep setState out of the synchronous effect body.)
+  const roadModeShouldEnd = (life.day === 6 && life.roadDone) || life.day === 7;
+  useEffect(() => {
+    if (!roadModeShouldEnd) return;
+    const id = setTimeout(() => {
+      setRoadMode(false);
+      setRoadErase(false);
+    }, 0);
+    return () => clearTimeout(id);
+  }, [roadModeShouldEnd, setRoadMode, setRoadErase]);
+
   // DAY3: nudge the player toward たぬきち if they haven't gone over to him.
   // (たぬきち's life-mode map spot ≈ world (9.5, 0.5).)
   const goingToTanuki = life.active && life.day === 3 && !life.dayDone;
@@ -305,7 +318,7 @@ export default function LifeOverlay({
               💡 ヒントを見る
             </button>
           )}
-          {life.active && life.day >= 6 && (
+          {life.active && ((life.day === 6 && !life.roadDone) || life.day >= 8) && (
             roadMode ? (
               <div className="pointer-events-auto flex flex-col items-center gap-1.5">
                 <div className="rounded-2xl border-2 border-amber-300 bg-[#fffdf7]/95 px-4 py-1.5 text-center text-xs font-black text-amber-900 shadow">
@@ -372,7 +385,9 @@ export default function LifeOverlay({
               type="button"
               disabled={!canAdvance}
               onClick={() => dispatch({ type: 'LIFE_ADVANCE_DAY' })}
-              className="pointer-events-auto btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-amber-400 to-orange-500 px-8 py-3 text-lg font-black text-white shadow-xl transition enabled:hover:from-amber-300 enabled:hover:to-orange-400 disabled:opacity-50"
+              className={`pointer-events-auto btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-amber-400 to-orange-500 px-8 py-3 text-lg font-black text-white shadow-xl transition enabled:hover:from-amber-300 enabled:hover:to-orange-400 disabled:opacity-50 ${
+                campaign && life.dayDone ? 'tutorial-cta' : ''
+              }`}
             >
               {advanceLabel}
             </button>
