@@ -21,6 +21,15 @@ export const STALL_WOOD = 3; // wood needed to build the DAY5 stall
 export const STALL_COST = 200; // ニャル to build the DAY5 stall
 export const DAY7_REPAY = 300; // ニャル たぬきち collects on DAY7
 
+/**
+ * Prepared 公共財政 learning messages — shown once the village reaches level 2
+ * and the budget/tax UI unlocks. Not displayed yet (foundation only).
+ */
+export const PUBLIC_FINANCE_LESSONS = [
+  '税金は、道や橋など、みんなが使うものに使われるニャ',
+  '便利な村になると、お店がもうかって、村の税収も増えるニャ',
+] as const;
+
 // Per-day cash rewards / income.
 const DAY1_REWARD = 50;
 const DAY2_SOUP_REWARD = 150;
@@ -178,6 +187,13 @@ export function lifeInactive(): LifeState {
     lendDays: 0,
     loanUnlocked: false,
     rescueUsed: false,
+    finance: {
+      villageBudget: 0,
+      taxRevenuePerDay: 0,
+      infrastructureLevel: 0,
+      roadMaintenanceCost: 0,
+      businessSalesBoostFromInfrastructure: 0,
+    },
     intimacy: {},
     intimacyExplained: false,
     hasLostItem: false,

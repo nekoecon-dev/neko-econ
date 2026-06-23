@@ -229,6 +229,20 @@ export interface LifeFx {
   y: number;
 }
 
+/**
+ * Public-finance foundation for 村レベル2以降. The data lives on every save from
+ * the start, but the UI that surfaces it is only unlocked once the village
+ * reaches level 2 (so DAY1–7 stays simple). Values are populated by later work;
+ * for now they sit at their defaults.
+ */
+export interface PublicFinance {
+  villageBudget: number; // 村予算 — pooled public money
+  taxRevenuePerDay: number; // 日次税収
+  infrastructureLevel: number; // インフラレベル (roads / bridges built out)
+  roadMaintenanceCost: number; // 道路維持費 drawn from the budget each day
+  businessSalesBoostFromInfrastructure: number; // インフラによる売上ブースト (×, additive %)
+}
+
 export interface LifeState {
   active: boolean; // life-mode prototype is on (economy UI hidden, sim paused)
   playerName: string; // the hero's name ('' until entered → defaults to ニャオ)
@@ -260,6 +274,7 @@ export interface LifeState {
   lendDays: number; // remaining days of ミケへの貸付 repayment (DAY5 「貸す」, 0 = none)
   loanUnlocked: boolean; // loan-repayment UI revealed (DAY7)
   rescueUsed: boolean; // the once-only DAY7「返済を待ってもらう」 has been used
+  finance: PublicFinance; // 公共財政の土台（UIは村レベル2以降で解放）
   intimacy: Record<string, number>; // catId -> 親密度 level 1..5 (missing = 1)
   intimacyExplained: boolean; // the first-time 親密度 popup has been shown
   hasLostItem: boolean; // carrying タマ's lost item (DAY4)
