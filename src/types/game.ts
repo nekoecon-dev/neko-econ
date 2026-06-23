@@ -321,6 +321,7 @@ export type PolicyAction =
   | { type: 'LIFE_CONNECT_ROAD' } // pave 屋台↔鍋 (DAY6, legacy auto-connect)
   | { type: 'LIFE_LAY_ROAD'; gx: number; gz: number } // DAY6: lay one 土の道 tile (5ニャル)
   | { type: 'LIFE_REMOVE_ROAD'; gx: number; gz: number } // DAY6: remove a tile (no refund)
+  | { type: 'LIFE_ROAD_NOTICE' } // DAY6: reveal the connection explanation after the 演出
   | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)
   | { type: 'LIFE_FESTIVAL_NEXT' } // advance the DAY7 ending cinematic one beat
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned

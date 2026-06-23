@@ -47,6 +47,7 @@ import {
   lifeRemoveInterior,
   lifeRemoveRoad,
   lifeRepay,
+  lifeRoadNotice,
   lifeRotateInterior,
   lifeSetName,
   lifeShowHint,
@@ -152,6 +153,8 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeLayRoad(state, action.gx, action.gz);
     case 'LIFE_REMOVE_ROAD':
       return lifeRemoveRoad(state, action.gx, action.gz);
+    case 'LIFE_ROAD_NOTICE':
+      return lifeRoadNotice(state);
     case 'LIFE_REPAY':
       return lifeRepay(state);
     case 'LIFE_FESTIVAL_NEXT':

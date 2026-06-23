@@ -99,6 +99,16 @@ export default function LifeOverlay({
     }
   }, [fest, dispatch]);
 
+  // DAY6: after the road connects, let the arrival 演出 (queue + popups) play for
+  // a beat before the explanation modal appears.
+  const roadJustConnected =
+    life.day === 6 && life.roadDone && life.dayDone && life.notice === null;
+  useEffect(() => {
+    if (!roadJustConnected) return;
+    const id = setTimeout(() => dispatch({ type: 'LIFE_ROAD_NOTICE' }), 1800);
+    return () => clearTimeout(id);
+  }, [roadJustConnected, dispatch]);
+
   // DAY3: nudge the player toward たぬきち if they haven't gone over to him.
   // (たぬきち's life-mode map spot ≈ world (9.5, 0.5).)
   const goingToTanuki = life.active && life.day === 3 && !life.dayDone;

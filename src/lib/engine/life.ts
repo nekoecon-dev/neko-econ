@@ -607,21 +607,56 @@ export function lifeRoadConnected(roads: Cell[]): boolean {
  * by ROAD_INCOME, and raises the village's にぎわい — an infrastructure investment.
  * (commit 2 layers the arrival 演出 / bonuses on top.)
  */
+// Where the customers queue in front of ミケの屋台 once the road connects (map %).
+// Village3D reads the same spots to float the speech bubbles over the cats.
+export const SHOP_QUEUE: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 34, y: 66 },
+  { x: 31, y: 71 },
+  { x: 41, y: 71 },
+];
+const LOGISTICS_BONUS = 80; // 物流改善ボーナス paid once on connecting the road
+const ROAD_DIVIDEND = 20; // extra ニャル/day added on connecting (on top of ROAD_INCOME)
+
 function judgeDay6Road(state: GameState): GameState {
   const life = state.life;
   if (life.day !== 6 || life.roadDone) return state;
   if (!lifeRoadConnected(state.roads)) return state;
+  // ミケ walks the new road over to the スープ鍋; up to 3 other cats line up at
+  // the 屋台 (Village3D plays the speech bubbles + 売上/ボーナス popups).
+  let qi = 0;
+  const cats = state.cats.map((c) => {
+    if (c.id === '4') return { ...c, action: 'working' as const, x: 50, y: 52 }; // ミケ → 鍋
+    if (qi < SHOP_QUEUE.length) {
+      const sp = SHOP_QUEUE[qi++];
+      return { ...c, action: 'idle' as const, x: sp.x, y: sp.y };
+    }
+    return c;
+  });
   return {
     ...state,
+    cats,
+    player: { ...state.player, cash: round2(state.player.cash + LOGISTICS_BONUS) }, // 物流改善ボーナス
     life: {
       ...life,
       roadDone: true,
       dayDone: true,
       reward: 0,
-      dailyIncome: life.dailyIncome + ROAD_INCOME, // 屋台の毎日売上/配当 +10
+      dailyIncome: life.dailyIncome + ROAD_INCOME + ROAD_DIVIDEND, // 屋台の毎日配当 +10 +20
       liveliness: life.liveliness + 1, // 村のにぎわい +1
-      notice:
-        '🛤️ 道がつながったニャ！道を作ると、猫や商品が動きやすくなって、お店の売上も上がるニャ。これは村へのインフラ投資ニャ！（屋台の売上 毎日+10ニャル・村のにぎわい+1・猫の足が速くなった）',
+      notice: null, // delayed — LifeOverlay shows it after the arrival 演出 plays
+    },
+  };
+}
+
+/** DAY6: reveal the explanation modal once the arrival 演出 has played a beat. */
+export function lifeRoadNotice(state: GameState): GameState {
+  const life = state.life;
+  if (!(life.day === 6 && life.roadDone && life.dayDone && life.notice === null)) return state;
+  return {
+    ...state,
+    life: {
+      ...life,
+      notice: `🛤️ 道がつながって、ミケの屋台に猫が来やすくなったニャ。便利になると、商売も伸びるニャ！\n\n💰 物流改善ボーナス +${LOGISTICS_BONUS}ニャル ／ 毎日配当 +${ROAD_INCOME + ROAD_DIVIDEND}ニャル ／ にぎわい+1`,
     },
   };
 }

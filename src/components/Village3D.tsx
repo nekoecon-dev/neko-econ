@@ -6,6 +6,7 @@ import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRe
 import type { CatAction, FacilityKind, GameState, PolicyAction, Weather } from '@/types/game';
 import { FACILITY_COST, isFacilityKind } from '@/lib/engine/facilities';
 import { tickInterest } from '@/lib/engine/loan';
+import { SHOP_QUEUE } from '@/lib/engine/life';
 import { roadKey } from '@/lib/engine/roads';
 import {
   buildVillage,
@@ -1380,6 +1381,33 @@ export default function Village3D({
     let lastFireworkMs = 0; // throttles the festival's recurring sky bursts
     let fireworkHue = 0;
 
+    // Transient floating DOM labels (売上 / ボーナス popups, speech bubbles) that
+    // rise a little and fade out after a moment.
+    interface FloatLabel {
+      obj: CSS2DObject;
+      until: number;
+      vy: number;
+    }
+    const floatLabels: FloatLabel[] = [];
+    const spawnFloatLabel = (
+      className: string,
+      text: string,
+      x: number,
+      y: number,
+      z: number,
+      ms: number,
+      vy: number,
+    ) => {
+      const el = document.createElement('div');
+      el.className = className;
+      el.textContent = text;
+      const obj = new CSS2DObject(el);
+      obj.position.set(x, y, z);
+      scene.add(obj);
+      floatLabels.push({ obj, until: Date.now() + ms, vy });
+    };
+    let lastRoadDone = stateRef.current.life.roadDone; // detect the DAY6 connection
+
     // Ghost preview of the facility being placed (follows the cursor).
     let ghost: THREE.Group | null = null;
     let ghostKind: FacilityKind | null = null;
@@ -1711,6 +1739,20 @@ export default function Village3D({
           }
           lastFestPhase = life.festivalPhase;
         }
+        // DAY6: the moment the road connects, play the arrival 演出 — speech
+        // bubbles over the queued cats + 売上/物流ボーナス popups + a sparkle.
+        if (life.roadDone && !lastRoadDone) {
+          lastRoadDone = true;
+          const shopW = mapToWorld(38, 62);
+          spawnSparkle(shopW.x, shopW.z);
+          spawnFloatLabel('float-pop float-sales', '🍲 売上 +50ニャル', shopW.x, 3.4, shopW.z, 3800, 0.5);
+          spawnFloatLabel('float-pop float-bonus', '🚚 物流改善ボーナス +80ニャル', shopW.x, 5, shopW.z, 4300, 0.4);
+          const lines = ['スープくださいニャ', '道ができて来やすくなったニャ', 'いらっしゃいニャ！'];
+          SHOP_QUEUE.forEach((sp, i) => {
+            const w = mapToWorld(sp.x, sp.y);
+            spawnFloatLabel('float-pop speech-pop', lines[i], w.x, 3.2, w.z, 4600, 0.16);
+          });
+        }
         // 「ヒントを見る」 → pan the camera over to the lost item.
         if (life.hintArrow && !lastHintArrow && bell) {
           const w = mapToWorld(bell.x, bell.y);
@@ -1971,6 +2013,16 @@ export default function Village3D({
           scene.remove(sp.points);
           disposeGroup(sp.points);
           sparkles.splice(i, 1);
+        }
+      }
+
+      // Float + expire any transient DOM labels (popups / speech bubbles).
+      for (let i = floatLabels.length - 1; i >= 0; i--) {
+        const fl = floatLabels[i];
+        fl.obj.position.y += fl.vy * dt;
+        if (nowMs > fl.until) {
+          scene.remove(fl.obj);
+          floatLabels.splice(i, 1);
         }
       }
 
