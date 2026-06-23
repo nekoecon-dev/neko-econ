@@ -153,6 +153,7 @@ export function lifeInactive(): LifeState {
     time: 'morning',
     weather: 'sunny',
     level: 1,
+    liveliness: 0,
     sale: false,
     playerX: 50,
     playerY: 50,
@@ -537,15 +538,27 @@ export function lifeConnectRoad(state: GameState): GameState {
 
 export const LIFE_ROAD_COST = 5; // ニャル per 土の道 tile in life mode (DAY6)
 
+// ミケの屋台 ≈ map (38,62) → grid (-2,2); スープ鍋 is the central pot at grid
+// (0,0). (Derived from mapToWorld/TILE; hardcoded so the engine stays free of
+// the THREE-importing builders module.)
+const SHOP_GRID = { gx: -2, gz: 2 };
+const POT_GRID = { gx: 0, gz: 0 };
+const ROAD_NEAR = 2; // Chebyshev tiles counted as 屋台/鍋「周辺」
+const ROAD_NEED = 3; // tiles near 屋台 or 鍋 required to connect them
+
 /**
- * DAY6 road judge. Sets roadDone (and completes the day) once enough path has
- * been laid. (commit 2 upgrades this to the 屋台↔鍋 proximity check + the full
- * クリア effects — for now it just needs at least 3 tiles.)
+ * DAY6 mission: 「ミケの屋台とスープ鍋を道でつなごう」. Completes once at least
+ * ROAD_NEED tiles sit around the 屋台 or the 鍋. On clear it speeds the cats up
+ * (handled in Village3D via roadDone), lifts the 屋台's daily takings by
+ * ROAD_INCOME, and raises the village's にぎわい — an infrastructure investment.
  */
 function judgeDay6Road(state: GameState): GameState {
   const life = state.life;
   if (life.day !== 6 || life.roadDone) return state;
-  if (state.roads.length < 3) return state;
+  const near = (r: { gx: number; gz: number }, c: { gx: number; gz: number }) =>
+    Math.max(Math.abs(r.gx - c.gx), Math.abs(r.gz - c.gz)) <= ROAD_NEAR;
+  const connecting = state.roads.filter((r) => near(r, SHOP_GRID) || near(r, POT_GRID)).length;
+  if (connecting < ROAD_NEED) return state;
   return {
     ...state,
     life: {
@@ -553,7 +566,10 @@ function judgeDay6Road(state: GameState): GameState {
       roadDone: true,
       dayDone: true,
       reward: 0,
-      notice: '🛤️ 道が開通したニャ！屋台とスープ鍋がつながったニャ',
+      dailyIncome: life.dailyIncome + ROAD_INCOME, // 屋台の毎日売上/配当 +10
+      liveliness: life.liveliness + 1, // 村のにぎわい +1
+      notice:
+        '🛤️ 道がつながったニャ！道を作ると、猫や商品が動きやすくなって、お店の売上も上がるニャ。これは村へのインフラ投資ニャ！（屋台の売上 毎日+10ニャル・村のにぎわい+1・猫の足が速くなった）',
     },
   };
 }

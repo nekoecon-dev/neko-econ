@@ -193,6 +193,11 @@ export default function LifeOverlay({
           <div className="rounded-2xl bg-sky-100 px-2.5 py-1 text-sm font-black text-sky-800">
             {TIME_EMOJI[life.time]} {campaign ? `DAY${life.day}` : `${life.day}日目`}
           </div>
+          {life.liveliness > 0 && (
+            <div className="rounded-2xl bg-rose-100 px-2.5 py-1 text-sm font-black text-rose-700" title="村のにぎわい">
+              🎪 にぎわい {life.liveliness}
+            </div>
+          )}
         </div>
         <div className="mt-2 rounded-xl bg-amber-100 px-2.5 py-1.5 text-xs font-black leading-snug text-amber-800">
           🎯 今日の目的<br />

@@ -233,6 +233,7 @@ export interface LifeState {
   time: LifeTime;
   weather: LifeWeather;
   level: number; // village level (DAY7 festival bumps it to 2)
+  liveliness: number; // 村のにぎわい — rises with infrastructure (DAY6 road, etc.)
   sale: boolean; // たぬきち furniture sale (cheaper today)
   playerX: number; // map % the avatar is walking toward
   playerY: number;

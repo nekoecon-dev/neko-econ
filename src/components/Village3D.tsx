@@ -1910,7 +1910,9 @@ export default function Village3D({
         // Sleeping cats walk slowly to a stop; others stroll at a normal pace —
         // and cats on a road move twice as fast.
         const onRoad = roadSet.has(roadKey(Math.round(w.x / TILE), Math.round(w.z / TILE)));
-        const moveRate = (cat.action === 'sleeping' ? 0.6 : 2) * (onRoad ? 2 : 1);
+        // DAY6 完成後は村全体の足が速くなる（インフラ投資の効果）。
+        const roadBoost = stateRef.current.life.roadDone ? 1.35 : 1;
+        const moveRate = (cat.action === 'sleeping' ? 0.6 : 2) * (onRoad ? 2 : 1) * roadBoost;
         group.position.x += (tx - prevX) * Math.min(1, dt * moveRate);
         group.position.z += (tz - prevZ) * Math.min(1, dt * moveRate);
 
