@@ -71,6 +71,7 @@ export default function LifeOverlay({
   const [nameInput, setNameInput] = useState('');
   const [day4Elapsed, setDay4Elapsed] = useState(0);
   const [day3Elapsed, setDay3Elapsed] = useState(0);
+  const [helpOpen, setHelpOpen] = useState(false);
   const life = state.life;
 
   // DAY4: after ~25s of searching without finding the lost item, nudge harder.
@@ -159,13 +160,29 @@ export default function LifeOverlay({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] select-none">
-      {/* ---- Camera-control help (bottom-right) ---- */}
-      <div className="absolute bottom-3 right-3 rounded-xl border-2 border-amber-200 bg-[#fffdf7]/85 px-2.5 py-1.5 text-[10px] font-bold leading-relaxed text-amber-700 shadow">
-        🖱 ホイール: ズーム
-        <br />
-        Q / E ・ 右ドラッグ: 回転
-        <br />
-        C: 主人公中心にもどす
+      {/* ---- Camera-control help: collapsible button (bottom-right) ---- */}
+      <div className="pointer-events-auto absolute bottom-3 right-3 flex flex-col items-end gap-1.5">
+        {helpOpen && (
+          <div className="animate-pop w-52 rounded-2xl border-2 border-amber-300 bg-[#fffdf7]/97 p-3 text-xs font-bold leading-relaxed text-amber-900 shadow-xl">
+            <div className="mb-1 text-sm font-black text-amber-800">🎥 そうさ方法</div>
+            🖱️ 地面クリック：移動
+            <br />
+            🖱️ 右ドラッグ：視点を回す
+            <br />
+            🌀 ホイール：ズーム
+            <br />
+            ⌨️ Q / E：左右に回す
+            <br />
+            ⌨️ C：主人公に戻す
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setHelpOpen((v) => !v)}
+          className="btn-press rounded-full border-2 border-amber-300 bg-[#fffdf7]/95 px-3 py-1.5 text-xs font-black text-amber-800 shadow-lg transition hover:bg-amber-50"
+        >
+          {helpOpen ? '✕ とじる' : '❓ そうさ'}
+        </button>
       </div>
 
       {/* ---- Big "DAY N" splash. Sits ABOVE the day-intro/celebration notices

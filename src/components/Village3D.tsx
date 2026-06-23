@@ -1218,9 +1218,10 @@ export default function Village3D({
     };
     window.addEventListener('keydown', onCamKey);
 
-    // Right-drag to rotate.
+    // Right-drag to rotate (left-click stays free for walking).
     let dragging = false;
     let dragX = 0;
+    let lastDragMs = 0; // when a rotate-drag last moved (suppresses the click->move)
     const onCamDown = (e: PointerEvent) => {
       if (e.button !== 2 || !stateRef.current.life.active) return;
       dragging = true;
@@ -1228,6 +1229,7 @@ export default function Village3D({
     };
     const onCamMove = (e: PointerEvent) => {
       if (!dragging) return;
+      if (e.clientX !== dragX) lastDragMs = Date.now();
       camAzGoal += (e.clientX - dragX) * 0.012;
       dragX = e.clientX;
     };
@@ -1399,6 +1401,7 @@ export default function Village3D({
     // sparkle); otherwise, clicking the banker NPC opens the loan popup.
     const onCanvasClick = (e: MouseEvent) => {
       if (roadModeRef.current) return; // road mode handles its own press-drag
+      if (Date.now() - lastDragMs < 250) return; // ignore the click ending a rotate-drag
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
