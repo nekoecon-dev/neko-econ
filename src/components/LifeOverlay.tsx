@@ -237,7 +237,7 @@ export default function LifeOverlay({
       </div>
 
       {/* ---- Bottom-centre: event toast + day-6 road + advance button ---- */}
-      {!life.inside && (
+      {life.sceneMode === 'village' && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-2">
           {life.event && (
             <div className="animate-pop rounded-2xl border-4 border-sky-300 bg-white/95 px-4 py-2 text-sm font-black text-sky-800 shadow-lg">
@@ -342,7 +342,7 @@ export default function LifeOverlay({
       )}
 
       {/* ---- Tent interior screen ---- */}
-      {life.inside && <TentInterior life={life} dispatch={dispatch} />}
+      {life.sceneMode === 'interior' && <TentInterior life={life} dispatch={dispatch} />}
 
       {/* ---- ミケ ---- */}
       {talking === 'mike' && (
@@ -747,7 +747,7 @@ function TentInterior({
           <ToolBtn disabled={!gridActive} onClick={rotate}>🔄 回転(R)</ToolBtn>
           <ToolBtn disabled={!selId} onClick={removeSel}>📦 しまう</ToolBtn>
           <ToolBtn
-            highlight={life.day === 3 && !life.dayDone && life.interior.length > 0}
+            highlight={life.day === 3 && life.interior.length > 0}
             onClick={() => dispatch({ type: 'LIFE_EXIT_TENT' })}
           >
             🚪 外に出る
@@ -761,9 +761,11 @@ function TentInterior({
           ? `🟩 緑のマスをクリックして「${selName}」を配置（🔄 で回転）`
           : selId
             ? '✋ 移動は別のマスをクリック ／ 🔄 回転 ／ 📦 しまう'
-            : life.day === 3 && !life.dayDone && life.interior.length === 0
-              ? '🪑「配置する」か、持ち家具を選んで飾ろう'
-              : '🛋️ 家具を選んで飾ろう。置いた家具はクリックで選べるニャ'}
+            : life.day === 3 && life.dayDone
+              ? '✅ 飾れたニャ！「🚪 外に出る」で村へもどろう'
+              : life.day === 3 && life.interior.length === 0
+                ? '🪑「配置する」か、持ち家具を選んで飾ろう'
+                : '🛋️ 家具を選んで飾ろう。置いた家具はクリックで選べるニャ'}
       </div>
 
       {/* Room: back wall (window/curtain/shelf/lamp/door) + wood-plank floor grid */}

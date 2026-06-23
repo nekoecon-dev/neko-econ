@@ -97,10 +97,13 @@ const DAY_INTRO: Record<number, string> = {
 export function lifeObjective(life: LifeState): string {
   if (life.day > 7) return '🌳 のんびり村を育てよう（1日進めると何かが起きる）';
   if (life.dayDone) return '✅ 今日の目的達成！「次の日へ」で進もう';
-  // DAY3 sub-steps: buy at たぬきち → step into the tent → decorate.
+  // DAY3 sub-steps: buy at たぬきち → click the tent → decorate inside.
   if (life.day === 3) {
-    if (life.ownedFurniture.length > 0) return '🏠 テントをクリックして入り、家具を飾ろう';
-    return '✨ 光っているたぬきちに話しかけて家具を買おう';
+    if (life.ownedFurniture.length === 0 && life.interior.length === 0) {
+      return '✨ 光っているたぬきちに話しかけて家具を買おう';
+    }
+    if (life.sceneMode === 'interior') return '🪑 家具を配置して部屋を飾ろう';
+    return '🏠 テントをクリックして中に入ろう';
   }
   return DAY_OBJECTIVE[life.day] ?? '🌳 のんびり村を育てよう';
 }
@@ -163,7 +166,7 @@ export function lifeInactive(): LifeState {
     furniture: [],
     ownedFurniture: [],
     interior: [],
-    inside: false,
+    sceneMode: 'village',
     visitors: [],
     soupsMade: 0,
     shopOpen: false,
@@ -344,31 +347,31 @@ export function lifeBuyFurniture(state: GameState, kind: FurnitureKind): GameSta
   };
 }
 
-/** Enter the tent-interior screen (entering alone never completes a day). */
+/** Enter the tent-interior screen (sceneMode → interior). */
 export function lifeEnterTent(state: GameState): GameState {
-  return { ...state, life: { ...state.life, inside: true } };
+  return { ...state, life: { ...state.life, sceneMode: 'interior' } };
 }
 
 /**
- * Leave the tent. DAY3 completes here — only once at least one piece of
- * furniture has actually been placed inside (buy → enter → decorate → 確認).
+ * Leave the tent (sceneMode → village). DAY3 is already cleared the moment a
+ * piece is placed (see lifePlaceInterior); stepping back outside just shows the
+ * one-time celebration the first time the player returns after decorating.
  */
 export function lifeExitTent(state: GameState): GameState {
   const life = state.life;
-  if (life.day === 3 && !life.dayDone && life.interior.length > 0) {
+  if (life.day === 3 && life.dayDone && life.interior.length > 0 && life.notice === null) {
     return {
       ...state,
       life: {
         ...life,
-        inside: false,
-        dayDone: true,
+        sceneMode: 'village',
         reward: 0,
         notice:
           '🛋️ おうちが少し楽しくなったニャ！\n\n集めて、売って、手に入れたニャルで家具を買えたニャ。お金は貯めるだけじゃなく、暮らしを良くするためにも使えるニャ。',
       },
     };
   }
-  return { ...state, life: { ...life, inside: false } };
+  return { ...state, life: { ...life, sceneMode: 'village' } };
 }
 
 const occupied = (interior: InteriorItem[], gx: number, gy: number, exceptId?: string): boolean =>
@@ -387,11 +390,18 @@ export function lifePlaceInterior(
   if (idx < 0 || occupied(life.interior, gx, gy)) return state;
   const ownedFurniture = life.ownedFurniture.filter((_, i) => i !== idx);
   const piece: InteriorItem = { id: `furn-${life.seq + 1}`, kind, gx, gy, rot };
-  // Placing alone does NOT clear DAY3 — the player confirms by stepping back
-  // outside (see lifeExitTent), so a stray tent visit can't auto-complete it.
+  // DAY3 clears as soon as the player actually places a piece of furniture.
+  const day3Clear = life.day === 3 && !life.dayDone;
   return {
     ...state,
-    life: { ...life, seq: life.seq + 1, ownedFurniture, interior: [...life.interior, piece] },
+    life: {
+      ...life,
+      seq: life.seq + 1,
+      ownedFurniture,
+      interior: [...life.interior, piece],
+      dayDone: day3Clear ? true : life.dayDone,
+      reward: day3Clear ? 0 : life.reward,
+    },
   };
 }
 

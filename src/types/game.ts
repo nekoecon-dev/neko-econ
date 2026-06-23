@@ -248,7 +248,7 @@ export interface LifeState {
   furniture: PlacedFurniture[]; // (legacy) village-map furniture — unused in the campaign
   ownedFurniture: FurnitureKind[]; // bought, not yet placed (shown in the tent)
   interior: InteriorItem[]; // furniture placed inside the tent on the room grid
-  inside: boolean; // the player is in the tent-interior screen
+  sceneMode: 'village' | 'interior'; // which screen is shown — outside map vs tent interior
   visitors: LifeVisitor[]; // visiting cats
   soupsMade: number;
   shopOpen: boolean; // ミケの屋台 has been built (DAY5)

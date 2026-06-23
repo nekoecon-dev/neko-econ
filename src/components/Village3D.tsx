@@ -696,6 +696,50 @@ export default function Village3D({
     // The hero's home stands out: bigger than the other cottages in life mode.
     tent.scale.setScalar(lifeBoot ? 3 : 1.9);
     scene.add(tent);
+
+    // Generous invisible click/hover proxy so the tent is easy to enter, plus a
+    // glowing guide ring that calls the player in on the DAY3 「中に入る」 step.
+    const tentHit = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 7, 6),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    );
+    tentHit.position.set(homeX, 3, homeZ);
+    scene.add(tentHit);
+    const tentRing = new THREE.Mesh(
+      new THREE.RingGeometry(2.6, 3.6, 40),
+      new THREE.MeshBasicMaterial({
+        color: '#ffe14a',
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    tentRing.rotation.x = -Math.PI / 2;
+    tentRing.position.set(homeX, 0.07, homeZ);
+    tentRing.visible = false;
+    scene.add(tentRing);
+    updaters.push(() => {
+      const s = stateRef.current.life;
+      // After buying furniture (in the village), call the player into the tent.
+      const callTent =
+        s.active &&
+        s.day === 3 &&
+        !s.dayDone &&
+        s.sceneMode === 'village' &&
+        (s.ownedFurniture.length > 0 || s.interior.length > 0);
+      tentRing.visible = callTent;
+      if (callTent) {
+        const tt = Date.now() / 1000;
+        (tentRing.material as THREE.MeshBasicMaterial).opacity = 0.7 + Math.sin(tt * 4) * 0.25;
+        const sc = 1 + Math.sin(tt * 3) * 0.12;
+        tentRing.scale.set(sc, sc, sc);
+        tent.position.y = Math.abs(Math.sin(tt * 2.5)) * 0.35; // gentle bob = "come in"
+      } else if (tent.position.y !== 0) {
+        tent.position.y = 0;
+      }
+    });
+
     const playerHouse = makeHouse('#dc2626');
     playerHouse.scale.setScalar(0.8);
     playerHouse.position.set(homeX, 0, homeZ);
@@ -785,8 +829,14 @@ export default function Village3D({
       updaters.push(() => {
         const s = stateRef.current;
         signObj.visible = s.life.active;
-        // DAY3 「まずはたぬきちへ」: highlight until the first furniture is placed.
-        const callTanuki = s.life.active && s.life.day === 3 && !s.life.dayDone;
+        // DAY3 「まずはたぬきちへ」: highlight until the player has bought furniture
+        // (then the guidance hands off to the tent's own ring).
+        const callTanuki =
+          s.life.active &&
+          s.life.day === 3 &&
+          !s.life.dayDone &&
+          s.life.ownedFurniture.length === 0 &&
+          s.life.interior.length === 0;
         ring.visible = callTanuki;
         bangObj.visible = callTanuki;
         callObj.visible = callTanuki;
@@ -1301,15 +1351,19 @@ export default function Village3D({
         ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(ndc, camera);
-        const over =
+        const overShop =
           (shop.visible && raycaster.intersectObject(shop, true).length > 0) ||
           raycaster.intersectObject(banker, true).length > 0;
-        if (over) {
+        const overTent = !overShop && raycaster.intersectObject(tentHit, true).length > 0;
+        if (overShop || overTent) {
+          hoverTip.textContent = overTent ? '🏠 中に入る' : 'たぬきちの店';
           hoverTip.style.display = 'block';
           hoverTip.style.left = `${e.clientX - rect.left}px`;
           hoverTip.style.top = `${e.clientY - rect.top - 34}px`;
+          renderer.domElement.style.cursor = 'pointer';
         } else {
           hoverTip.style.display = 'none';
+          renderer.domElement.style.cursor = '';
         }
         // Hovering a gatherable makes it glow (esp. the small lost item).
         const itemHit = raycaster.intersectObjects(itemLayer.children, true)[0];
@@ -1384,8 +1438,11 @@ export default function Village3D({
           onTalkTanukiRef.current(); // たぬきち本人でも、店の入口でも家具UIを開く
           return;
         }
-        // 3) click the tent/home to step inside (tent-interior screen)
-        if (raycaster.intersectObject(tent, true).length > 0) {
+        // 3) click the tent/home (generous proxy) to step inside the interior
+        if (
+          raycaster.intersectObject(tentHit, true).length > 0 ||
+          raycaster.intersectObject(tent, true).length > 0
+        ) {
           selectedCatId = null;
           dispatchRef.current({ type: 'LIFE_ENTER_TENT' });
           return;
