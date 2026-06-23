@@ -82,6 +82,21 @@ export default function LifeOverlay({
     return () => clearInterval(id);
   }, [searching]);
 
+  // DAY7 ending cinematic: drive the beats on a timer so the fireworks show
+  // before the 村レベル2 modal, and シロ's arrival lingers before free play.
+  const fest = life.festivalPhase;
+  const festivalActive = fest === 'fireworks' || fest === 'level2' || fest === 'shiro';
+  useEffect(() => {
+    if (fest === 'fireworks') {
+      const id = setTimeout(() => dispatch({ type: 'LIFE_FESTIVAL_NEXT' }), 1600);
+      return () => clearTimeout(id);
+    }
+    if (fest === 'shiro') {
+      const id = setTimeout(() => dispatch({ type: 'LIFE_FESTIVAL_NEXT' }), 3400);
+      return () => clearTimeout(id);
+    }
+  }, [fest, dispatch]);
+
   // DAY3: nudge the player toward たぬきち if they haven't gone over to him.
   // (たぬきち's life-mode map spot ≈ world (9.5, 0.5).)
   const goingToTanuki = life.active && life.day === 3 && !life.dayDone;
@@ -303,14 +318,16 @@ export default function LifeOverlay({
               </button>
             )
           )}
-          <button
-            type="button"
-            disabled={!canAdvance}
-            onClick={() => dispatch({ type: 'LIFE_ADVANCE_DAY' })}
-            className="pointer-events-auto btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-amber-400 to-orange-500 px-8 py-3 text-lg font-black text-white shadow-xl transition enabled:hover:from-amber-300 enabled:hover:to-orange-400 disabled:opacity-50"
-          >
-            {advanceLabel}
-          </button>
+          {!festivalActive && (
+            <button
+              type="button"
+              disabled={!canAdvance}
+              onClick={() => dispatch({ type: 'LIFE_ADVANCE_DAY' })}
+              className="pointer-events-auto btn-press rounded-2xl border-4 border-yellow-400 bg-gradient-to-b from-amber-400 to-orange-500 px-8 py-3 text-lg font-black text-white shadow-xl transition enabled:hover:from-amber-300 enabled:hover:to-orange-400 disabled:opacity-50"
+            >
+              {advanceLabel}
+            </button>
+          )}
         </div>
       )}
 
@@ -459,23 +476,44 @@ export default function LifeOverlay({
             </span>
           ))}
           <div className="animate-pop max-w-sm rounded-3xl border-4 border-yellow-300 bg-[#fffdf7] p-7 text-center shadow-2xl">
-            <div className="text-4xl font-black text-amber-600">🎉 目的達成！</div>
-            <div className="mt-2 whitespace-pre-line text-base font-black leading-relaxed text-amber-900">
-              {life.notice}
-            </div>
-            {life.reward > 0 && (
-              <div className="mt-3 inline-block rounded-full bg-amber-100 px-4 py-1.5 text-lg font-black text-amber-700">
-                報酬：{life.reward} ニャル
-              </div>
+            {fest === 'level2' ? (
+              <>
+                <div className="text-5xl font-black leading-tight text-amber-600 drop-shadow">🎆</div>
+                <div className="mt-1 text-3xl font-black leading-tight text-rose-500">NekoEcon村 レベル2！</div>
+                <div className="mt-2 text-base font-black leading-relaxed text-amber-900">
+                  テント代を返して、村が大きくなったニャ！
+                  <br />
+                  新しい区画と住民がやってくるニャ！
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'LIFE_FESTIVAL_NEXT' })}
+                  className="tutorial-cta btn-press mt-5 w-full rounded-2xl bg-gradient-to-b from-rose-400 to-pink-500 py-3 text-lg font-black text-white shadow-lg"
+                >
+                  ▶ つづき
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl font-black text-amber-600">🎉 目的達成！</div>
+                <div className="mt-2 whitespace-pre-line text-base font-black leading-relaxed text-amber-900">
+                  {life.notice}
+                </div>
+                {life.reward > 0 && (
+                  <div className="mt-3 inline-block rounded-full bg-amber-100 px-4 py-1.5 text-lg font-black text-amber-700">
+                    報酬：{life.reward} ニャル
+                  </div>
+                )}
+                <div className="mt-2 text-sm font-bold text-amber-500">🐱🐈 みんなが喜んでいるニャ！</div>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'LIFE_ADVANCE_DAY' })}
+                  className="tutorial-cta btn-press mt-5 w-full rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 py-3 text-lg font-black text-white shadow-lg"
+                >
+                  ▶ 次の日へ
+                </button>
+              </>
             )}
-            <div className="mt-2 text-sm font-bold text-amber-500">🐱🐈 みんなが喜んでいるニャ！</div>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'LIFE_ADVANCE_DAY' })}
-              className="tutorial-cta btn-press mt-5 w-full rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 py-3 text-lg font-black text-white shadow-lg"
-            >
-              ▶ 次の日へ
-            </button>
           </div>
         </div>
       )}

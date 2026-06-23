@@ -36,6 +36,7 @@ import {
   lifeDismissNotice,
   lifeEnterTent,
   lifeExitTent,
+  lifeFestivalNext,
   lifeGather,
   lifeGiveLost,
   lifeGiveSoup,
@@ -153,6 +154,8 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeRemoveRoad(state, action.gx, action.gz);
     case 'LIFE_REPAY':
       return lifeRepay(state);
+    case 'LIFE_FESTIVAL_NEXT':
+      return lifeFestivalNext(state);
     case 'LIFE_BUY_FURNITURE':
       return lifeBuyFurniture(state, action.kind);
     case 'LIFE_ENTER_TENT':

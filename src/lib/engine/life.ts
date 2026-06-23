@@ -154,6 +154,7 @@ export function lifeInactive(): LifeState {
     weather: 'sunny',
     level: 1,
     liveliness: 0,
+    festivalPhase: 'none',
     sale: false,
     playerX: 50,
     playerY: 50,
@@ -594,16 +595,28 @@ export function lifeRemoveRoad(state: GameState, gx: number, gz: number): GameSt
   return { ...state, roads };
 }
 
+/**
+ * DAY7: repay たぬきち, then kick off the ending cinematic. The 村レベル2
+ * celebration plays in beats (see {@link FestivalPhase}) so the fireworks are
+ * seen *before* the modal appears — here we only fire the fireworks, gather the
+ * cats around the pot, and set `festivalPhase: 'fireworks'` (notice stays null
+ * so no modal yet). LifeOverlay advances the beats on a timer.
+ */
 export function lifeRepay(state: GameState): GameState {
   const life = state.life;
   if (state.player.cash < DAY7_REPAY) return state;
   const pay = Math.min(DAY7_REPAY, state.player.loan);
-  const { cat: shiro, stock } = makeShiro();
   // 新区画の採集アイテムをまく
   let seq = life.seq;
   const newItems = (['fish', 'fish', 'flower', 'mushroom', 'wood'] as GatherKind[]).map((k) =>
     makeItem(seq++, k),
   );
+  // 猫たちがスープ鍋（map 50,50）の周りに集まる。
+  const n = Math.max(1, state.cats.length);
+  const gathered = state.cats.map((c, i) => {
+    const a = (i / n) * Math.PI * 2;
+    return { ...c, action: 'idle' as const, x: 50 + Math.cos(a) * 11, y: 50 + Math.sin(a) * 11 };
+  });
   return {
     ...state,
     player: {
@@ -611,8 +624,7 @@ export function lifeRepay(state: GameState): GameState {
       cash: round2(state.player.cash - DAY7_REPAY),
       loan: round2(state.player.loan - pay),
     },
-    cats: state.cats.some((c) => c.name === 'シロ') ? state.cats : [...state.cats, shiro],
-    stocks: state.stocks['1'] ? state.stocks : { ...state.stocks, [shiro.id]: stock },
+    cats: gathered,
     life: fire(
       {
         ...life,
@@ -622,13 +634,41 @@ export function lifeRepay(state: GameState): GameState {
         loanUnlocked: true,
         dayDone: true,
         reward: 0,
-        notice: '🎆 NekoEcon村 レベル2！花火が上がり、新住民シロが引っ越してきたニャ',
+        festivalPhase: 'fireworks',
+        notice: null, // delayed — the modal appears at the 'level2' beat
       },
       'fireworks',
       50,
       50,
     ),
   };
+}
+
+/** Advance the DAY7 ending cinematic one beat (fired on a timer / button). */
+export function lifeFestivalNext(state: GameState): GameState {
+  const life = state.life;
+  if (life.festivalPhase === 'fireworks') {
+    // Fireworks have shown for a beat → reveal the 村レベル2 modal.
+    return {
+      ...state,
+      life: { ...life, festivalPhase: 'level2', notice: '🎆 NekoEcon村 レベル2！' },
+    };
+  }
+  if (life.festivalPhase === 'level2') {
+    // Modal dismissed → 新住民シロ moves in (entrance polish lives in Village3D).
+    const { cat: shiro, stock } = makeShiro();
+    const has = state.cats.some((c) => c.name === 'シロ');
+    return {
+      ...state,
+      cats: has ? state.cats : [...state.cats, shiro],
+      stocks: state.stocks['1'] ? state.stocks : { ...state.stocks, [shiro.id]: stock },
+      life: fire({ ...life, festivalPhase: 'shiro', notice: null }, 'fireworks', shiro.x, shiro.y),
+    };
+  }
+  if (life.festivalPhase === 'shiro') {
+    return { ...state, life: { ...life, festivalPhase: 'done' } };
+  }
+  return state;
 }
 
 export function lifeDismissNotice(state: GameState): GameState {
@@ -678,6 +718,7 @@ export function lifeAdvanceDay(state: GameState): GameState {
     day,
     dayDone: false,
     lendDays,
+    festivalPhase: 'none', // any DAY7 cinematic ends once we move on
     time: NEXT_TIME[life.time],
     sale: false,
     event: null,

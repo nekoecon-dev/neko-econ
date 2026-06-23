@@ -180,6 +180,11 @@ export type FurnitureKind =
   | 'planter';
 /** How the player funds ミケの屋台 on DAY5 — teaches 出資 / 貸付 / 贈与. */
 export type StallChoice = 'invest' | 'lend' | 'gift';
+/**
+ * DAY7 ending cinematic, played in beats so the fireworks show before the modal
+ * and シロ arrives after it: none → fireworks → level2 (modal) → shiro → done.
+ */
+export type FestivalPhase = 'none' | 'fireworks' | 'level2' | 'shiro' | 'done';
 export type LifeWeather = 'sunny' | 'rainy';
 export type LifeTime = 'morning' | 'day' | 'evening';
 
@@ -234,6 +239,7 @@ export interface LifeState {
   weather: LifeWeather;
   level: number; // village level (DAY7 festival bumps it to 2)
   liveliness: number; // 村のにぎわい — rises with infrastructure (DAY6 road, etc.)
+  festivalPhase: FestivalPhase; // DAY7 ending cinematic beat
   sale: boolean; // たぬきち furniture sale (cheaper today)
   playerX: number; // map % the avatar is walking toward
   playerY: number;
@@ -314,6 +320,7 @@ export type PolicyAction =
   | { type: 'LIFE_LAY_ROAD'; gx: number; gz: number } // DAY6: lay one 土の道 tile (5ニャル)
   | { type: 'LIFE_REMOVE_ROAD'; gx: number; gz: number } // DAY6: remove a tile (no refund)
   | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)
+  | { type: 'LIFE_FESTIVAL_NEXT' } // advance the DAY7 ending cinematic one beat
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned
   | { type: 'LIFE_ENTER_TENT' } // open the tent-interior screen
   | { type: 'LIFE_EXIT_TENT' } // leave the tent-interior screen

@@ -1229,6 +1229,42 @@ export default function Village3D({
       sparkles.push({ points, vel, life: 1, max: 1 });
     };
 
+    // A firework that bursts high in the sky (radial explosion + gravity fade),
+    // so it shows in the upper screen above any modal. Used by the DAY7 festival.
+    const FIREWORK_COLORS = ['#ff5a8a', '#ffd23f', '#5ad1ff', '#b18bff', '#7cff9b', '#ffffff'];
+    const spawnFirework = (x: number, y: number, z: number, color: string) => {
+      const n = 70;
+      const pos = new Float32Array(n * 3);
+      const vel = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        pos[i * 3] = x;
+        pos[i * 3 + 1] = y;
+        pos[i * 3 + 2] = z;
+        // even-ish points on a sphere -> a round burst
+        const a = Math.random() * Math.PI * 2;
+        const u = Math.random() * 2 - 1;
+        const s = Math.sqrt(1 - u * u);
+        const sp = 3.5 + Math.random() * 3;
+        vel[i * 3] = Math.cos(a) * s * sp;
+        vel[i * 3 + 1] = u * sp;
+        vel[i * 3 + 2] = Math.sin(a) * s * sp;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const mat = new THREE.PointsMaterial({
+        color,
+        size: 0.45,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const points = new THREE.Points(geo, mat);
+      scene.add(points);
+      sparkles.push({ points, vel, life: 1.4, max: 1.4 });
+    };
+    let lastFireworkMs = 0; // throttles the festival's recurring sky bursts
+    let fireworkHue = 0;
+
     // Ghost preview of the facility being placed (follows the cursor).
     let ghost: THREE.Group | null = null;
     let ghostKind: FacilityKind | null = null;
@@ -1724,14 +1760,36 @@ export default function Village3D({
               buildPieces.push({ mesh: plank, targetY: 0.18 + s * 0.32, t: -s * 0.12 });
             }
           } else {
-            // fireworks: bursts scattered across the plaza
-            for (let s = 0; s < 8; s++) spawnSparkle((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+            // fireworks: 2-3 bursts high in the sky + a confetti puff at the pot.
+            for (let s = 0; s < 3; s++) {
+              spawnFirework(
+                w.x + (s - 1) * 6 + (Math.random() - 0.5) * 3,
+                9 + Math.random() * 4,
+                w.z - 3 + (Math.random() - 0.5) * 3,
+                FIREWORK_COLORS[(fireworkHue++) % FIREWORK_COLORS.length],
+              );
+            }
+            for (let s = 0; s < 4; s++) spawnSparkle(w.x + (Math.random() - 0.5) * 3, w.z + (Math.random() - 0.5) * 3);
           }
         }
-        // Soup pot gently glows/pulses for a moment after a soup effect.
+
+        // While the DAY7 festival plays, keep popping sky fireworks (2-3 at a
+        // time) so they linger through the modal — drawn in the upper screen.
+        const festActive = life.festivalPhase === 'fireworks' || life.festivalPhase === 'level2';
+        if (festActive && nowMs - lastFireworkMs > 620) {
+          lastFireworkMs = nowMs;
+          spawnFirework(
+            (Math.random() - 0.5) * 18,
+            9 + Math.random() * 4,
+            -3 + (Math.random() - 0.5) * 6,
+            FIREWORK_COLORS[(fireworkHue++) % FIREWORK_COLORS.length],
+          );
+        }
+
+        // Soup pot glows/pulses after a soup effect and all through the festival.
         if (soupPot) {
-          const since = life.fx.kind === 'soup' ? 1 : 0;
-          const pulse = since ? 1 + Math.sin(t * 8) * 0.04 : 1;
+          const glow = life.fx.kind === 'soup' || life.festivalPhase !== 'none';
+          const pulse = glow ? 1 + Math.sin(t * 8) * 0.06 : 1;
           soupPot.scale.setScalar(1.9 * pulse); // 1.9 is the village's base pot scale
         }
       }
