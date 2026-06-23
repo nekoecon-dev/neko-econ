@@ -33,9 +33,11 @@ test('life mode boots into the DAY1 campaign with a minimal HUD', async ({ page 
   await page.getByRole('button', { name: 'けってい' }).click();
   expect((await neko(page)).life.playerName).toBe('テストにゃん');
 
-  // Welcome story beat (uses the name) → dismiss it.
+  // DAY1 opening conversation (uses the name) → click through all 4 lines.
   await expect(page.getByText(/ようこそ、テストにゃんさん/)).toBeVisible();
-  await page.getByRole('button', { name: /わかった/ }).click();
+  for (let i = 0; i < 4; i++) {
+    await page.getByRole('button', { name: /つぎへ|きのこを集めにいく/ }).click();
+  }
 
   // Minimal HUD: day + the single objective, currency shown as ニャル.
   await expect(page.getByText('DAY1')).toBeVisible();

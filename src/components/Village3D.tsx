@@ -6,7 +6,7 @@ import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRe
 import type { CatAction, FacilityKind, GameState, PolicyAction, Weather } from '@/types/game';
 import { FACILITY_COST, isFacilityKind } from '@/lib/engine/facilities';
 import { tickInterest } from '@/lib/engine/loan';
-import { SHOP_QUEUE } from '@/lib/engine/life';
+import { SHOP_POS, SHOP_QUEUE } from '@/lib/engine/life';
 import { roadKey } from '@/lib/engine/roads';
 import {
   buildVillage,
@@ -1093,7 +1093,7 @@ export default function Village3D({
     const guideGroup = new THREE.Group();
     scene.add(guideGroup);
     {
-      const shopW = mapToWorld(38, 62);
+      const shopW = mapToWorld(SHOP_POS.x, SHOP_POS.y);
       const potW = mapToWorld(50, 50);
       const lineMat = new THREE.LineDashedMaterial({
         color: 0xffe14a,
@@ -1780,7 +1780,7 @@ export default function Village3D({
         // bubbles over the queued cats + 売上/物流ボーナス popups + a sparkle.
         if (life.roadDone && !lastRoadDone) {
           lastRoadDone = true;
-          const shopW = mapToWorld(38, 62);
+          const shopW = mapToWorld(SHOP_POS.x, SHOP_POS.y);
           spawnSparkle(shopW.x, shopW.z);
           spawnFloatLabel('float-pop float-sales', '🍲 売上 +50ニャル', shopW.x, 3.4, shopW.z, 3800, 0.5);
           spawnFloatLabel('float-pop float-bonus', '🚚 物流改善ボーナス +80ニャル', shopW.x, 5, shopW.z, 4300, 0.4);

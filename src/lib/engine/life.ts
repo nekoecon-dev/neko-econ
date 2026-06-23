@@ -224,14 +224,9 @@ export function lifeInitial(): LifeState {
 /** Confirm the hero's name (defaults to ニャオ), then show たぬきち's welcome. */
 export function lifeSetName(state: GameState, name: string): GameState {
   const playerName = name.trim().slice(0, 8) || 'ニャオ';
-  return {
-    ...state,
-    life: {
-      ...state.life,
-      playerName,
-      notice: `🦝 たぬきち「ようこそ、${playerName}さん。今日からNekoEcon村で暮らすニャ。まずは村を歩いて、きのこを3つ集めるニャ」`,
-    },
-  };
+  // The welcome is now the DAY1 opening conversation overlay (see LifeOverlay),
+  // so no notice is set here.
+  return { ...state, life: { ...state.life, playerName } };
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -500,7 +495,7 @@ export function lifeBuildStall(state: GameState, choice: StallChoice): GameState
   if (life.shopOpen) return state;
   if (life.inventory.wood < STALL_WOOD || state.player.cash < STALL_COST) return state;
   const inventory = { ...life.inventory, wood: life.inventory.wood - STALL_WOOD };
-  const shop = { id: 'life-soup-shop', kind: 'soupFactory' as const, x: 38, y: 62 };
+  const shop = { id: 'life-soup-shop', kind: 'soupFactory' as const, x: SHOP_POS.x, y: SHOP_POS.y };
 
   // Choice-specific economy / relationship / reward item.
   let dailyIncome = life.dailyIncome;
@@ -589,11 +584,14 @@ export function lifeConnectRoad(state: GameState): GameState {
 export const LIFE_ROAD_COST = 5; // ニャル per 土の道 tile in life mode (DAY6)
 export const ROAD_SUBSIDY = 30; // 村のインフラ補助金 granted at the start of DAY6
 
-// ミケの屋台 ≈ map (38,62) → grid (-2,2); スープ鍋 is the central pot at grid
-// (0,0). (Derived from mapToWorld/TILE; hardcoded so the engine stays free of
-// the THREE-importing builders module.)
-const SHOP_GRID = { gx: -2, gz: 2 };
+// ミケの屋台 sits at map (50,70) → world (0,8) → grid (0,4), a good 4 tiles
+// south of the スープ鍋 (central pot, grid 0,0), so a real road must be laid to
+// link them. (Grid derived from mapToWorld/TILE; hardcoded so the engine stays
+// free of the THREE-importing builders module.)
+export const SHOP_POS = { x: 50, y: 70 };
+const SHOP_GRID = { gx: 0, gz: 4 };
 const POT_GRID = { gx: 0, gz: 0 };
+export const MIN_ROAD_TILES = 4; // 屋台↔鍋 must be a real path, not a couple of planks
 
 type Cell = { gx: number; gz: number };
 const cheb = (a: Cell, b: Cell) => Math.max(Math.abs(a.gx - b.gx), Math.abs(a.gz - b.gz));
@@ -647,9 +645,9 @@ export function lifeRoadConnected(roads: Cell[]): boolean {
 // Where the customers queue in front of ミケの屋台 once the road connects (map %).
 // Village3D reads the same spots to float the speech bubbles over the cats.
 export const SHOP_QUEUE: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 34, y: 66 },
-  { x: 31, y: 71 },
-  { x: 41, y: 71 },
+  { x: 46, y: 74 },
+  { x: 54, y: 74 },
+  { x: 50, y: 79 },
 ];
 const LOGISTICS_BONUS = 80; // 物流改善ボーナス paid once on connecting the road
 const ROAD_DIVIDEND = 20; // extra ニャル/day added on connecting (on top of ROAD_INCOME)
@@ -657,12 +655,13 @@ const ROAD_DIVIDEND = 20; // extra ニャル/day added on connecting (on top of 
 function judgeDay6Road(state: GameState): GameState {
   const life = state.life;
   if (life.day !== 6 || life.roadDone) return state;
-  if (!lifeRoadConnected(state.roads)) return state;
+  // Must be a continuous road AND a real path (≥ MIN_ROAD_TILES), not 2 planks.
+  if (!lifeRoadConnected(state.roads) || state.roads.length < MIN_ROAD_TILES) return state;
   // ミケ walks the new road over to the スープ鍋; up to 3 other cats line up at
   // the 屋台 (Village3D plays the speech bubbles + 売上/ボーナス popups).
   let qi = 0;
   const cats = state.cats.map((c) => {
-    if (c.id === '4') return { ...c, action: 'working' as const, x: 50, y: 52 }; // ミケ → 鍋
+    if (c.id === '4') return { ...c, action: 'working' as const, x: 50, y: 54 }; // ミケ → 鍋
     if (qi < SHOP_QUEUE.length) {
       const sp = SHOP_QUEUE[qi++];
       return { ...c, action: 'idle' as const, x: sp.x, y: sp.y };

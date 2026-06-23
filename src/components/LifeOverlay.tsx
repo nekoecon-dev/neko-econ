@@ -11,6 +11,7 @@ import {
   LIFE_ROAD_COST,
   lifeObjective,
   lifeRoadConnected,
+  MIN_ROAD_TILES,
   SHOP_FURNITURE,
   SOUP_NEED,
   STALL_COST,
@@ -370,19 +371,28 @@ export default function LifeOverlay({
                   🏛️ 道路予算：{life.roadBudget}ニャル
                   {life.roadBudget === 0 && <span className="text-amber-700">（使い切ったら所持金から払うニャ）</span>}
                 </div>
-                {life.day === 6 && !life.roadDone && (
-                  <div
-                    className={`rounded-2xl border-2 px-4 py-1 text-xs font-black shadow ${
-                      lifeRoadConnected(state.roads)
-                        ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
-                        : 'border-rose-300 bg-rose-50 text-rose-700'
-                    }`}
-                  >
-                    {lifeRoadConnected(state.roads)
-                      ? '✅ 屋台とスープ鍋がつながったニャ！'
-                      : '❌ まだ屋台とスープ鍋がつながっていないニャ'}
-                  </div>
-                )}
+                {life.day === 6 && !life.roadDone && (() => {
+                  const connected = lifeRoadConnected(state.roads);
+                  const short = connected && state.roads.length < MIN_ROAD_TILES;
+                  const need = MIN_ROAD_TILES - state.roads.length;
+                  return (
+                    <div
+                      className={`max-w-xs rounded-2xl border-2 px-4 py-1 text-center text-xs font-black shadow ${
+                        connected && !short
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                          : short
+                            ? 'border-amber-400 bg-amber-50 text-amber-800'
+                            : 'border-rose-300 bg-rose-50 text-rose-700'
+                      }`}
+                    >
+                      {connected && !short
+                        ? '✅ 屋台とスープ鍋がつながったニャ！'
+                        : short
+                          ? `⚠️ もう少し道をつなげるニャ（あと${need}マス）。これだと板を置いただけニャ、猫が歩ける道にするニャ`
+                          : '❌ まだ屋台とスープ鍋がつながっていないニャ'}
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
