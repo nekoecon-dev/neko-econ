@@ -279,6 +279,9 @@ export interface LifeState {
   intimacyExplained: boolean; // the first-time 親密度 popup has been shown
   hasLostItem: boolean; // carrying タマ's lost item (DAY4)
   hasMoved: boolean; // the player has walked at least once (DAY1 move hint)
+  day1IntroDone: boolean; // the DAY1 たぬきち opening conversation has finished
+  hasExplainedNyar: boolean; // the first-time ニャル explanation has been shown
+  trust: number; // 信用 — rises when the player repays たぬきち (DAY7+)
   hintArrow: boolean; // show the 3D arrow pointing at the lost item (DAY4 hint)
   event: string | null; // latest 1日進める event toast
   notice: string | null; // big celebration / story-beat notification
@@ -343,6 +346,7 @@ export type PolicyAction =
   | { type: 'LIFE_RESCUE_WORK' } // DAY7 rescue: forage more + earn a wage
   | { type: 'LIFE_RESCUE_BORROW' } // DAY7 rescue: borrow the shortfall from ミケ
   | { type: 'LIFE_RESCUE_WAIT' } // DAY7 rescue: defer repayment once (+50 later)
+  | { type: 'LIFE_DAY1_INTRO_DONE' } // finish the DAY1 opening conversation
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned
   | { type: 'LIFE_ENTER_TENT' } // open the tent-interior screen
   | { type: 'LIFE_EXIT_TENT' } // leave the tent-interior screen

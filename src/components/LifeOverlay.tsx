@@ -21,6 +21,14 @@ const TIME_EMOJI = { morning: '🌅', day: '☀️', evening: '🌇' } as const;
 const GATHER_ORDER: GatherKind[] = ['mushroom', 'fish', 'wood', 'flower'];
 
 // Big "DAY N" splash subtitles shown at the start of each campaign day.
+// DAY1 opening conversation (たぬきち導入). `{name}` is replaced with the hero.
+const DAY1_INTRO_LINES = [
+  'ようこそ、{name}さん',
+  '今日からここが、きみの暮らすNekoEcon村ニャ',
+  'この村では、集めて、作って、売って、少しずつ暮らしをよくしていくニャ',
+  'まずは村を歩いて、きのこを3つ集めてみるニャ',
+];
+
 const DAY_SUBTITLE: Record<number, string> = {
   1: 'NekoEcon村へようこそ',
   2: 'はじめてのスープ作り',
@@ -73,6 +81,7 @@ export default function LifeOverlay({
   const [day4Elapsed, setDay4Elapsed] = useState(0);
   const [day3Elapsed, setDay3Elapsed] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [introStep, setIntroStep] = useState(0);
   const life = state.life;
 
   // DAY4: after ~25s of searching without finding the lost item, nudge harder.
@@ -239,6 +248,45 @@ export default function LifeOverlay({
         </div>
       )}
 
+      {/* ---- DAY1 opening conversation (たぬきち導入・初回のみ) ---- */}
+      {life.day === 1 && !life.day1IntroDone && life.playerName !== '' && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[67] flex justify-center bg-gradient-to-t from-black/40 to-transparent p-3 pt-12">
+          <div className="animate-pop w-full max-w-2xl rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/98 p-5 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <span className="text-5xl drop-shadow">🦝</span>
+              <span className="text-base font-black text-amber-700">たぬきち</span>
+            </div>
+            <div className="mt-2 min-h-[3.5rem] text-lg font-black leading-relaxed text-amber-950">
+              {DAY1_INTRO_LINES[introStep].replace('{name}', life.playerName)}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (introStep < DAY1_INTRO_LINES.length - 1) setIntroStep((s) => s + 1);
+                else dispatch({ type: 'LIFE_DAY1_INTRO_DONE' });
+              }}
+              className="tutorial-cta btn-press mt-3 w-full rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 py-2.5 text-base font-black text-white shadow-lg"
+            >
+              {introStep < DAY1_INTRO_LINES.length - 1
+                ? `▶ つぎへ（${introStep + 1}/${DAY1_INTRO_LINES.length}）`
+                : '🍄 きのこを集めにいく'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ---- DAY1 operation hints (after the intro, until the day is done) ---- */}
+      {life.day === 1 && life.day1IntroDone && !life.dayDone && (
+        <div className="pointer-events-none absolute inset-x-0 top-44 flex flex-col items-center gap-1.5">
+          <div className="rounded-2xl border-2 border-emerald-300 bg-[#fffdf7]/95 px-4 py-1.5 text-sm font-black text-emerald-800 shadow">
+            🖱 地面をクリックすると移動できるニャ
+          </div>
+          <div className="rounded-2xl border-2 border-amber-300 bg-[#fffdf7]/95 px-4 py-1.5 text-sm font-black text-amber-800 shadow">
+            🍄 きのこをクリックすると拾えるニャ
+          </div>
+        </div>
+      )}
+
       {/* ---- Top-left HUD: cash / day / objective / inventory ---- */}
       <div className="pointer-events-auto absolute left-3 top-3 w-72 rounded-3xl border-4 border-amber-300 bg-[#fffdf7]/95 p-3 shadow-xl">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -288,11 +336,6 @@ export default function LifeOverlay({
           {life.event && (
             <div className="animate-pop rounded-2xl border-4 border-sky-300 bg-white/95 px-4 py-2 text-sm font-black text-sky-800 shadow-lg">
               {life.event}
-            </div>
-          )}
-          {life.day === 1 && !life.hasMoved && (
-            <div className="rounded-2xl border-4 border-emerald-300 bg-white/95 px-4 py-2 text-sm font-black text-emerald-800 shadow-lg">
-              🖱️ 地面をクリックすると移動できるニャ
             </div>
           )}
           {searching && day4Elapsed > 15000 && (

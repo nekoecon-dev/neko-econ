@@ -198,6 +198,9 @@ export function lifeInactive(): LifeState {
     intimacyExplained: false,
     hasLostItem: false,
     hasMoved: false,
+    day1IntroDone: false,
+    hasExplainedNyar: false,
+    trust: 0,
     hintArrow: false,
     event: null,
     notice: null,
@@ -287,15 +290,25 @@ export function lifeGather(state: GameState, id: string): GameState {
   // DAY1 completes once 3 mushrooms are in the basket.
   if (life.day === 1 && !life.dayDone && inventory.mushroom >= SOUP_NEED) {
     cash = round2(cash + DAY1_REWARD);
+    // First ニャル ever → たぬきち explains what the money is (once).
+    const firstNyar = !life.hasExplainedNyar;
     next = {
       ...next,
       dayDone: true,
       reward: DAY1_REWARD,
-      notice: `🐱 ミケ「上手にきのこを集めたニャ！おれいに +${DAY1_REWARD}ニャル ニャ」`,
+      hasExplainedNyar: true,
+      notice: firstNyar
+        ? `🦝 たぬきち「それがニャルニャ。NekoEcon村で使えるお金ニャ」\n\n家具を買ったり、道を作ったり、ローンを返したりするときに使うニャ。\n\n💰 ニャル＝NekoEcon村のお金\n・集める / 売る / 手伝うことで増える\n・使うと、暮らしや村が変わる`
+        : `🐱 ミケ「上手にきのこを集めたニャ！おれいに +${DAY1_REWARD}ニャル ニャ」`,
     };
   }
 
   return { ...state, player: { ...state.player, cash }, life: next };
+}
+
+/** Finish the DAY1 opening conversation (たぬきち導入). */
+export function lifeDay1IntroDone(state: GameState): GameState {
+  return { ...state, life: { ...state.life, day1IntroDone: true } };
 }
 
 export function lifeGiveSoup(state: GameState): GameState {

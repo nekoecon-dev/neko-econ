@@ -33,6 +33,7 @@ import {
   lifeBuildStall,
   lifeBuyFurniture,
   lifeConnectRoad,
+  lifeDay1IntroDone,
   lifeDismissNotice,
   lifeEnterTent,
   lifeExitTent,
@@ -164,6 +165,8 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
       return lifeRescueBorrow(state);
     case 'LIFE_RESCUE_WAIT':
       return lifeRescueWait(state);
+    case 'LIFE_DAY1_INTRO_DONE':
+      return lifeDay1IntroDone(state);
     case 'LIFE_REPAY':
       return lifeRepay(state);
     case 'LIFE_FESTIVAL_NEXT':

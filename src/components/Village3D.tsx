@@ -1857,17 +1857,22 @@ export default function Village3D({
           const w = mapToWorld(item.x, item.y);
           mesh.position.set(w.x, 0, w.z);
           mesh.userData.itemId = item.id;
+          mesh.userData.kind = item.kind;
           mesh.userData.baseScale = mesh.scale.x; // keep the builder scale for hover glow
           itemMeshes.set(item.id, mesh);
           itemLayer.add(mesh);
         }
         // Gatherables bob + spin gently so they read as collectable; the hovered
         // one swells a little (a "光る" cue, esp. for the small lost item).
+        // DAY1: the 3 mushrooms to collect pulse with a soft glow as a guide.
+        const day1Pulse = life.day === 1 && !life.dayDone;
         for (const [id, mesh] of itemMeshes) {
           mesh.rotation.y += dt * 1.2;
-          mesh.position.y = 0.45 + Math.sin(t * 2 + mesh.position.x) * 0.18;
+          const guide = day1Pulse && mesh.userData.kind === 'mushroom';
+          mesh.position.y = 0.45 + Math.sin(t * 2 + mesh.position.x) * 0.18 + (guide ? 0.15 : 0);
           const base = (mesh.userData.baseScale as number) ?? 1;
-          const target = id === hoveredItemId ? base * 1.35 : base;
+          const pulse = guide ? 1 + Math.abs(Math.sin(t * 4)) * 0.3 : 1;
+          const target = (id === hoveredItemId ? base * 1.35 : base) * pulse;
           const s = mesh.scale.x + (target - mesh.scale.x) * Math.min(1, dt * 10);
           mesh.scale.setScalar(s);
         }
