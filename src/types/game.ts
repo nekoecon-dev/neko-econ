@@ -177,7 +177,8 @@ export type FurnitureKind =
   | 'statue'
   | 'table'
   | 'bed'
-  | 'planter';
+  | 'planter'
+  | 'mikeStatue'; // ミケのありがとう像 — DAY5 プレゼント のお礼（飾ると にぎわい+1）
 /** How the player funds ミケの屋台 on DAY5 — teaches 出資 / 貸付 / 贈与. */
 export type StallChoice = 'invest' | 'lend' | 'gift';
 /**

@@ -470,7 +470,6 @@ export default function LifeOverlay({
                   <div className="mt-2 flex flex-col gap-2">
                     <StallChoiceBtn
                       disabled={cant}
-                      recommended
                       icon="💰"
                       title="出資する"
                       desc="成長を応援して、利益の一部をもらう（毎日+20ニャル）"
@@ -733,38 +732,27 @@ function DialogButton({
   );
 }
 
-/** A DAY5 financing choice (出資 / 貸付 / 贈与) — big, with a one-line lesson. */
+/** A DAY5 financing choice (出資 / 貸付 / 贈与) — all three shown equal, no 推奨. */
 function StallChoiceBtn({
   icon,
   title,
   desc,
   onClick,
   disabled,
-  recommended,
 }: {
   icon: string;
   title: string;
   desc: string;
   onClick: () => void;
   disabled?: boolean;
-  recommended?: boolean;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`btn-press relative w-full rounded-2xl border-2 px-3 py-2.5 text-left transition disabled:opacity-40 ${
-        recommended
-          ? 'tutorial-cta border-amber-400 bg-gradient-to-b from-amber-50 to-amber-100'
-          : 'border-amber-200 bg-white enabled:hover:bg-amber-50'
-      }`}
+      className="btn-press relative w-full rounded-2xl border-2 border-amber-200 bg-white px-3 py-2.5 text-left transition enabled:hover:bg-amber-50 disabled:opacity-40"
     >
-      {recommended && (
-        <span className="absolute -top-2 right-3 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white shadow">
-          おすすめ
-        </span>
-      )}
       <div className="flex items-center gap-2">
         <span className="text-2xl drop-shadow">{icon}</span>
         <span className="text-base font-black text-amber-900">{title}</span>

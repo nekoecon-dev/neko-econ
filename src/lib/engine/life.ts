@@ -52,6 +52,7 @@ export const FURNITURE_COST: Record<FurnitureKind, number> = {
   rug: 100,
   plant: 50,
   statue: 200,
+  mikeStatue: 0, // gift-only — not sold at たぬきち
 };
 
 export const FURNITURE_META: Record<FurnitureKind, { icon: string; name: string }> = {
@@ -63,6 +64,7 @@ export const FURNITURE_META: Record<FurnitureKind, { icon: string; name: string 
   rug: { icon: '🟫', name: 'ラグ' },
   plant: { icon: '🪴', name: '観葉植物' },
   statue: { icon: '🗿', name: 'ねこ像' },
+  mikeStatue: { icon: '🐱', name: 'ミケのありがとう像' },
 };
 
 const GATHER_META: Record<GatherKind, { icon: string; name: string }> = {
@@ -424,6 +426,8 @@ export function lifePlaceInterior(
   const piece: InteriorItem = { id: `furn-${life.seq + 1}`, kind, gx, gy, rot };
   // DAY3 clears as soon as the player actually places a piece of furniture.
   const day3Clear = life.day === 3 && !life.dayDone;
+  // ミケのありがとう像 raises 村のにぎわい while it is on display (reverted on しまう).
+  const vibrancy = kind === 'mikeStatue' ? 1 : 0;
   return {
     ...state,
     life: {
@@ -431,6 +435,7 @@ export function lifePlaceInterior(
       seq: life.seq + 1,
       ownedFurniture,
       interior: [...life.interior, piece],
+      liveliness: life.liveliness + vibrancy,
       dayDone: day3Clear ? true : life.dayDone,
       reward: day3Clear ? 0 : life.reward,
     },
@@ -467,12 +472,14 @@ export function lifeRemoveInterior(state: GameState, id: string): GameState {
   const life = state.life;
   const piece = life.interior.find((it) => it.id === id);
   if (!piece) return state;
+  const vibrancy = piece.kind === 'mikeStatue' ? 1 : 0; // reverse the display bonus
   return {
     ...state,
     life: {
       ...life,
       interior: life.interior.filter((it) => it.id !== id),
       ownedFurniture: [...life.ownedFurniture, piece.kind],
+      liveliness: Math.max(0, life.liveliness - vibrancy),
     },
   };
 }
@@ -510,10 +517,10 @@ export function lifeBuildStall(state: GameState, choice: StallChoice): GameState
     intimacyDelta = 1;
     detail = `貸したニャ！${LEND_DAYS}日かけて合計${LEND_TOTAL}ニャル（毎日+${LEND_PER_DAY}）返してもらうニャ。貸付とは、お金を貸して、あとで少し多く返してもらうことニャ。`;
   } else {
-    ownedFurniture = [...life.ownedFurniture, 'statue']; // 特別なお礼アイテム（ねこ像）
+    ownedFurniture = [...life.ownedFurniture, 'mikeStatue']; // お礼「ミケのありがとう像」
     intimacyDelta = 4;
     detail =
-      'プレゼントしたニャ！お金は戻らないけど、特別なお礼に「ねこ像🗿」をもらったニャ。プレゼントは、お金は戻らないけど、仲良し度が大きく上がるニャ。';
+      'プレゼントしたニャ！お金は戻らないけど、お礼に「ミケのありがとう像🐱」をもらったニャ。部屋や外に飾ると村のにぎわいが上がるニャ。インベントリの家具から配置できるニャ。プレゼントは、お金は戻らないけど、仲良し度が大きく上がるニャ。';
   }
   const intimacy = {
     ...life.intimacy,
