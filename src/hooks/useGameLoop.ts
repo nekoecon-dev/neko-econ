@@ -142,7 +142,7 @@ function applyPolicy(state: GameState, action: PolicyAction): GameState {
     case 'LIFE_SHOW_HINT':
       return lifeShowHint(state);
     case 'LIFE_BUILD_STALL':
-      return lifeBuildStall(state);
+      return lifeBuildStall(state, action.choice);
     case 'LIFE_CONNECT_ROAD':
       return lifeConnectRoad(state);
     case 'LIFE_REPAY':

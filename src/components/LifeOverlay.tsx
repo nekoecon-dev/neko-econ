@@ -273,14 +273,41 @@ export default function LifeOverlay({
             <p>まずはマップのきのこを3つ集めてくるニャ！</p>
           ) : life.day === 5 && !life.shopOpen ? (
             <>
-              <p>スープ屋を開きたいニャ！木材{STALL_WOOD}個と{STALL_COST}ニャルで屋台を建てるニャ。</p>
+              <p>スープ屋を開きたいニャ！木材{STALL_WOOD}個と{STALL_COST}ニャルが必要ニャ。どうやって出してくれるニャ？</p>
               <p className="mt-1 text-sm text-amber-600">木材 {life.inventory.wood}/{STALL_WOOD} ・ 所持金 {cash}ニャル</p>
-              <DialogButton
-                disabled={life.inventory.wood < STALL_WOOD || cash < STALL_COST}
-                onClick={() => { dispatch({ type: 'LIFE_BUILD_STALL' }); close(); }}
-              >
-                🔨 木材{STALL_WOOD}個と{STALL_COST}ニャルで屋台を建てる
-              </DialogButton>
+              {(() => {
+                const cant = life.inventory.wood < STALL_WOOD || cash < STALL_COST;
+                const build = (choice: 'invest' | 'lend' | 'gift') => {
+                  dispatch({ type: 'LIFE_BUILD_STALL', choice });
+                  close();
+                };
+                return (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <StallChoiceBtn
+                      disabled={cant}
+                      recommended
+                      icon="💰"
+                      title="出資する"
+                      desc="成長を応援して、利益の一部をもらう（毎日+20ニャル）"
+                      onClick={() => build('invest')}
+                    />
+                    <StallChoiceBtn
+                      disabled={cant}
+                      icon="🤝"
+                      title="貸す"
+                      desc="あとで少し多く返してもらう（5日で合計220ニャル）"
+                      onClick={() => build('lend')}
+                    />
+                    <StallChoiceBtn
+                      disabled={cant}
+                      icon="🎁"
+                      title="プレゼントする"
+                      desc="お金は戻らないけど、仲良し度が大きく上がる＋お礼"
+                      onClick={() => build('gift')}
+                    />
+                  </div>
+                );
+              })()}
             </>
           ) : (
             <>
@@ -473,6 +500,47 @@ function DialogButton({
       className="btn-press mt-3 w-full rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 py-2.5 text-base font-black text-white shadow-lg transition enabled:hover:from-amber-300 enabled:hover:to-orange-400 disabled:opacity-40"
     >
       {children}
+    </button>
+  );
+}
+
+/** A DAY5 financing choice (出資 / 貸付 / 贈与) — big, with a one-line lesson. */
+function StallChoiceBtn({
+  icon,
+  title,
+  desc,
+  onClick,
+  disabled,
+  recommended,
+}: {
+  icon: string;
+  title: string;
+  desc: string;
+  onClick: () => void;
+  disabled?: boolean;
+  recommended?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`btn-press relative w-full rounded-2xl border-2 px-3 py-2.5 text-left transition disabled:opacity-40 ${
+        recommended
+          ? 'tutorial-cta border-amber-400 bg-gradient-to-b from-amber-50 to-amber-100'
+          : 'border-amber-200 bg-white enabled:hover:bg-amber-50'
+      }`}
+    >
+      {recommended && (
+        <span className="absolute -top-2 right-3 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white shadow">
+          おすすめ
+        </span>
+      )}
+      <div className="flex items-center gap-2">
+        <span className="text-2xl drop-shadow">{icon}</span>
+        <span className="text-base font-black text-amber-900">{title}</span>
+      </div>
+      <p className="mt-0.5 text-xs font-bold leading-snug text-amber-700">{desc}</p>
     </button>
   );
 }

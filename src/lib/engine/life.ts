@@ -8,6 +8,7 @@ import type {
   LifeFx,
   LifeState,
   LifeTime,
+  StallChoice,
   StockShare,
 } from '@/types/game';
 import { round2 } from './math';
@@ -24,7 +25,11 @@ export const DAY7_REPAY = 300; // ニャル たぬきち collects on DAY7
 const DAY1_REWARD = 50;
 const DAY2_SOUP_REWARD = 150;
 const DAY4_REWARD = 150;
-const STALL_INCOME = 20; // ニャル/day once the stall opens
+const STALL_INCOME = 20; // ニャル/day 配当 once the stall opens (出資)
+const LEND_DAYS = 5; // 貸付 repayment runs this many days
+const LEND_PER_DAY = 44; // ニャル/day returned while repaying (44×5 = 220)
+const LEND_TOTAL = LEND_DAYS * LEND_PER_DAY; // 220ニャル total returned (貸付)
+const MIKE_ID = '4'; // ミケ's cat id (DAY5 親密度)
 const ROAD_INCOME = 10; // extra ニャル/day once the road connects
 
 export const FURNITURE_COST: Record<FurnitureKind, number> = {
@@ -163,6 +168,7 @@ export function lifeInactive(): LifeState {
     shopUnlocked: false,
     roadDone: false,
     dailyIncome: 0,
+    lendDays: 0,
     loanUnlocked: false,
     intimacy: {},
     intimacyExplained: false,
@@ -432,26 +438,69 @@ export function lifeShowHint(state: GameState): GameState {
   return { ...state, life: { ...state.life, hintArrow: true } };
 }
 
-export function lifeBuildStall(state: GameState): GameState {
+/**
+ * DAY5: fund ミケの屋台 with one of three financing styles, teaching
+ * 出資 (equity) / 貸付 (loan) / 贈与 (gift). All three cost 200ニャル + 3 wood
+ * and build the stall; they differ in how the money comes back and how much
+ * ミケとの親密度 rises.
+ */
+export function lifeBuildStall(state: GameState, choice: StallChoice): GameState {
   const life = state.life;
   if (life.shopOpen) return state;
   if (life.inventory.wood < STALL_WOOD || state.player.cash < STALL_COST) return state;
   const inventory = { ...life.inventory, wood: life.inventory.wood - STALL_WOOD };
   const shop = { id: 'life-soup-shop', kind: 'soupFactory' as const, x: 38, y: 62 };
+
+  // Choice-specific economy / relationship / reward item.
+  let dailyIncome = life.dailyIncome;
+  let lendDays = life.lendDays;
+  let ownedFurniture = life.ownedFurniture;
+  let intimacyDelta: number;
+  let detail: string;
+  if (choice === 'invest') {
+    dailyIncome = life.dailyIncome + STALL_INCOME;
+    intimacyDelta = 2;
+    detail = `出資したニャ！これから毎日+${STALL_INCOME}ニャルの配当がもらえるニャ。出資とは、お店の成長を応援して、うまくいったら利益の一部を受け取ることニャ。`;
+  } else if (choice === 'lend') {
+    lendDays = LEND_DAYS;
+    intimacyDelta = 1;
+    detail = `貸したニャ！${LEND_DAYS}日かけて合計${LEND_TOTAL}ニャル（毎日+${LEND_PER_DAY}）返してもらうニャ。貸付とは、お金を貸して、あとで少し多く返してもらうことニャ。`;
+  } else {
+    ownedFurniture = [...life.ownedFurniture, 'statue']; // 特別なお礼アイテム（ねこ像）
+    intimacyDelta = 4;
+    detail =
+      'プレゼントしたニャ！お金は戻らないけど、特別なお礼に「ねこ像🗿」をもらったニャ。プレゼントは、お金は戻らないけど、仲良し度が大きく上がるニャ。';
+  }
+  const intimacy = {
+    ...life.intimacy,
+    [MIKE_ID]: Math.min(5, (life.intimacy[MIKE_ID] ?? 1) + intimacyDelta),
+  };
+
   return {
     ...state,
     player: { ...state.player, cash: round2(state.player.cash - STALL_COST) },
     facilities: { ...state.facilities, soupFactory: state.facilities.soupFactory + 1 },
     placements: [...state.placements, shop],
+    // ミケ & タマ work at the new stall (drives the DAY5 建設演出 in Village3D).
+    cats: state.cats.map((c) =>
+      c.id === MIKE_ID
+        ? { ...c, action: 'working', x: shop.x - 4, y: shop.y }
+        : c.id === '3'
+          ? { ...c, action: 'working', x: shop.x + 4, y: shop.y }
+          : c,
+    ),
     life: fire(
       {
         ...life,
         inventory,
         shopOpen: true,
-        dailyIncome: life.dailyIncome + STALL_INCOME,
+        dailyIncome,
+        lendDays,
+        ownedFurniture,
+        intimacy,
         dayDone: life.day === 5 ? true : life.dayDone,
         reward: life.day === 5 ? 0 : life.reward,
-        notice: `🎉 ミケの屋台が完成！木材が積まれ、猫たちが拍手しているニャ（毎日+${STALL_INCOME}ニャル）`,
+        notice: `🎉 ミケの屋台が完成！${detail}`,
       },
       'construct',
       shop.x,
@@ -555,7 +604,10 @@ export function lifeAdvanceDay(state: GameState): GameState {
   if (life.day <= 7 && !life.dayDone) return state; // finish today first
 
   const day = life.day + 1;
-  const cash = round2(state.player.cash + life.dailyIncome);
+  // 貸付 (DAY5「貸す」): ミケ repays LEND_PER_DAY each day until lendDays hits 0.
+  const lendPay = life.lendDays > 0 ? LEND_PER_DAY : 0;
+  const lendDays = Math.max(0, life.lendDays - 1);
+  const cash = round2(state.player.cash + life.dailyIncome + lendPay);
 
   // Wake タマ from any previous nap / chat so each day's event reads cleanly.
   let cats = state.cats.map((c) =>
@@ -566,6 +618,7 @@ export function lifeAdvanceDay(state: GameState): GameState {
     ...life,
     day,
     dayDone: false,
+    lendDays,
     time: NEXT_TIME[life.time],
     sale: false,
     event: null,

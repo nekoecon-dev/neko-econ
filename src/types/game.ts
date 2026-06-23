@@ -178,6 +178,8 @@ export type FurnitureKind =
   | 'table'
   | 'bed'
   | 'planter';
+/** How the player funds ミケの屋台 on DAY5 — teaches 出資 / 貸付 / 贈与. */
+export type StallChoice = 'invest' | 'lend' | 'gift';
 export type LifeWeather = 'sunny' | 'rainy';
 export type LifeTime = 'morning' | 'day' | 'evening';
 
@@ -246,6 +248,7 @@ export interface LifeState {
   shopUnlocked: boolean; // たぬきちの家具店 is open (DAY3)
   roadDone: boolean; // 屋台↔鍋 road connected (DAY6)
   dailyIncome: number; // CC paid each 「1日進める」 (stall / road)
+  lendDays: number; // remaining days of ミケへの貸付 repayment (DAY5 「貸す」, 0 = none)
   loanUnlocked: boolean; // loan-repayment UI revealed (DAY7)
   intimacy: Record<string, number>; // catId -> 親密度 level 1..5 (missing = 1)
   intimacyExplained: boolean; // the first-time 親密度 popup has been shown
@@ -305,7 +308,7 @@ export type PolicyAction =
   | { type: 'LIFE_GIVE_SOUP' } // give ミケ 3 mushrooms -> soup (DAY2 / free play)
   | { type: 'LIFE_GIVE_LOST' } // return タマ's lost item (DAY4)
   | { type: 'LIFE_SHOW_HINT' } // DAY4: reveal an arrow over the lost item
-  | { type: 'LIFE_BUILD_STALL' } // 3 wood + 200CC -> ミケの屋台 (DAY5)
+  | { type: 'LIFE_BUILD_STALL'; choice: StallChoice } // 3 wood + 200CC -> ミケの屋台 (DAY5)
   | { type: 'LIFE_CONNECT_ROAD' } // pave 屋台↔鍋 (DAY6)
   | { type: 'LIFE_REPAY' } // repay 300CC -> 村レベル2 festival (DAY7)
   | { type: 'LIFE_BUY_FURNITURE'; kind: FurnitureKind } // buy at たぬきち's shop -> owned
