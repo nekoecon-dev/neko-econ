@@ -41,7 +41,12 @@ export default function Home() {
           roadErase={roadErase}
           talking={talking}
           onTalkMike={() => setTalking('mike')}
-          onTalkTanuki={() => setTalking('tanuki')}
+          onTalkTanuki={() => {
+            // Talking to たぬきち always leaves road-build mode (esp. DAY7 返済).
+            setRoadMode(false);
+            setRoadErase(false);
+            setTalking('tanuki');
+          }}
           onTalkTama={() => setTalking('tama')}
         />
       </div>

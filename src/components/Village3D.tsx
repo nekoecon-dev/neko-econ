@@ -791,6 +791,13 @@ export default function Village3D({
     shop.rotation.y = -1.45;
     shop.visible = lifeBoot;
     scene.add(shop);
+    // Generous invisible proxy so clicking the shop / its sign opens たぬきち.
+    const shopHit = new THREE.Mesh(
+      new THREE.BoxGeometry(7, 9, 7),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    );
+    shopHit.position.set(shopX, 4, shopZ);
+    scene.add(shopHit);
     {
       // Shop sign label, high above the building so it never clips the bottom UI.
       const signEl = document.createElement('div');
@@ -839,12 +846,18 @@ export default function Village3D({
         signObj.visible = s.life.active && !(s.life.notice !== null && s.life.dayDone);
         // DAY3 「まずはたぬきちへ」: highlight until the player has bought furniture
         // (then the guidance hands off to the tent's own ring).
-        const callTanuki =
-          s.life.active &&
+        const callDay3 =
           s.life.day === 3 &&
           !s.life.dayDone &&
           s.life.ownedFurniture.length === 0 &&
           s.life.interior.length === 0;
+        // DAY7 返済: highlight たぬきち until the tent rent is settled / deferred.
+        const callDay7 = s.life.day === 7 && !s.life.dayDone;
+        const callTanuki = s.life.active && (callDay3 || callDay7);
+        const wantText = callDay7 ? 'たぬきちが返済を待っているニャ' : 'たぬきちが呼んでいるニャ！';
+        if (callObj.visible !== callTanuki || (callTanuki && callEl.textContent !== wantText)) {
+          callEl.textContent = wantText;
+        }
         ring.visible = callTanuki;
         bangObj.visible = callTanuki;
         callObj.visible = callTanuki;
@@ -1407,6 +1420,7 @@ export default function Village3D({
       floatLabels.push({ obj, until: Date.now() + ms, vy });
     };
     let lastRoadDone = stateRef.current.life.roadDone; // detect the DAY6 connection
+    let lastInteractMs = Date.now(); // for the DAY7 idle camera-pan to たぬきち
 
     // Ghost preview of the facility being placed (follows the cursor).
     let ghost: THREE.Group | null = null;
@@ -1445,6 +1459,7 @@ export default function Village3D({
         raycaster.setFromCamera(ndc, camera);
         const overShop =
           (shop.visible && raycaster.intersectObject(shop, true).length > 0) ||
+          raycaster.intersectObject(shopHit, true).length > 0 ||
           raycaster.intersectObject(banker, true).length > 0;
         const overTent = !overShop && raycaster.intersectObject(tentHit, true).length > 0;
         if (overShop || overTent) {
@@ -1481,6 +1496,7 @@ export default function Village3D({
     // Click: in placement mode, drop the pending facility where clicked (with a
     // sparkle); otherwise, clicking the banker NPC opens the loan popup.
     const onCanvasClick = (e: MouseEvent) => {
+      lastInteractMs = Date.now(); // any click resets the DAY7 idle-pan timer
       if (roadModeRef.current) return; // road mode handles its own press-drag
       if (Date.now() - lastDragMs < 250) return; // ignore the click ending a rotate-drag
       const rect = renderer.domElement.getBoundingClientRect();
@@ -1525,10 +1541,11 @@ export default function Village3D({
         }
         if (
           raycaster.intersectObject(banker, true).length > 0 ||
+          raycaster.intersectObject(shopHit, true).length > 0 ||
           (shop.visible && raycaster.intersectObject(shop, true).length > 0)
         ) {
           selectedCatId = null;
-          onTalkTanukiRef.current(); // たぬきち本人でも、店の入口でも家具UIを開く
+          onTalkTanukiRef.current(); // たぬきち本人でも、店・看板でも返済/家具UIを開く
           return;
         }
         // 3) click the tent/home (generous proxy) to step inside the interior
@@ -1609,6 +1626,20 @@ export default function Village3D({
     };
     const onRoadDown = (e: PointerEvent) => {
       if (!roadModeRef.current) return;
+      lastInteractMs = Date.now();
+      // Even mid road-build, a press on たぬきち / the shop exits road mode and
+      // opens the dialog (so the DAY7 返済 is always reachable) instead of paving.
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (
+        raycaster.intersectObject(banker, true).length > 0 ||
+        raycaster.intersectObject(shopHit, true).length > 0
+      ) {
+        onTalkTanukiRef.current();
+        return;
+      }
       layingRoad = true;
       lastRoadKey = '';
       layRoadAt(e.clientX, e.clientY);
@@ -1738,6 +1769,12 @@ export default function Village3D({
             }
           }
           lastFestPhase = life.festivalPhase;
+        }
+        // DAY7 返済: if the player sits idle for 10s, pan the camera to たぬきち.
+        if (life.day === 7 && !life.dayDone && nowMs - lastInteractMs > 10000) {
+          panTarget.copy(tanukiLook);
+          panUntil = nowMs + 2600;
+          lastInteractMs = nowMs; // re-pan again only after another 10s of idle
         }
         // DAY6: the moment the road connects, play the arrival 演出 — speech
         // bubbles over the queued cats + 売上/物流ボーナス popups + a sparkle.
